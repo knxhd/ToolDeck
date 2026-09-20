@@ -41,3 +41,7 @@ build/
 .idea
 .qoder
 .trae
+/**/node_modules
+/**/.npm-cache
+/**/dist
+/**/__pycache__
