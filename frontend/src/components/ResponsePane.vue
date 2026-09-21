@@ -47,13 +47,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import MonacoEditor from '@/components/MonacoEditor.vue'
 import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
-const fmt = ref<'text' | 'json' | 'html'>('text')
 const selectedFrame = ref(0)
 
 const headerRows = computed(() =>
@@ -63,10 +61,8 @@ const headerRows = computed(() =>
 
 const contentTypeName = computed(() => {
   const headers = props.tab.headers || {}
-  const contentType = headers['content-type'] || ''
-  return contentType
+  return headers['content-type'] || ''
 })
-const currentFrame = computed(() => props.tab.stream_events[selectedFrame.value] || null)
 
 // 流式到达时自动选中最新一帧
 watch(
@@ -77,21 +73,6 @@ watch(
 function preview(data: string) {
   const s = (data || '').replace(/\s+/g, ' ').trim()
   return s.length > 60 ? s.slice(0, 60) + '…' : s
-}
-
-function rendered(raw: string) {
-  if (fmt.value !== 'json' || !raw) return raw || ''
-  try {
-    return JSON.stringify(JSON.parse(raw), null, 2)
-  } catch {
-    return raw
-  }
-}
-
-function tagType(type: string) {
-  if (type === 'error') return 'danger'
-  if (type === 'meta' || type === 'done') return 'info'
-  return 'success'
 }
 
 const statusType = computed(() => {
@@ -143,6 +124,18 @@ function formatSize(bytes: number) {
   min-height: 0;
   display: flex;
   flex-direction: column;
+
+  :deep(.el-tabs__content) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  :deep(.el-tab-pane) {
+    height: 100%;
+  }
+  .body-pane {
+    height: 100%;
+  }
 }
 
 .body-toolbar {
