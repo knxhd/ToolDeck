@@ -14,13 +14,25 @@
     </div>
     <div v-if="tab.error" class="error-box">{{ tab.error }}</div>
     <el-tabs v-else class="resp-tabs">
-      <el-tab-pane label="Body" style="height: 100%;">
-        <MonacoEditor
-          :model-value="tab.body"
-          :language="bodyLanguage"
-          read-only
-          height="calc(100% - 20px)"
-        />
+      <el-tab-pane label="Body" class="body-pane">
+        <div class="body-toolbar">
+          <el-radio-group v-model="bodyMode" size="small">
+            <el-radio-button value="text">Text</el-radio-button>
+            <el-radio-button value="json">JSON</el-radio-button>
+            <el-radio-button value="html">HTML</el-radio-button>
+          </el-radio-group>
+          <span class="ct">{{ contentTypeName }}</span>
+        </div>
+        <div class="body-view">
+          <MonacoEditor
+            v-if="bodyMode !== 'html'"
+            :model-value="displayBody"
+            :language="bodyMode === 'json' ? 'json' : 'plaintext'"
+            read-only
+            height="100%"
+          />
+          <iframe v-else class="html-frame" :srcdoc="tab.body" sandbox=""></iframe>
+        </div>
       </el-tab-pane>
       <el-tab-pane label="Headers">
         <el-table :data="headerRows" size="small" max-height="260" border>
@@ -33,19 +45,30 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
+const bodyMode = ref<'text' | 'json' | 'html'>('text')
+
 const headerRows = computed(() =>
   Object.entries(props.tab.headers || {}).map(([key, value]) => ({ key, value })),
 )
 
-const bodyLanguage = computed(() => {
-  const ct = (props.tab.headers || {})['content-type'] || ''
-  return ct.includes('json') ? 'json' : 'plaintext'
+const contentTypeName = computed(() => (props.tab.headers || {})['content-type'] || '')
+
+// JSON 模式下尝试格式化；失败则原样显示
+const displayBody = computed(() => {
+  if (bodyMode.value !== 'json') return props.tab.body
+  const raw = props.tab.body
+  if (!raw) return ''
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2)
+  } catch {
+    return raw
+  }
 })
 
 const statusType = computed(() => {
@@ -70,5 +93,9 @@ function formatSize(bytes: number) {
   color: var(--el-color-danger); padding: 10px; margin-top: 8px;
   background: var(--el-color-danger-light-9); border-radius: 4px;
 }
-.resp-tabs { flex: 1; min-height: 0; }
+.resp-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.body-toolbar { display: flex; align-items: center; gap: 12px; padding: 2px 0 6px; }
+.ct { font-size: 12px; color: var(--el-text-color-placeholder); }
+.body-view { flex: 1; min-height: 0; }
+.html-frame { width: 100%; height: 100%; border: 1px solid var(--el-border-color); border-radius: 4px; background: #fff; }
 </style>
