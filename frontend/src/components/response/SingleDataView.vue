@@ -56,10 +56,7 @@ const rendered = (raw: string) => {
 
 
 .body-view {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-
+    overflow: auto;
     .html-frame {
         width: 100%;
         height: 100%;
