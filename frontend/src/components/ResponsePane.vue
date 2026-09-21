@@ -15,43 +15,25 @@
     <div v-if="tab.error" class="error-box">{{ tab.error }}</div>
     <el-tabs v-else class="resp-tabs">
       <el-tab-pane label="Body" class="body-pane">
-        <div class="body-toolbar">
-          <el-select v-model="fmt" size="small" style="width: 110px">
-            <el-option label="Text" value="text" />
-            <el-option label="JSON" value="json" />
-            <el-option label="HTML" value="html" />
-          </el-select>
-          <span class="ct">{{ contentTypeName }}</span>
-        </div>
+        <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
+          <div class="frame-list">
+            <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row" :class="{ active: i === selectedFrame }"
+              @click="selectedFrame = i">
+              <template v-if="e.data.trim().length > 0">
+                <div v-if="e.data.trim().length > 0">
+                  <span class="frame-dot" :class="e.type"></span>
+                  <span class="frame-preview">{{ preview(e.data) }}</span>
+                </div>
+                <div>
+                  <span class="frame-time">{{ e.time }}</span>
+                </div>
+              </template>
 
-        <div class="body-view">
-          <!-- 流式：左帧列表 + 右详情 -->
-          <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
-            <div class="frame-list">
-              <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row"
-                :class="{ active: i === selectedFrame }" @click="selectedFrame = i">
-                <template v-if="e.data.trim().length > 0">
-                  <div v-if="e.data.trim().length > 0">
-                    <span class="frame-dot" :class="e.type"></span>
-                    <span class="frame-preview">{{ preview(e.data) }}</span>
-                  </div>
-                  <div>
-                    <span class="frame-time">{{ e.time }}</span>
-                  </div>
-                </template>
-
-              </div>
-              <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
             </div>
-          </template>
-
-          <!-- 非流式：单视图 -->
-          <template v-else>
-            <MonacoEditor v-if="fmt !== 'html'" :model-value="rendered(tab.body)"
-              :language="fmt === 'json' ? 'json' : 'plaintext'" read-only height="100%" />
-            <iframe v-else class="html-frame" :srcdoc="tab.body" sandbox=""></iframe>
-          </template>
-        </div>
+            <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
+          </div>
+        </template>
+        <SingleDataView v-else :data="tab.body" />
       </el-tab-pane>
       <el-tab-pane label="Headers">
         <el-table :data="headerRows" size="small" max-height="260" border>
@@ -66,6 +48,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import MonacoEditor from '@/components/MonacoEditor.vue'
+import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
