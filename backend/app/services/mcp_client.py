@@ -89,7 +89,7 @@ async def call_tool(server: McpServer, tool_name: str, args: dict[str, Any]) -> 
                 return McpCallResult(
                     server=server.name,
                     tool=tool_name,
-                    is_error=bool(result.isError),
+                    is_error=bool(result.is_error),
                     content=content,
                 )
 

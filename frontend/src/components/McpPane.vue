@@ -199,9 +199,12 @@ async function onRun() {
   props.tab.mcp_args = JSON.stringify(buildArgs())
   props.tab.mcp_loading = true
   try {
-    mcp.lastResult = await mcp.adHocCall(props.tab.mcp_url, props.tab.mcp_headers || {}, selectedTool.value.name, buildArgs())
-    props.tab.mcp_result = JSON.stringify(mcp.lastResult, null, 2)
+    const res = await mcp.adHocCall(props.tab.mcp_url, props.tab.mcp_headers || {}, selectedTool.value.name, buildArgs())
+    mcp.lastResult = res
+    props.tab.mcp_result = JSON.stringify(res, null, 2)
     emit('save')
+  } catch (e) {
+    ElMessage.error((e as Error).message)
   } finally {
     props.tab.mcp_loading = false
   }
