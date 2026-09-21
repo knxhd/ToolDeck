@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="history-view">
     <el-tabs v-model="activeTab" @tab-change="onTabChange">
       <el-tab-pane label="HTTP 调用" name="http">
@@ -111,7 +111,7 @@ async function clearHttp() {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .history-view { padding: 12px; height: 100%; overflow: auto; background: #fff; }
 .history-toolbar { margin-bottom: 8px; }
 .cell-json { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 12px; max-height: 60px; overflow: hidden; }

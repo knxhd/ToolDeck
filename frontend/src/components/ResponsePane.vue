@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="response-pane">
     <div class="resp-meta">
       <el-tag v-if="tab.error" type="danger" size="small">请求错误</el-tag>
@@ -135,7 +135,7 @@ function formatSize(bytes: number) {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .response-pane {
   display: flex;
   flex-direction: column;

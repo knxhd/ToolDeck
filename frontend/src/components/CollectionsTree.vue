@@ -76,12 +76,15 @@ async function onRemove(node: CollectionNode) {
 }
 </script>
 
-<style scoped>
-.collections-tree { display: flex; flex-direction: column; height: 100%; }
-.tree-toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 8px; border-bottom: 1px solid var(--el-border-color-lighter);
+<style lang="less" scoped>
+.collections-tree {
+  display: flex; flex-direction: column; height: 100%;
+
+  .tree-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 8px; border-bottom: 1px solid var(--el-border-color-lighter);
+  }
+  .tree-title { font-weight: 600; font-size: 13px; }
+  .tree-body { flex: 1; overflow-y: auto; padding: 4px 0; }
 }
-.tree-title { font-weight: 600; font-size: 13px; }
-.tree-body { flex: 1; overflow-y: auto; padding: 4px 0; }
 </style>

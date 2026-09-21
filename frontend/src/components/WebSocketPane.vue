@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="ws-pane">
     <div class="ws-bar">
       <el-input v-model="tab.ws_url" placeholder="wss://echo.websocket.events" style="flex: 1" />
@@ -72,7 +72,7 @@ function send() {
 onBeforeUnmount(() => ws.value?.close())
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .ws-pane { display: flex; flex-direction: column; height: 100%; padding: 8px; gap: 8px; }
 .ws-bar { display: flex; gap: 8px; }
 .ws-log { flex: 1; overflow-y: auto; border: 1px solid var(--el-border-color); border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }

@@ -73,8 +73,10 @@ function onSend() {
 }
 </script>
 
-<style scoped>
-.request-pane { display: flex; flex-direction: column; height: 100%; }
-.url-bar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid var(--el-border-color); }
-.req-tabs { flex: 1; overflow: auto; padding: 0 8px; }
+<style lang="less" scoped>
+.request-pane {
+  display: flex; flex-direction: column; height: 100%;
+  .url-bar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid var(--el-border-color); }
+  .req-tabs { flex: 1; overflow: auto; padding: 0 8px; }
+}
 </style>

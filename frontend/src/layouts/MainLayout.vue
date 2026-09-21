@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-container class="main-layout">
     <el-main class="main-content">
       <RouterView />
@@ -10,7 +10,7 @@
 import { RouterView } from 'vue-router'
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .main-layout {
   height: 100vh;
 }

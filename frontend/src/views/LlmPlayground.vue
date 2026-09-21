@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="llm-playground">
     <!-- 左：Provider 列表 -->
     <div class="panel provider-panel">
@@ -141,7 +141,7 @@ function roleTag(role: string) {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .llm-playground { display: flex; height: 100%; gap: 1px; background: var(--el-border-color); }
 .panel { background: #fff; overflow: auto; display: flex; flex-direction: column; }
 .provider-panel { width: 280px; flex-shrink: 0; }

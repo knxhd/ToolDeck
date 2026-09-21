@@ -43,8 +43,10 @@ function remove(i: number) {
 }
 </script>
 
-<style scoped>
-.kv-editor { display: flex; flex-direction: column; gap: 6px; }
-.kv-row { display: flex; align-items: center; gap: 8px; }
-.kv-sep { color: var(--el-text-color-secondary); }
+<style lang="less" scoped>
+.kv-editor {
+  display: flex; flex-direction: column; gap: 6px;
+  .kv-row { display: flex; align-items: center; gap: 8px; }
+  .kv-sep { color: var(--el-text-color-secondary); }
+}
 </style>

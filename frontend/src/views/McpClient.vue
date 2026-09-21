@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="mcp-client">
     <!-- 左：Server 列表 -->
     <div class="panel server-panel">
@@ -178,7 +178,7 @@ async function onCall() {
 }
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .mcp-client { display: flex; height: 100%; gap: 1px; background: var(--el-border-color); }
 .panel { background: #fff; overflow: auto; display: flex; flex-direction: column; }
 .server-panel { width: 300px; flex-shrink: 0; }

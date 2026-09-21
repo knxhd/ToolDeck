@@ -98,31 +98,42 @@ function onChildRename(n: CollectionNode) { emit('rename', n) }
 function onChildRemove(n: CollectionNode) { emit('remove', n) }
 </script>
 
-<style scoped>
-.node-row { user-select: none; }
-.node-line {
-  display: flex; align-items: center; gap: 4px;
-  padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 13px;
+<style lang="less" scoped>
+.node-row {
+  user-select: none;
+
+  .node-line {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 6px; border-radius: 4px; cursor: pointer; font-size: 13px;
+
+    &:hover { background: var(--el-fill-color-light); }
+    &.active .node-name { font-weight: 600; }
+    &:hover .node-actions { display: inline-flex; }
+  }
+
+  .twisty { width: 14px; color: var(--el-text-color-secondary); }
+  .node-icon { color: var(--el-color-warning); }
+  .node-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .node-actions { display: none; align-items: center; gap: 2px; }
+
+  .action-btn {
+    cursor: pointer; padding: 2px; border-radius: 3px;
+    &:hover { background: var(--el-fill-color-dark); }
+    &.danger:hover { color: var(--el-color-danger); }
+  }
+
+  .method-badge {
+    font-size: 10px; font-weight: 700; min-width: 34px; text-align: center;
+    padding: 1px 4px; border-radius: 3px; color: #fff;
+
+    &.get { background: #49cc90; }
+    &.post { background: #fca130; }
+    &.put { background: #61affe; }
+    &.delete { background: #f93e3e; }
+    &.patch { background: #50e3c2; }
+    &.ws { background: #8e44ad; }
+    &.mcp { background: #e6a23c; }
+  }
 }
-.node-line:hover { background: var(--el-fill-color-light); }
-.node-line.active .node-name { font-weight: 600; }
-.twisty { width: 14px; color: var(--el-text-color-secondary); }
-.node-icon { color: var(--el-color-warning); }
-.node-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.node-actions { display: none; align-items: center; gap: 2px; }
-.node-line:hover .node-actions { display: inline-flex; }
-.action-btn { cursor: pointer; padding: 2px; border-radius: 3px; }
-.action-btn:hover { background: var(--el-fill-color-dark); }
-.action-btn.danger:hover { color: var(--el-color-danger); }
-.method-badge {
-  font-size: 10px; font-weight: 700; min-width: 34px; text-align: center;
-  padding: 1px 4px; border-radius: 3px; color: #fff;
-}
-.method-badge.get { background: #49cc90; }
-.method-badge.post { background: #fca130; }
-.method-badge.put { background: #61affe; }
-.method-badge.delete { background: #f93e3e; }
-.method-badge.patch { background: #50e3c2; }
-.method-badge.ws { background: #8e44ad; }
-.method-badge.mcp { background: #e6a23c; }
 </style>

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="http-workbench">
     <!-- 左：历史 -->
     <div class="panel history-panel">
@@ -170,7 +170,7 @@ function formatSize(bytes: number) {
 watch(() => store.history, () => {}, { deep: true })
 </script>
 
-<style scoped>
+<style lang="less" scoped>
 .http-workbench {
   display: flex;
   height: 100%;
