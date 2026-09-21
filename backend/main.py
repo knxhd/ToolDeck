@@ -31,7 +31,7 @@ def main() -> None:
         port = int(os.environ.get("APP_PORT", "8765"))
 
     uvicorn.run(
-        "backend.main:app",
+        "main:app",
         host=host,
         port=port,
         reload=False,

@@ -55,7 +55,7 @@ def create_app() -> FastAPI:
 
             index_file = static_dir / "index.html"
 
-            @app.get("/{full_path:path}")
+            @app.get("/{full_path:path}", response_model=None)
             async def spa_fallback(full_path: str) -> HTMLResponse | JSONResponse:
                 # 非 API/SSE 路径返回 index.html，交给前端路由
                 if full_path.startswith(("api/", "sse/")):
