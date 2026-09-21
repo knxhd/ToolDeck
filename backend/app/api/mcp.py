@@ -1,16 +1,8 @@
-"""MCP Streamable 客户端路由。
-
-- GET    /api/mcp/servers                      列出所有 Server
-- POST   /api/mcp/servers                       添加 Server
-- PUT    /api/mcp/servers/{name}                更新 Server
-- DELETE /api/mcp/servers/{name}                删除 Server
-- POST   /api/mcp/servers/{name}/test           测试连接
-- GET    /api/mcp/servers/{name}/tools          列出工具
-- POST   /api/mcp/servers/{name}/tools/{tool}/call  调用工具
-"""
+"""MCP Streamable HTTP 客户端路由。"""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from backend.app.schemas.mcp import (
     McpCallResult,
@@ -89,7 +81,6 @@ async def call_tool(name: str, tool: str, args: dict) -> McpCallResult:
         result = McpCallResult(
             server=name, tool=tool, is_error=True, error=str(exc)
         )
-    # 记录历史
     history_store.append_mcp_call(
         {
             "server": name,
@@ -105,7 +96,6 @@ async def call_tool(name: str, tool: str, args: dict) -> McpCallResult:
 
 @router.get("/history")
 async def get_mcp_history() -> list[dict]:
-    """返回 MCP 调用历史（按时间倒序）。"""
     calls = history_store.get_mcp_calls()
     return list(reversed(calls))
 
@@ -114,3 +104,35 @@ async def get_mcp_history() -> list[dict]:
 async def clear_mcp_history() -> dict:
     history_store.clear_mcp_calls()
     return {"cleared": True}
+
+
+# 临时连接：直接传 url + headers，不依赖已保存 server
+class _AdHocBody(BaseModel):
+    url: str
+    headers: dict[str, str] = {}
+
+
+class _AdHocCallBody(_AdHocBody):
+    tool: str
+    args: dict = {}
+
+
+@router.post("/ad-hoc/tools", response_model=list[McpTool])
+async def ad_hoc_tools(body: _AdHocBody) -> list[McpTool]:
+    server = McpServer(name="__adhoc__", url=body.url, headers=body.headers)
+    try:
+        return await mcp_client.list_tools(server)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"列出工具失败：{exc}")
+
+
+@router.post("/ad-hoc/call", response_model=McpCallResult)
+async def ad_hoc_call(body: _AdHocCallBody) -> McpCallResult:
+    server = McpServer(name="__adhoc__", url=body.url, headers=body.headers)
+    try:
+        result = await mcp_client.call_tool(server, body.tool, body.args)
+    except Exception as exc:
+        result = McpCallResult(
+            server="__adhoc__", tool=body.tool, is_error=True, error=str(exc)
+        )
+    return result
