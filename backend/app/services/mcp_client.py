@@ -63,7 +63,7 @@ async def list_tools(server: McpServer) -> list[McpTool]:
                     McpTool(
                         name=tool.name,
                         description=tool.description or "",
-                        input_schema=tool.inputSchema or {},
+                        input_schema=tool.input_schema or {},
                     )
                     for tool in result.tools
                 ]
