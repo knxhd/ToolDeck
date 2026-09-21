@@ -6,6 +6,8 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as monaco from 'monaco-editor'
 
+import { useSettingsStore } from '@/stores/settings'
+
 const props = withDefaults(
   defineProps<{
     modelValue: string
@@ -17,7 +19,6 @@ const props = withDefaults(
   }>(),
   {
     language: 'json',
-    theme: 'vs',
     readOnly: false,
     height: '100%',
     autoScrollToEnd: false,
@@ -26,15 +27,21 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
+const settings = useSettingsStore()
 const containerRef = ref<HTMLDivElement | null>(null)
 let editor: monaco.editor.IStandaloneCodeEditor | null = null
+
+function resolvedTheme(): 'vs' | 'vs-dark' {
+  if (props.theme) return props.theme
+  return settings.settings.dark ? 'vs-dark' : 'vs'
+}
 
 onMounted(() => {
   if (!containerRef.value) return
   editor = monaco.editor.create(containerRef.value, {
     value: props.modelValue,
     language: props.language,
-    theme: props.theme,
+    theme: resolvedTheme(),
     readOnly: props.readOnly,
     automaticLayout: true,
     minimap: { enabled: false },
@@ -71,7 +78,13 @@ watch(
   },
 )
 
-/** 增量追加文本到末尾。 */
+watch(
+  () => settings.settings.dark,
+  (dark) => {
+    monaco.editor.setTheme(props.theme ? props.theme : dark ? 'vs-dark' : 'vs')
+  },
+)
+
 function appendText(text: string) {
   if (!editor) return
   const model = editor.getModel()
