@@ -38,6 +38,7 @@ function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
     body: '',
     elapsed_ms: 0,
     size_bytes: 0,
+    stream_events: [],
   }
 }
 
@@ -104,6 +105,13 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     tab.body = ''
     tab.elapsed_ms = 0
     tab.size_bytes = 0
+    tab.stream_events = []
+  }
+
+  function pushEvent(tab: OpenTab, type: string, data: string) {
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false }) +
+      '.' + String(Date.now() % 1000).padStart(3, '0')
+    tab.stream_events.push({ time, type, data })
   }
 
   async function send(tab: OpenTab, persist?: (req: HttpRequestData) => void) {
@@ -117,13 +125,18 @@ export const useWorkbenchStore = defineStore('workbench', () => {
           tab.status_code = ev.status_code as number
           tab.status_text = (ev.status_text as string) || ''
           tab.headers = (ev.headers as Record<string, string>) || {}
+          pushEvent(tab, 'meta', `${tab.status_code} ${tab.status_text}`)
         } else if (type === 'chunk') {
-          tab.body += (ev.data as string) || ''
+          const data = (ev.data as string) || ''
+          tab.body += data
+          pushEvent(tab, 'chunk', data)
         } else if (type === 'done') {
           tab.elapsed_ms = ev.elapsed_ms as number
           tab.size_bytes = ev.size_bytes as number
+          pushEvent(tab, 'done', `${tab.elapsed_ms} ms, ${tab.size_bytes} B`)
         } else if (type === 'error') {
           tab.error = (ev.message as string) || '请求出错'
+          pushEvent(tab, 'error', tab.error)
         }
       }, controller.signal)
       persist?.(tab.request)

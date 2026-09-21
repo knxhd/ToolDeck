@@ -17,6 +17,7 @@
       <el-tab-pane label="Body" class="body-pane">
         <div class="body-toolbar">
           <el-radio-group v-model="bodyMode" size="small">
+            <el-radio-button v-if="hasStream" value="stream">Stream</el-radio-button>
             <el-radio-button value="text">Text</el-radio-button>
             <el-radio-button value="json">JSON</el-radio-button>
             <el-radio-button value="html">HTML</el-radio-button>
@@ -24,8 +25,17 @@
           <span class="ct">{{ contentTypeName }}</span>
         </div>
         <div class="body-view">
+          <div v-if="bodyMode === 'stream'" class="stream-log" ref="streamBoxRef">
+            <div v-for="(e, i) in tab.stream_events" :key="i" class="stream-row">
+              <span class="stream-time">{{ e.time }}</span>
+              <span class="stream-dot" :class="e.type"></span>
+              <span class="stream-type">{{ e.type }}</span>
+              <span class="stream-data">{{ e.data }}</span>
+            </div>
+            <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
+          </div>
           <MonacoEditor
-            v-if="bodyMode !== 'html'"
+            v-else-if="bodyMode !== 'html'"
             :model-value="displayBody"
             :language="bodyMode === 'json' ? 'json' : 'plaintext'"
             read-only
@@ -45,13 +55,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick, watch } from 'vue'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
-const bodyMode = ref<'text' | 'json' | 'html'>('text')
+const bodyMode = ref<'stream' | 'text' | 'json' | 'html'>('text')
+const streamBoxRef = ref<HTMLElement | null>(null)
+
+const hasStream = computed(() => props.tab.stream_events.length > 0)
+
+watch(
+  () => props.tab.streaming,
+  (s) => { if (s) bodyMode.value = 'stream' },
+)
+
+watch(
+  () => props.tab.stream_events.length,
+  async () => {
+    await nextTick()
+    if (streamBoxRef.value) streamBoxRef.value.scrollTop = streamBoxRef.value.scrollHeight
+  },
+)
 
 const headerRows = computed(() =>
   Object.entries(props.tab.headers || {}).map(([key, value]) => ({ key, value })),
@@ -98,4 +124,19 @@ function formatSize(bytes: number) {
 .ct { font-size: 12px; color: var(--el-text-color-placeholder); }
 .body-view { flex: 1; min-height: 0; }
 .html-frame { width: 100%; height: 100%; border: 1px solid var(--el-border-color); border-radius: 4px; background: #fff; }
+
+.stream-log {
+  flex: 1; overflow-y: auto; font-family: var(--app-font-family);
+  font-size: 13px; padding: 6px 8px;
+}
+.stream-row { display: flex; align-items: baseline; gap: 8px; padding: 2px 0; line-height: 1.5; }
+.stream-time { color: var(--el-text-color-placeholder); font-size: 11px; flex-shrink: 0; width: 90px; }
+.stream-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; align-self: center;
+  &.meta { background: #61affe; } &.chunk { background: #49cc90; }
+  &.done { background: #909399; } &.error { background: #f93e3e; }
+}
+.stream-type { font-weight: 700; width: 56px; flex-shrink: 0; font-size: 11px; color: var(--el-text-color-secondary); }
+.stream-data { white-space: pre-wrap; word-break: break-all; color: var(--el-text-color-primary); }
+.stream-live { color: var(--el-color-success); font-size: 12px; margin-top: 4px; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.4; } }
 </style>

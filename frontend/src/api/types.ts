@@ -89,4 +89,5 @@ export interface OpenTab {
   body: string
   elapsed_ms: number
   size_bytes: number
+  stream_events: Array<{ time: string; type: string; data: string }>
 }
