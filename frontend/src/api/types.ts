@@ -45,3 +45,36 @@ export interface HttpCallRecord {
   elapsed_ms: number
   timestamp: string
 }
+
+/** Collections 树节点：collection / folder / request。 */
+export interface CollectionNode {
+  id: string
+  type: 'collection' | 'folder' | 'request'
+  name: string
+  children?: CollectionNode[]
+  /** 仅 request 节点：http | websocket */
+  kind?: 'http' | 'websocket'
+  /** 仅 http 请求节点 */
+  request?: HttpRequestData
+  /** 仅 websocket 请求节点 */
+  ws_url?: string
+}
+
+/** 工作台中一个打开的标签页。 */
+export interface OpenTab {
+  id: string
+  title: string
+  kind: 'http' | 'websocket'
+  nodeId?: string
+  request: HttpRequestData
+  ws_url: string
+  // HTTP 响应态
+  streaming: boolean
+  error: string
+  status_code: number
+  status_text: string
+  headers: Record<string, string>
+  body: string
+  elapsed_ms: number
+  size_bytes: number
+}

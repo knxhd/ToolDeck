@@ -39,10 +39,12 @@ def create_app() -> FastAPI:
         return JSONResponse({"status": "ok", "env": get_env("APP_ENV", "production")})
 
     # 注册各业务路由
+    from backend.app.api import collections as collections_api
     from backend.app.api import http as http_api
     from backend.app.api import llm as llm_api
     from backend.app.api import mcp as mcp_api
 
+    app.include_router(collections_api.router, prefix="/api/collections")
     app.include_router(http_api.router, prefix="/api/http")
     app.include_router(mcp_api.router, prefix="/api/mcp")
     app.include_router(llm_api.router, prefix="/api/llm")

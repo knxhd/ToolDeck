@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'http',
         name: 'http',
-        component: () => import('@/views/HttpWorkbench.vue'),
+        component: () => import('@/views/PostmanView.vue'),
       },
       {
         path: 'mcp',
