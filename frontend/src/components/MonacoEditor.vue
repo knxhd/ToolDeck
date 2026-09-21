@@ -16,6 +16,7 @@ const props = withDefaults(
     readOnly?: boolean
     height?: string
     autoScrollToEnd?: boolean
+    fontSize?: number
   }>(),
   {
     language: 'json',
@@ -46,7 +47,7 @@ onMounted(() => {
     automaticLayout: true,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
-    fontSize: 13,
+    fontSize: props.fontSize || settings.settings.fontSize || 14,
     tabSize: 2,
     wordWrap: 'on',
   })
@@ -82,6 +83,13 @@ watch(
   () => settings.settings.dark,
   (dark) => {
     monaco.editor.setTheme(props.theme ? props.theme : dark ? 'vs-dark' : 'vs')
+  },
+)
+
+watch(
+  () => [props.fontSize, settings.settings.fontSize],
+  ([fs]) => {
+    editor?.updateOptions({ fontSize: fs || settings.settings.fontSize || 14 })
   },
 )
 
