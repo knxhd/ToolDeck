@@ -31,26 +31,18 @@
             <div class="frame-list">
               <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row"
                 :class="{ active: i === selectedFrame }" @click="selectedFrame = i">
-                <span class="frame-idx">#{{ i + 1 }}</span>
-                <span class="frame-dot" :class="e.type"></span>
-                <span class="frame-time">{{ e.time }}</span>
-                <span class="frame-preview">{{ preview(e.data) }}</span>
+                <template v-if="e.data.trim().length > 0">
+                  <div v-if="e.data.trim().length > 0">
+                    <span class="frame-dot" :class="e.type"></span>
+                    <span class="frame-preview">{{ preview(e.data) }}</span>
+                  </div>
+                  <div>
+                    <span class="frame-time">{{ e.time }}</span>
+                  </div>
+                </template>
+
               </div>
               <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
-            </div>
-            <div class="frame-detail">
-              <template v-if="currentFrame">
-                <div class="frame-meta">
-                  <el-tag size="small" :type="tagType(currentFrame.type)">{{ currentFrame.type }}</el-tag>
-                  <span class="frame-time">{{ currentFrame.time }}</span>
-                </div>
-                <div class="frame-body">
-                  <MonacoEditor v-if="fmt !== 'html'" :model-value="rendered(currentFrame.data)"
-                    :language="fmt === 'json' ? 'json' : 'plaintext'" read-only height="100%" />
-                  <iframe v-else class="html-frame" :srcdoc="currentFrame.data" sandbox=""></iframe>
-                </div>
-              </template>
-              <div v-else class="resp-empty">选择左侧帧查看内容</div>
             </div>
           </template>
 
@@ -135,7 +127,7 @@ function formatSize(bytes: number) {
 }
 </script>
 
-<style lang="less" scoped>
+<style scoped lang="less">
 .response-pane {
   display: flex;
   flex-direction: column;
@@ -196,74 +188,77 @@ function formatSize(bytes: number) {
 }
 
 .frame-list {
-  width: 280px;
+  width: 100%;
   flex-shrink: 0;
   border-right: 1px solid var(--el-border-color);
   overflow-y: auto;
   padding: 4px;
+
+  .frame-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+
+    &:hover {
+      background: var(--el-fill-color-light);
+    }
+
+    &.active {
+      background: var(--el-color-primary-light-9);
+    }
+
+    .frame-idx {
+      font-weight: 700;
+      color: var(--el-text-color-secondary);
+      width: 34px;
+      flex-shrink: 0;
+    }
+
+    .frame-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+
+      &.meta {
+        background: #61affe;
+      }
+
+      &.chunk {
+        background: #49cc90;
+      }
+
+      &.done {
+        background: #909399;
+      }
+
+      &.error {
+        background: #f93e3e;
+      }
+    }
+
+    .frame-time {
+      color: var(--el-text-color-placeholder);
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .frame-preview {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--el-text-color-secondary);
+    }
+  }
 }
 
-.frame-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 12px;
 
-  &:hover {
-    background: var(--el-fill-color-light);
-  }
-
-  &.active {
-    background: var(--el-color-primary-light-9);
-  }
-
-  .frame-idx {
-    font-weight: 700;
-    color: var(--el-text-color-secondary);
-    width: 34px;
-    flex-shrink: 0;
-  }
-
-  .frame-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-
-    &.meta {
-      background: #61affe;
-    }
-
-    &.chunk {
-      background: #49cc90;
-    }
-
-    &.done {
-      background: #909399;
-    }
-
-    &.error {
-      background: #f93e3e;
-    }
-  }
-
-  .frame-time {
-    color: var(--el-text-color-placeholder);
-    font-size: 11px;
-    flex-shrink: 0;
-  }
-
-  .frame-preview {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--el-text-color-secondary);
-  }
-}
 
 .stream-live {
   color: var(--el-color-success);
@@ -272,37 +267,9 @@ function formatSize(bytes: number) {
   animation: blink 1s infinite;
 }
 
-.frame-detail {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding-left: 8px;
-}
-
-.frame-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0 6px;
-}
-
 .frame-time {
   font-size: 12px;
   color: var(--el-text-color-secondary);
-}
-
-.frame-body {
-  flex: 1;
-  min-height: 0;
-}
-
-.resp-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--el-text-color-placeholder);
 }
 
 .html-frame {

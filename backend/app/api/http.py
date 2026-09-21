@@ -97,15 +97,12 @@ async def stream(req: HttpRequest) -> StreamingResponse:
                     yield json.dumps(meta, ensure_ascii=False) + "\n"
                     async for chunk in resp.aiter_bytes():
                         size += len(chunk)
-                        yield json.dumps(
-                            {"type": "chunk", "data": chunk.decode("utf-8", errors="replace")},
-                            ensure_ascii=False,
-                        ) + "\n"
+                        chunk_content = chunk.decode("utf-8", errors="replace")
+                        frame_content = chunk_content.replace("data:", "")
+                        if frame_content:
+                            yield json.dumps({"type": "chunk", "data": frame_content}, ensure_ascii=False) + "\n"
                     elapsed_ms = int((time.perf_counter() - start) * 1000)
-                    yield json.dumps(
-                        {"type": "done", "elapsed_ms": elapsed_ms, "size_bytes": size},
-                        ensure_ascii=False,
-                    ) + "\n"
+                    yield json.dumps({"type": "done", "elapsed_ms": elapsed_ms, "size_bytes": size}, ensure_ascii=False) + "\n"
                     history_store.append_http_call(
                         {
                             "method": req.method.value,
