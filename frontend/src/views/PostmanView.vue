@@ -195,7 +195,8 @@ function onSaveMcp() {
   if (!tab?.nodeId) return
   const node = collections.findNode(tab.nodeId)
   if (!node) return
-  node.mcp_server = tab.mcp_server
+  node.mcp_url = tab.mcp_url
+  node.mcp_headers = tab.mcp_headers
   node.mcp_tool = tab.mcp_tool
   node.mcp_args = tab.mcp_args
   collections.persist()

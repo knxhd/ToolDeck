@@ -76,7 +76,8 @@ export const useCollectionsStore = defineStore('collections', () => {
     if (kind === 'http') node.request = emptyRequest()
     else if (kind === 'websocket') node.ws_url = 'wss://'
     else {
-      node.mcp_server = ''
+      node.mcp_url = ''
+      node.mcp_headers = {}
       node.mcp_tool = ''
       node.mcp_args = '{}'
     }

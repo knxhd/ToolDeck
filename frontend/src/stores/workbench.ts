@@ -24,7 +24,8 @@ function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
     kind,
     request: blankRequest(),
     ws_url: 'wss://',
-    mcp_server: '',
+    mcp_url: '',
+    mcp_headers: {},
     mcp_tool: '',
     mcp_args: '{}',
     mcp_loading: false,
@@ -60,7 +61,6 @@ export const useWorkbenchStore = defineStore('workbench', () => {
 
   function openFromNode(node: CollectionNode) {
     if (node.type !== 'request') return
-    // 已打开则激活
     const existing = tabs.value.find((t) => t.nodeId === node.id)
     if (existing) {
       setActive(existing.id)
@@ -73,7 +73,8 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     if (node.kind === 'websocket') {
       tab.ws_url = node.ws_url || 'wss://'
     } else if (node.kind === 'mcp') {
-      tab.mcp_server = node.mcp_server || ''
+      tab.mcp_url = node.mcp_url || ''
+      tab.mcp_headers = node.mcp_headers || {}
       tab.mcp_tool = node.mcp_tool || ''
       tab.mcp_args = node.mcp_args || '{}'
     } else if (node.request) {

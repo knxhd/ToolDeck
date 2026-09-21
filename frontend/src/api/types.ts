@@ -59,7 +59,8 @@ export interface CollectionNode {
   /** 仅 websocket 请求节点 */
   ws_url?: string
   /** 仅 mcp 请求节点 */
-  mcp_server?: string
+  mcp_url?: string
+  mcp_headers?: Record<string, string>
   mcp_tool?: string
   mcp_args?: string
 }
@@ -73,7 +74,8 @@ export interface OpenTab {
   request: HttpRequestData
   ws_url: string
   // MCP 请求态
-  mcp_server: string
+  mcp_url: string
+  mcp_headers: Record<string, string>
   mcp_tool: string
   mcp_args: string
   mcp_loading: boolean

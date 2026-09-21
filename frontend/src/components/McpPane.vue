@@ -1,77 +1,81 @@
 <template>
   <div class="mcp-pane">
-    <!-- 顶部：选择 Server + 连接 + Run -->
+    <!-- 顶部：URL 输入 + 连接 + Run -->
     <div class="mcp-top">
-      <el-select v-model="tab.mcp_server" placeholder="选择 MCP Server" style="width: 260px" @change="onServerChange">
-        <el-option v-for="s in mcp.servers" :key="s.name" :label="s.name" :value="s.name" />
-      </el-select>
-      <el-button :loading="connecting" @click="onConnect">{{ connected ? '已连接' : '连接' }}</el-button>
+      <el-input v-model="tab.mcp_url" placeholder="输入 MCP 地址，如 http://127.0.0.1:8001/mcp" style="flex: 1" @keyup.enter="onConnect" />
+      <el-button :loading="connecting" type="primary" @click="onConnect">
+        {{ connected ? '重新连接' : '连接' }}
+      </el-button>
       <div class="spacer"></div>
       <el-button type="success" :icon="VideoPlay" :loading="tab.mcp_loading" :disabled="!selectedTool" @click="onRun">Run</el-button>
     </div>
 
+    <!-- Message / Headers -->
+    <div class="mct-tabs">
+      <span class="mct-tab" :class="{ active: subTab === 'message' }" @click="subTab = 'message'">Message</span>
+      <span class="mct-tab" :class="{ active: subTab === 'headers' }" @click="subTab = 'headers'">Headers</span>
+    </div>
+
     <div class="mcp-body">
-      <!-- 左：工具列表 + 参数表单 -->
-      <div class="col col-tools">
-        <div class="tabs">
-          <span class="tab active">Tools</span>
-          <span class="tab disabled">Prompts</span>
-          <span class="tab disabled">Resources</span>
-          <el-input v-model="keyword" size="small" placeholder="搜索" :prefix-icon="Search" style="margin-left: auto; width: 130px" />
-          <el-button size="small" :icon="Refresh" circle @click="reloadTools" />
-        </div>
-        <div class="tool-list">
-          <div
-            v-for="(t, i) in filteredTools"
-            :key="t.name"
-            class="tool-item"
-            :class="{ selected: selectedTool?.name === t.name }"
-            @click="selectTool(t)"
-          >
-            <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
-            <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
-          </div>
-          <el-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接 Server'" :image-size="50" />
-        </div>
+      <!-- Headers 面板 -->
+      <div v-if="subTab === 'headers'" class="headers-pane">
+        <div class="hint">自定义连接 MCP Server 时携带的请求头（如 Authorization）</div>
+        <KeyValueEditor v-model="headerRows" />
+      </div>
 
-        <!-- 选中工具的参数表单 -->
-        <div v-if="selectedTool" class="param-form">
-          <div v-for="f in fields" :key="f.key" class="field">
-            <div class="field-label">
-              {{ f.key }}<span class="req" v-if="f.required">*</span>
-              <span class="field-type">{{ f.type }}</span>
+      <!-- Message 面板：三栏 -->
+      <template v-else>
+        <div class="col col-tools">
+          <div class="sub-tabs">
+            <span class="sub-tab active">Tools</span>
+            <span class="sub-tab disabled">Prompts</span>
+            <span class="sub-tab disabled">Resources</span>
+            <el-input v-model="keyword" size="small" placeholder="搜索" :prefix-icon="Search" style="margin-left: auto; width: 120px" />
+            <el-button size="small" :icon="Refresh" circle @click="onConnect" />
+          </div>
+          <div class="tool-list">
+            <div
+              v-for="(t, i) in filteredTools"
+              :key="t.name"
+              class="tool-item"
+              :class="{ selected: selectedTool?.name === t.name }"
+              @click="selectTool(t)"
+            >
+              <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
+              <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
             </div>
-            <div class="field-desc" v-if="f.description">{{ f.description }}</div>
-            <el-switch v-if="f.type === 'boolean'" v-model="formValues[f.key]" />
-            <el-input-number v-else-if="f.type === 'number' || f.type === 'integer'" v-model="formValues[f.key]" style="width: 100%" />
-            <el-input
-              v-else
-              v-model="formValues[f.key]"
-              :type="f.longText ? 'textarea' : 'text'"
-              :rows="3"
-              :placeholder="f.type === 'object' || f.type === 'array' ? '{}' : ''"
-            />
+            <el-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接'" :image-size="50" />
+          </div>
+          <div v-if="selectedTool" class="param-form">
+            <div v-for="f in fields" :key="f.key" class="field">
+              <div class="field-label">
+                {{ f.key }}<span class="req" v-if="f.required">*</span>
+                <span class="field-type">{{ f.type }}</span>
+              </div>
+              <div class="field-desc" v-if="f.description">{{ f.description }}</div>
+              <el-switch v-if="f.type === 'boolean'" v-model="formValues[f.key]" />
+              <el-input-number v-else-if="f.type === 'number' || f.type === 'integer'" v-model="formValues[f.key]" style="width: 100%" />
+              <el-input v-else v-model="formValues[f.key]" :type="f.longText ? 'textarea' : 'text'" :rows="3" />
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- 中：请求预览 -->
-      <div class="col col-req">
-        <div class="col-head">Message</div>
-        <MonacoEditor :model-value="requestPreview" language="json" read-only height="100%" />
-      </div>
+        <div class="col col-req">
+          <div class="col-head">Message</div>
+          <MonacoEditor :model-value="requestPreview" language="json" read-only height="100%" />
+        </div>
 
-      <!-- 右：响应 -->
-      <div class="col col-resp">
-        <div class="col-head resp-head">
-          <span>Response</span>
-          <el-tag v-if="connected" type="success" size="small" effect="plain">Connected</el-tag>
+        <div class="col col-resp">
+          <div class="col-head resp-head">
+            <span>Response</span>
+            <el-tag v-if="connected" type="success" size="small" effect="plain">Connected</el-tag>
+          </div>
+          <div v-if="tab.mcp_result" class="resp-body">
+            <MonacoEditor :model-value="tab.mcp_result" language="json" read-only height="100%" auto-scroll-to-end />
+          </div>
+          <div v-else class="resp-empty">运行后在此查看结果</div>
         </div>
-        <div v-if="tab.mcp_result" class="resp-body">
-          <MonacoEditor :model-value="tab.mcp_result" language="json" read-only height="100%" auto-scroll-to-end />
-        </div>
-        <div v-else class="resp-empty">运行后在此查看结果</div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -82,8 +86,9 @@ import { ElMessage } from 'element-plus'
 import { Search, Refresh, VideoPlay } from '@element-plus/icons-vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
+import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import { useMcpStore, type McpTool } from '@/stores/mcp'
-import type { OpenTab } from '@/api/types'
+import type { KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 const emit = defineEmits<{ save: [] }>()
@@ -92,18 +97,23 @@ const mcp = useMcpStore()
 const connecting = ref(false)
 const connected = ref(false)
 const keyword = ref('')
+const subTab = ref<'message' | 'headers'>('message')
 const selectedTool = ref<McpTool | null>(null)
 const formValues = ref<Record<string, unknown>>({})
 
-onMounted(async () => {
-  await mcp.loadServers()
-  if (props.tab.mcp_server) {
-    await onConnect()
-    if (props.tab.mcp_tool) {
-      const t = mcp.tools.find((x) => x.name === props.tab.mcp_tool)
-      if (t) selectTool(t)
-    }
-  }
+// headers: Record <-> KeyValue[]
+const headerRows = ref<KeyValue[]>(
+  Object.entries(props.tab.mcp_headers || {}).map(([key, value]) => ({ key, value, enabled: true })),
+)
+watch(headerRows, (rows) => {
+  const out: Record<string, string> = {}
+  for (const r of rows) if (r.enabled && r.key) out[r.key] = r.value
+  props.tab.mcp_headers = out
+  emit('save')
+}, { deep: true })
+
+onMounted(() => {
+  if (props.tab.mcp_url) onConnect()
 })
 
 const filteredTools = computed(() =>
@@ -124,54 +134,40 @@ const fields = computed<FieldDef[]>(() => {
     selectedTool.value.input_schema || {}
   const props_ = schema.properties || {}
   const required: string[] = schema.required || []
-  return Object.entries(props_).map(([key, def]) => {
-    const desc = def.description || ''
-    return {
-      key,
-      type: def.type || 'string',
-      description: desc,
-      required: required.includes(key),
-      longText: desc.length > 40 || desc.includes('\n'),
-    }
-  })
+  return Object.entries(props_).map(([key, def]) => ({
+    key,
+    type: def.type || 'string',
+    description: def.description || '',
+    required: required.includes(key),
+    longText: (def.description || '').length > 40,
+  }))
 })
 
-async function onServerChange() {
-  selectedTool.value = null
-  formValues.value = {}
-  connected.value = false
-  emit('save')
-}
-
 async function onConnect() {
-  if (!props.tab.mcp_server) {
-    ElMessage.warning('请先选择 Server')
+  if (!props.tab.mcp_url) {
+    ElMessage.warning('请输入 MCP 地址')
     return
   }
   connecting.value = true
   try {
-    await mcp.loadTools(props.tab.mcp_server)
+    mcp.tools = await mcp.adHocTools(props.tab.mcp_url, props.tab.mcp_headers || {})
     connected.value = true
+    emit('save')
+  } catch (e) {
+    ElMessage.error((e as Error).message)
   } finally {
     connecting.value = false
   }
 }
 
-function reloadTools() {
-  if (props.tab.mcp_server) onConnect()
-}
-
 function selectTool(t: McpTool) {
   selectedTool.value = t
   props.tab.mcp_tool = t.name
-  // 用已有参数回填
   try {
-    const existing = JSON.parse(props.tab.mcp_args || '{}')
-    formValues.value = { ...existing }
+    formValues.value = { ...JSON.parse(props.tab.mcp_args || '{}') }
   } catch {
     formValues.value = {}
   }
-  // 缺省补空
   for (const f of fields.value) {
     if (!(f.key in formValues.value)) {
       formValues.value[f.key] = f.type === 'boolean' ? false : f.type === 'number' || f.type === 'integer' ? 0 : ''
@@ -192,10 +188,7 @@ function buildArgs(): Record<string, unknown> {
 const requestPreview = computed(() => {
   if (!selectedTool.value) return ''
   return JSON.stringify(
-    {
-      method: 'tools/call',
-      params: { name: selectedTool.value.name, arguments: buildArgs() },
-    },
+    { method: 'tools/call', params: { name: selectedTool.value.name, arguments: buildArgs() } },
     null,
     2,
   )
@@ -206,7 +199,7 @@ async function onRun() {
   props.tab.mcp_args = JSON.stringify(buildArgs())
   props.tab.mcp_loading = true
   try {
-    await mcp.callTool(props.tab.mcp_server, selectedTool.value.name, buildArgs())
+    mcp.lastResult = await mcp.adHocCall(props.tab.mcp_url, props.tab.mcp_headers || {}, selectedTool.value.name, buildArgs())
     props.tab.mcp_result = JSON.stringify(mcp.lastResult, null, 2)
     emit('save')
   } finally {
@@ -224,14 +217,22 @@ watch(formValues, () => emit('save'), { deep: true })
   border-bottom: 1px solid var(--el-border-color);
   .spacer { flex: 1; }
 }
+.mct-tabs { display: flex; gap: 16px; padding: 4px 12px; border-bottom: 1px solid var(--el-border-color); }
+.mct-tab {
+  font-size: 13px; padding: 4px 2px; cursor: pointer; color: var(--el-text-color-secondary);
+  &.active { color: var(--el-text-color-primary); font-weight: 700; border-bottom: 2px solid var(--el-color-primary); }
+}
 .mcp-body { flex: 1; display: flex; min-height: 0; }
 .col { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 
+.headers-pane { padding: 16px; flex: 1; overflow: auto; }
+.hint { font-size: 12px; color: var(--el-text-color-secondary); margin-bottom: 12px; }
+
 .col-tools { width: 320px; flex-shrink: 0; border-right: 1px solid var(--el-border-color); }
-.tabs {
+.sub-tabs {
   display: flex; align-items: center; gap: 12px; padding: 6px 8px;
   border-bottom: 1px solid var(--el-border-color-lighter);
-  .tab { font-size: 13px; padding: 2px 4px; cursor: pointer;
+  .sub-tab { font-size: 13px; padding: 2px 4px;
     &.active { font-weight: 700; border-bottom: 2px solid var(--el-color-primary); }
     &.disabled { color: var(--el-text-color-placeholder); }
   }

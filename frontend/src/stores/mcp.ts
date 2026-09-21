@@ -105,6 +105,19 @@ export const useMcpStore = defineStore('mcp', () => {
     history.value = await api.get<McpCallRecord[]>('/api/mcp/history')
   }
 
+  async function adHocTools(url: string, headers: Record<string, string>): Promise<McpTool[]> {
+    return api.post<McpTool[]>('/api/mcp/ad-hoc/tools', { url, headers })
+  }
+
+  async function adHocCall(
+    url: string,
+    headers: Record<string, string>,
+    tool: string,
+    args: Record<string, unknown>,
+  ): Promise<McpCallResult> {
+    return api.post<McpCallResult>('/api/mcp/ad-hoc/call', { url, headers, tool, args })
+  }
+
   return {
     servers,
     selectedServer,
@@ -121,5 +134,7 @@ export const useMcpStore = defineStore('mcp', () => {
     loadTools,
     callTool,
     loadHistory,
+    adHocTools,
+    adHocCall,
   }
 })
