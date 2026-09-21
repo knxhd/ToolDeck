@@ -135,6 +135,9 @@ function formatSize(bytes: number) {
   }
   .body-pane {
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 }
 
@@ -162,9 +165,8 @@ function formatSize(bytes: number) {
 }
 
 .frame-list {
-  width: 100%;
-  flex-shrink: 0;
-  border-right: 1px solid var(--el-border-color);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 4px;
 
