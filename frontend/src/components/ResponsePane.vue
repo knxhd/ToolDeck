@@ -22,12 +22,11 @@
             <el-option label="HTML" value="html" />
           </el-select>
           <span class="ct">{{ contentTypeName }}</span>
-          <span v-if="hasStream" class="frame-count">{{ tab.stream_events.length }} 帧</span>
         </div>
 
         <div class="body-view">
           <!-- 流式：左帧列表 + 右详情 -->
-          <template v-if="hasStream">
+          <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
             <div class="frame-list">
               <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row"
                 :class="{ active: i === selectedFrame }" @click="selectedFrame = i">
@@ -78,12 +77,11 @@ const headerRows = computed(() =>
   Object.entries(props.tab.headers || {}).map(([key, value]) => ({ key, value })),
 )
 
-const contentTypeName = computed(() => (props.tab.headers || {})['content-type'] || '')
 
-const hasStream = computed(() => {
+const contentTypeName = computed(() => {
   const headers = props.tab.headers || {}
   const contentType = headers['content-type'] || ''
-  return contentType.includes('text/event-stream')
+  return contentType
 })
 const currentFrame = computed(() => props.tab.stream_events[selectedFrame.value] || null)
 
