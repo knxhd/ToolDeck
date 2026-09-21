@@ -2,7 +2,9 @@
   <div class="postman-view">
     <!-- 左侧：Collections + History -->
     <aside class="sidebar" v-show="!sidebarHidden" :style="{ width: sidebarWidth + 'px' }">
-      <CollectionsTree @open="onOpenNode" />
+      <div class="side-collections">
+        <CollectionsTree @open="onOpenNode" />
+      </div>
       <div class="side-divider"></div>
       <div class="side-section">
         <div class="section-header" @click="historyOpen = !historyOpen">
@@ -60,7 +62,8 @@
         </div>
       </div>
 
-      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id" ref="paneRef">
+      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id" ref="paneRef"
+        :style="{ flexDirection: responseLayout === 'bottom' ? 'column' : 'row' }">
         <template v-if="wb.activeTab.kind === 'http'">
           <template v-if="responseLayout === 'bottom'">
             <div class="half" :style="{ height: (100 - responseRatio) + '%' }">
@@ -205,13 +208,14 @@ function statusClass(code: number) {
 </script>
 
 <style scoped>
-.postman-view { display: flex; height: 100%; }
+.postman-view { display: flex; height: 100%; background: var(--el-bg-color-page); }
 .sidebar {
   flex-shrink: 0; border-right: 1px solid var(--el-border-color);
-  display: flex; flex-direction: column; background: #fff;
+  display: flex; flex-direction: column; background: #fff; overflow: hidden;
 }
-.side-divider { height: 1px; background: var(--el-border-color-lighter); }
-.side-section { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.side-collections { flex: 1 1 55%; min-height: 0; display: flex; flex-direction: column; }
+.side-divider { height: 1px; background: var(--el-border-color-lighter); flex-shrink: 0; }
+.side-section { display: flex; flex-direction: column; min-height: 0; flex: 1 1 45%; }
 .section-header {
   display: flex; align-items: center; gap: 4px; padding: 6px 8px;
   font-weight: 600; font-size: 13px; cursor: pointer;
