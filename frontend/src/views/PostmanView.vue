@@ -59,6 +59,9 @@
           <el-tooltip :content="responseLayout === 'bottom' ? '响应区放右侧' : '响应区放下方'" placement="bottom">
             <el-button size="small" :icon="Operation" @click="toggleLayout" />
           </el-tooltip>
+          <el-tooltip content="系统设置" placement="bottom">
+            <el-button size="small" :icon="Setting" @click="settingsOpen = true" />
+          </el-tooltip>
         </div>
       </div>
 
@@ -90,18 +93,21 @@
         <el-empty description="从左侧 Collections 选择请求，或点击 + 新建" />
       </div>
     </section>
+
+    <SettingsDialog v-model="settingsOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
-import { ArrowDown, ArrowRight, Close, Plus, Fold, Expand, Operation } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowRight, Close, Plus, Fold, Expand, Operation, Setting } from '@element-plus/icons-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
 import RequestPane from '@/components/RequestPane.vue'
 import ResponsePane from '@/components/ResponsePane.vue'
 import WebSocketPane from '@/components/WebSocketPane.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useHttpStore } from '@/stores/http'
@@ -120,6 +126,7 @@ const sidebarHidden = ref(false)
 const sidebarWidth = ref(280)
 const responseLayout = ref<'bottom' | 'right'>('bottom')
 const responseRatio = ref(50)
+const settingsOpen = ref(false)
 const paneRef = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
@@ -207,11 +214,23 @@ function statusClass(code: number) {
 }
 </script>
 
-<style scoped>
-.postman-view { display: flex; height: 100%; background: var(--el-bg-color-page); }
+<style lang="less" scoped>
+.postman-view {
+  display: flex;
+  height: 100%;
+  background: var(--el-bg-color-page);
+  color: var(--el-text-color-primary);
+  font-family: var(--app-font-family);
+  font-size: var(--app-font-size);
+}
+
 .sidebar {
-  flex-shrink: 0; border-right: 1px solid var(--el-border-color);
-  display: flex; flex-direction: column; background: #fff; overflow: hidden;
+  flex-shrink: 0;
+  border-right: 1px solid var(--el-border-color);
+  display: flex;
+  flex-direction: column;
+  background: var(--el-bg-color);
+  overflow: hidden;
 }
 .side-collections { flex: 1 1 55%; min-height: 0; display: flex; flex-direction: column; }
 .side-divider { height: 1px; background: var(--el-border-color-lighter); flex-shrink: 0; }
@@ -224,15 +243,15 @@ function statusClass(code: number) {
 .history-item {
   display: flex; align-items: center; gap: 6px; padding: 4px 10px;
   cursor: pointer; font-size: 12px;
+  &:hover { background: var(--el-fill-color-light); }
+  .m { font-weight: 700; width: 48px; }
+  .m.get { color: #49cc90; } .m.post { color: #fca130; }
+  .m.put { color: #61affe; } .m.delete { color: #f93e3e; }
+  .u { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s.ok { color: var(--el-color-success); } .s.err { color: var(--el-color-danger); }
 }
-.history-item:hover { background: var(--el-fill-color-light); }
-.history-item .m { font-weight: 700; width: 48px; }
-.history-item .m.get { color: #49cc90; } .history-item .m.post { color: #fca130; }
-.history-item .m.put { color: #61affe; } .history-item .m.delete { color: #f93e3e; }
-.history-item .u { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.history-item .s.ok { color: var(--el-color-success); } .history-item .s.err { color: var(--el-color-danger); }
 
-.workbench { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fff; }
+.workbench { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--el-bg-color); }
 .tab-bar {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 4px 8px 0; border-bottom: 1px solid var(--el-border-color);
@@ -244,16 +263,16 @@ function statusClass(code: number) {
   display: flex; align-items: center; gap: 6px; padding: 4px 10px;
   border: 1px solid var(--el-border-color); border-bottom: none;
   border-radius: 6px 6px 0 0; cursor: pointer; font-size: 12px;
-  background: #fff; max-width: 200px; flex-shrink: 0;
+  background: var(--el-bg-color); max-width: 200px; flex-shrink: 0;
+  &.active { font-weight: 600; background: var(--el-color-primary-light-9); }
+  .tab-method { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; color: #fff;
+    &.get { background: #49cc90; } &.post { background: #fca130; }
+    &.put { background: #61affe; } &.delete { background: #f93e3e; }
+    &.patch { background: #50e3c2; } &.ws { background: #8e44ad; }
+  }
+  .tab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tab-close { cursor: pointer; border-radius: 50%; &:hover { background: var(--el-fill-color-dark); } }
 }
-.tab.active { font-weight: 600; background: var(--el-color-primary-light-9); }
-.tab-method { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; color: #fff; }
-.tab-method.get { background: #49cc90; } .tab-method.post { background: #fca130; }
-.tab-method.put { background: #61affe; } .tab-method.delete { background: #f93e3e; }
-.tab-method.patch { background: #50e3c2; } .tab-method.ws { background: #8e44ad; }
-.tab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tab-close { cursor: pointer; border-radius: 50%; }
-.tab-close:hover { background: var(--el-fill-color-dark); }
 
 .pane { flex: 1; display: flex; min-height: 0; }
 .half { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
@@ -261,8 +280,6 @@ function statusClass(code: number) {
 
 /* 拖拽条 */
 .splitter { flex-shrink: 0; z-index: 5; }
-.v-splitter { width: 4px; cursor: col-resize; background: transparent; }
-.v-splitter:hover { background: var(--el-color-primary-light-5); }
-.h-splitter { height: 4px; cursor: row-resize; background: transparent; }
-.h-splitter:hover { background: var(--el-color-primary-light-5); }
+.v-splitter { width: 4px; cursor: col-resize; background: transparent; &:hover { background: var(--el-color-primary-light-5); } }
+.h-splitter { height: 4px; cursor: row-resize; background: transparent; &:hover { background: var(--el-color-primary-light-5); } }
 </style>

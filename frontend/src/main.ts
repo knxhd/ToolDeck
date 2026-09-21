@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
+import 'element-plus/theme-chalk/dark/css-vars.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 // Monaco Editor worker 配置（Vite 环境必需）
@@ -18,16 +19,20 @@ self.MonacoEnvironment = {
 
 import App from './App.vue'
 import router from './router'
-import './styles/main.css'
+import { useSettingsStore } from './stores/settings'
+import './styles/main.less'
 
 const app = createApp(App)
+const pinia = createPinia()
 
-app.use(createPinia())
+app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }
+
+useSettingsStore(pinia).init()
 
 app.mount('#app')

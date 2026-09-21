@@ -14,7 +14,7 @@
     </div>
     <div v-if="tab.error" class="error-box">{{ tab.error }}</div>
     <el-tabs v-else class="resp-tabs">
-      <el-tab-pane label="Body">
+      <el-tab-pane label="Body" style="height: 100%;">
         <MonacoEditor
           :model-value="tab.body"
           :language="bodyLanguage"
