@@ -16,21 +16,21 @@
     <el-tabs v-else class="resp-tabs">
       <el-tab-pane label="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
-          <div class="frame-list">
-            <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row" :class="{ active: i === selectedFrame }"
-              @click="selectedFrame = i">
-              <template v-if="e.data.trim().length > 0">
-                <div v-if="e.data.trim().length > 0">
+          <div class="stream-layout">
+            <div class="frame-list">
+              <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row"
+                :class="{ active: i === selectedFrame }" @click="selectedFrame = i">
+                <template v-if="e.data.trim().length > 0">
                   <span class="frame-dot" :class="e.type"></span>
                   <span class="frame-preview">{{ preview(e.data) }}</span>
-                </div>
-                <div>
                   <span class="frame-time">{{ e.time }}</span>
-                </div>
-              </template>
-
+                </template>
+              </div>
+              <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
             </div>
-            <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
+            <div class="frame-detail">
+              <SingleDataView :data="currentFrame.data" />
+            </div>
           </div>
         </template>
         <SingleDataView v-else :data="tab.body" />
@@ -47,12 +47,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import MonacoEditor from '@/components/MonacoEditor.vue'
 import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
 const selectedFrame = ref(0)
+const frameFmt = ref<'text' | 'json'>('text')
+
+const currentFrame = computed(() => props.tab.stream_events[selectedFrame.value] || null)
 
 const headerRows = computed(() =>
   Object.entries(props.tab.headers || {}).map(([key, value]) => ({ key, value })),
@@ -73,6 +77,15 @@ watch(
 function preview(data: string) {
   const s = (data || '').replace(/\s+/g, ' ').trim()
   return s.length > 60 ? s.slice(0, 60) + '…' : s
+}
+
+function renderedFrame(raw: string) {
+  if (frameFmt.value !== 'json' || !raw) return raw || ''
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2)
+  } catch {
+    return raw
+  }
 }
 
 const statusType = computed(() => {
@@ -130,9 +143,11 @@ function formatSize(bytes: number) {
     min-height: 0;
     overflow: hidden;
   }
+
   :deep(.el-tab-pane) {
     height: 100%;
   }
+
   .body-pane {
     height: 100%;
     display: flex;
@@ -164,9 +179,17 @@ function formatSize(bytes: number) {
   display: flex;
 }
 
-.frame-list {
+.stream-layout {
   flex: 1;
   min-height: 0;
+  display: flex;
+}
+
+.frame-list {
+  flex: 0 0 500px;
+  width: 500px;
+  min-height: 0;
+  border-right: 1px solid var(--el-border-color);
   overflow-y: auto;
   padding: 4px;
 
@@ -234,6 +257,39 @@ function formatSize(bytes: number) {
   }
 }
 
+.frame-detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding-left: 8px;
+
+  .frame-detail-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0 6px;
+    flex-shrink: 0;
+  }
+
+  .frame-time {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+  }
+
+  .frame-detail-body {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .resp-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--el-text-color-placeholder);
+  }
+}
 
 
 .stream-live {

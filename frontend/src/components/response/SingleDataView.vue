@@ -6,7 +6,6 @@
                 <el-option label="JSON" value="json" />
                 <el-option label="HTML" value="html" />
             </el-select>
-            <span class="content-type">{{ contentTypeName }}</span>
         </div>
         <div class="body-view">
             <MonacoEditor v-if="formatType !== 'html'" :model-value="rendered(data)"
@@ -33,8 +32,6 @@ const props = defineProps({
 
 const formatType = ref(props.defaultFormat)
 
-const contentTypeName = computed(() => '')
-
 const rendered = (raw: string) => {
     if (formatType.value !== 'json' || !raw) return raw || ''
     try {
@@ -60,10 +57,6 @@ const rendered = (raw: string) => {
     padding: 2px 0 6px;
     flex-shrink: 0;
 
-    .content-type {
-        font-size: 12px;
-        color: var(--el-text-color-placeholder);
-    }
 }
 
 .body-view {
