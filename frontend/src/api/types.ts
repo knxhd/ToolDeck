@@ -52,22 +52,32 @@ export interface CollectionNode {
   type: 'collection' | 'folder' | 'request'
   name: string
   children?: CollectionNode[]
-  /** 仅 request 节点：http | websocket */
-  kind?: 'http' | 'websocket'
+  /** 仅 request 节点：http | websocket | mcp */
+  kind?: 'http' | 'websocket' | 'mcp'
   /** 仅 http 请求节点 */
   request?: HttpRequestData
   /** 仅 websocket 请求节点 */
   ws_url?: string
+  /** 仅 mcp 请求节点 */
+  mcp_server?: string
+  mcp_tool?: string
+  mcp_args?: string
 }
 
 /** 工作台中一个打开的标签页。 */
 export interface OpenTab {
   id: string
   title: string
-  kind: 'http' | 'websocket'
+  kind: 'http' | 'websocket' | 'mcp'
   nodeId?: string
   request: HttpRequestData
   ws_url: string
+  // MCP 请求态
+  mcp_server: string
+  mcp_tool: string
+  mcp_args: string
+  mcp_loading: boolean
+  mcp_result: string
   // HTTP 响应态
   streaming: boolean
   error: string

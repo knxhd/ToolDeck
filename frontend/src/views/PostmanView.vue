@@ -36,18 +36,19 @@
             :class="{ active: t.id === wb.activeId }"
             @click="wb.setActive(t.id)"
           >
-            <span class="tab-method" :class="t.kind === 'websocket' ? 'ws' : t.request.method.toLowerCase()">
-              {{ t.kind === 'websocket' ? 'WS' : t.request.method }}
+            <span class="tab-method" :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
+              {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
             </span>
             <span class="tab-title">{{ t.title }}</span>
             <el-icon class="tab-close" @click.stop="wb.closeTab(t.id)"><Close /></el-icon>
           </div>
-          <el-dropdown trigger="click" @command="(k: string) => wb.openBlank(k as 'http' | 'websocket')">
+          <el-dropdown trigger="click" @command="(k: string) => wb.openBlank(k as 'http' | 'websocket' | 'mcp')">
             <el-button circle size="small" :icon="Plus" />
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="http">HTTP Request</el-dropdown-item>
                 <el-dropdown-item command="websocket">WebSocket</el-dropdown-item>
+                <el-dropdown-item command="mcp">MCP Request</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -87,6 +88,7 @@
             </div>
           </template>
         </template>
+        <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp" />
         <WebSocketPane v-else :tab="wb.activeTab" />
       </div>
       <div class="empty" v-else>
@@ -107,6 +109,7 @@ import CollectionsTree from '@/components/CollectionsTree.vue'
 import RequestPane from '@/components/RequestPane.vue'
 import ResponsePane from '@/components/ResponsePane.vue'
 import WebSocketPane from '@/components/WebSocketPane.vue'
+import McpPane from '@/components/McpPane.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
@@ -185,6 +188,17 @@ function onSend() {
   wb.send(tab, (req) => {
     if (tab.nodeId) collections.saveRequest(tab.nodeId, req)
   })
+}
+
+function onSaveMcp() {
+  const tab = wb.activeTab
+  if (!tab?.nodeId) return
+  const node = collections.findNode(tab.nodeId)
+  if (!node) return
+  node.mcp_server = tab.mcp_server
+  node.mcp_tool = tab.mcp_tool
+  node.mcp_args = tab.mcp_args
+  collections.persist()
 }
 
 function onLoadHistory(item: HttpCallRecord) {
@@ -268,7 +282,7 @@ function statusClass(code: number) {
   .tab-method { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; color: #fff;
     &.get { background: #49cc90; } &.post { background: #fca130; }
     &.put { background: #61affe; } &.delete { background: #f93e3e; }
-    &.patch { background: #50e3c2; } &.ws { background: #8e44ad; }
+    &.patch { background: #50e3c2; } &.ws { background: #8e44ad; } &.mcp { background: #e6a23c; }
   }
   .tab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tab-close { cursor: pointer; border-radius: 50%; &:hover { background: var(--el-fill-color-dark); } }

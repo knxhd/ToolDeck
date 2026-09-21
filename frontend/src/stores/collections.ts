@@ -63,7 +63,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     await persist()
   }
 
-  async function addRequest(parentId: string, kind: 'http' | 'websocket', name: string) {
+  async function addRequest(parentId: string, kind: 'http' | 'websocket' | 'mcp', name: string) {
     const parent = findNode(parentId)
     if (!parent) return null
     parent.children = parent.children || []
@@ -71,10 +71,15 @@ export const useCollectionsStore = defineStore('collections', () => {
       id: uid(),
       type: 'request',
       kind,
-      name: name || (kind === 'websocket' ? 'New WebSocket' : 'New Request'),
+      name: name || (kind === 'websocket' ? 'New WebSocket' : kind === 'mcp' ? 'New MCP' : 'New Request'),
     }
     if (kind === 'http') node.request = emptyRequest()
-    else node.ws_url = 'wss://'
+    else if (kind === 'websocket') node.ws_url = 'wss://'
+    else {
+      node.mcp_server = ''
+      node.mcp_tool = ''
+      node.mcp_args = '{}'
+    }
     parent.children.push(node)
     await persist()
     return node

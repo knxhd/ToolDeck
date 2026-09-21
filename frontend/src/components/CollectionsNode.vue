@@ -9,7 +9,7 @@
         <Folder v-if="node.type !== 'request' && !expanded.has(node.id)" />
         <FolderOpened v-else-if="node.type !== 'request'" />
         <span v-else class="method-badge" :class="methodClass">
-          {{ node.kind === 'websocket' ? 'WS' : (node.request?.method || 'GET') }}
+          {{ node.kind === 'websocket' ? 'WS' : node.kind === 'mcp' ? 'MCP' : (node.request?.method || 'GET') }}
         </span>
       </el-icon>
       <span class="node-name" :title="node.name">{{ node.name }}</span>
@@ -20,6 +20,7 @@
             <el-dropdown-menu>
               <el-dropdown-item command="http">HTTP Request</el-dropdown-item>
               <el-dropdown-item command="websocket">WebSocket Request</el-dropdown-item>
+              <el-dropdown-item command="mcp">MCP Request</el-dropdown-item>
               <el-dropdown-item command="folder">Folder</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -72,6 +73,7 @@ const isRequest = computed(() => props.node.type === 'request')
 
 const methodClass = computed(() => {
   if (props.node.kind === 'websocket') return 'ws'
+  if (props.node.kind === 'mcp') return 'mcp'
   const m = (props.node.request?.method || 'GET').toLowerCase()
   return m
 })
@@ -122,4 +124,5 @@ function onChildRemove(n: CollectionNode) { emit('remove', n) }
 .method-badge.delete { background: #f93e3e; }
 .method-badge.patch { background: #50e3c2; }
 .method-badge.ws { background: #8e44ad; }
+.method-badge.mcp { background: #e6a23c; }
 </style>

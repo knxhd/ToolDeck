@@ -17,13 +17,18 @@ const blankRequest = (): HttpRequestData => ({
   body: '',
 })
 
-function blankTab(kind: 'http' | 'websocket' = 'http'): OpenTab {
+function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
   return {
     id: uid(),
-    title: kind === 'websocket' ? 'WebSocket' : 'New Request',
+    title: kind === 'websocket' ? 'WebSocket' : kind === 'mcp' ? 'MCP' : 'New Request',
     kind,
     request: blankRequest(),
     ws_url: 'wss://',
+    mcp_server: '',
+    mcp_tool: '',
+    mcp_args: '{}',
+    mcp_loading: false,
+    mcp_result: '',
     streaming: false,
     error: '',
     status_code: 0,
@@ -47,7 +52,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     activeTab.value = tabs.value.find((t) => t.id === id) || null
   }
 
-  function openBlank(kind: 'http' | 'websocket' = 'http') {
+  function openBlank(kind: 'http' | 'websocket' | 'mcp' = 'http') {
     const tab = blankTab(kind)
     tabs.value.push(tab)
     setActive(tab.id)
@@ -61,11 +66,16 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       setActive(existing.id)
       return
     }
-    const tab = blankTab(node.kind === 'websocket' ? 'websocket' : 'http')
+    const kind = node.kind === 'websocket' ? 'websocket' : node.kind === 'mcp' ? 'mcp' : 'http'
+    const tab = blankTab(kind)
     tab.nodeId = node.id
     tab.title = node.name
     if (node.kind === 'websocket') {
       tab.ws_url = node.ws_url || 'wss://'
+    } else if (node.kind === 'mcp') {
+      tab.mcp_server = node.mcp_server || ''
+      tab.mcp_tool = node.mcp_tool || ''
+      tab.mcp_args = node.mcp_args || '{}'
     } else if (node.request) {
       tab.request = JSON.parse(JSON.stringify(node.request))
     }

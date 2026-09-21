@@ -53,11 +53,8 @@ async function onAddChild(payload: { parentId: string; kind: string }) {
   if (kind === 'folder') {
     const { value } = await ElMessageBox.prompt('子集合名称', '新建子集合', { inputValue: 'New Folder' })
     await collections.addFolder(parentId, value)
-  } else if (kind === 'http') {
-    const node = await collections.addRequest(parentId, 'http', 'New Request')
-    if (node) emit('open', node)
-  } else {
-    const node = await collections.addRequest(parentId, 'websocket', 'New WebSocket')
+  } else if (kind === 'http' || kind === 'websocket' || kind === 'mcp') {
+    const node = await collections.addRequest(parentId, kind, kind === 'mcp' ? 'New MCP' : kind === 'websocket' ? 'New WebSocket' : 'New Request')
     if (node) emit('open', node)
   }
   if (!expanded.value.has(parentId)) toggle(parentId)
