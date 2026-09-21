@@ -29,13 +29,8 @@
           <!-- 流式：左帧列表 + 右详情 -->
           <template v-if="hasStream">
             <div class="frame-list">
-              <div
-                v-for="(e, i) in tab.stream_events"
-                :key="i"
-                class="frame-row"
-                :class="{ active: i === selectedFrame }"
-                @click="selectedFrame = i"
-              >
+              <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row"
+                :class="{ active: i === selectedFrame }" @click="selectedFrame = i">
                 <span class="frame-idx">#{{ i + 1 }}</span>
                 <span class="frame-dot" :class="e.type"></span>
                 <span class="frame-time">{{ e.time }}</span>
@@ -50,13 +45,8 @@
                   <span class="frame-time">{{ currentFrame.time }}</span>
                 </div>
                 <div class="frame-body">
-                  <MonacoEditor
-                    v-if="fmt !== 'html'"
-                    :model-value="rendered(currentFrame.data)"
-                    :language="fmt === 'json' ? 'json' : 'plaintext'"
-                    read-only
-                    height="100%"
-                  />
+                  <MonacoEditor v-if="fmt !== 'html'" :model-value="rendered(currentFrame.data)"
+                    :language="fmt === 'json' ? 'json' : 'plaintext'" read-only height="100%" />
                   <iframe v-else class="html-frame" :srcdoc="currentFrame.data" sandbox=""></iframe>
                 </div>
               </template>
@@ -66,13 +56,8 @@
 
           <!-- 非流式：单视图 -->
           <template v-else>
-            <MonacoEditor
-              v-if="fmt !== 'html'"
-              :model-value="rendered(tab.body)"
-              :language="fmt === 'json' ? 'json' : 'plaintext'"
-              read-only
-              height="100%"
-            />
+            <MonacoEditor v-if="fmt !== 'html'" :model-value="rendered(tab.body)"
+              :language="fmt === 'json' ? 'json' : 'plaintext'" read-only height="100%" />
             <iframe v-else class="html-frame" :srcdoc="tab.body" sandbox=""></iframe>
           </template>
         </div>
@@ -103,7 +88,11 @@ const headerRows = computed(() =>
 
 const contentTypeName = computed(() => (props.tab.headers || {})['content-type'] || '')
 
-const hasStream = computed(() => props.tab.stream_events.length > 0)
+const hasStream = computed(() => {
+  const headers = props.tab.headers || {}
+  const contentType = headers['content-type'] || ''
+  return contentType.includes('text/event-stream')
+})
 const currentFrame = computed(() => props.tab.stream_events[selectedFrame.value] || null)
 
 // 流式到达时自动选中最新一帧
@@ -147,40 +136,186 @@ function formatSize(bytes: number) {
 </script>
 
 <style scoped>
-.response-pane { display: flex; flex-direction: column; height: 100%; padding: 0 8px 8px; }
-.resp-meta { display: flex; align-items: center; gap: 12px; padding: 6px 2px; font-size: 13px; color: var(--el-text-color-secondary); min-height: 30px; }
-.hint { color: var(--el-text-color-placeholder); }
+.response-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 8px 8px;
+}
+
+.resp-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 2px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  min-height: 30px;
+}
+
+.hint {
+  color: var(--el-text-color-placeholder);
+}
+
 .error-box {
-  color: var(--el-color-danger); padding: 10px; margin-top: 8px;
-  background: var(--el-color-danger-light-9); border-radius: 4px;
+  color: var(--el-color-danger);
+  padding: 10px;
+  margin-top: 8px;
+  background: var(--el-color-danger-light-9);
+  border-radius: 4px;
 }
-.resp-tabs { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.body-toolbar { display: flex; align-items: center; gap: 12px; padding: 2px 0 6px; }
-.ct { font-size: 12px; color: var(--el-text-color-placeholder); }
-.frame-count { font-size: 12px; color: var(--el-text-color-secondary); }
-.body-view { flex: 1; min-height: 0; display: flex; }
 
-.frame-list { width: 280px; flex-shrink: 0; border-right: 1px solid var(--el-border-color); overflow-y: auto; padding: 4px; }
+.resp-tabs {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.body-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 6px;
+}
+
+.ct {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
+}
+
+.frame-count {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.body-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.frame-list {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--el-border-color);
+  overflow-y: auto;
+  padding: 4px;
+}
+
 .frame-row {
-  display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 4px;
-  cursor: pointer; font-size: 12px;
-  &:hover { background: var(--el-fill-color-light); }
-  &.active { background: var(--el-color-primary-light-9); }
-  .frame-idx { font-weight: 700; color: var(--el-text-color-secondary); width: 34px; flex-shrink: 0; }
-  .frame-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-    &.meta { background: #61affe; } &.chunk { background: #49cc90; }
-    &.done { background: #909399; } &.error { background: #f93e3e; }
-  }
-  .frame-time { color: var(--el-text-color-placeholder); font-size: 11px; flex-shrink: 0; }
-  .frame-preview { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--el-text-color-secondary); }
-}
-.stream-live { color: var(--el-color-success); font-size: 12px; padding: 6px 8px; animation: blink 1s infinite; }
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
 
-.frame-detail { flex: 1; display: flex; flex-direction: column; min-width: 0; padding-left: 8px; }
-.frame-meta { display: flex; align-items: center; gap: 8px; padding: 2px 0 6px; }
-.frame-time { font-size: 12px; color: var(--el-text-color-secondary); }
-.frame-body { flex: 1; min-height: 0; }
-.resp-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--el-text-color-placeholder); }
-.html-frame { width: 100%; height: 100%; border: 1px solid var(--el-border-color); border-radius: 4px; background: #fff; }
-@keyframes blink { 50% { opacity: 0.4; } }
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
+
+  &.active {
+    background: var(--el-color-primary-light-9);
+  }
+
+  .frame-idx {
+    font-weight: 700;
+    color: var(--el-text-color-secondary);
+    width: 34px;
+    flex-shrink: 0;
+  }
+
+  .frame-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+
+    &.meta {
+      background: #61affe;
+    }
+
+    &.chunk {
+      background: #49cc90;
+    }
+
+    &.done {
+      background: #909399;
+    }
+
+    &.error {
+      background: #f93e3e;
+    }
+  }
+
+  .frame-time {
+    color: var(--el-text-color-placeholder);
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .frame-preview {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+.stream-live {
+  color: var(--el-color-success);
+  font-size: 12px;
+  padding: 6px 8px;
+  animation: blink 1s infinite;
+}
+
+.frame-detail {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-left: 8px;
+}
+
+.frame-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 6px;
+}
+
+.frame-time {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+.frame-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.resp-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--el-text-color-placeholder);
+}
+
+.html-frame {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  background: #fff;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.4;
+  }
+}
 </style>
