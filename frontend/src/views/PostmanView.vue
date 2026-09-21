@@ -1,7 +1,7 @@
 <template>
   <div class="postman-view">
     <!-- 左侧：Collections + History -->
-    <aside class="sidebar">
+    <aside class="sidebar" v-show="!sidebarHidden" :style="{ width: sidebarWidth + 'px' }">
       <CollectionsTree @open="onOpenNode" />
       <div class="side-divider"></div>
       <div class="side-section">
@@ -20,42 +20,66 @@
         </div>
       </div>
     </aside>
+    <!-- 侧边栏拖拽条 -->
+    <div v-if="!sidebarHidden" class="splitter v-splitter" @mousedown="startSidebarDrag" />
 
     <!-- 右侧：标签页 + 工作区 -->
     <section class="workbench">
       <div class="tab-bar">
-        <div
-          v-for="t in wb.tabs"
-          :key="t.id"
-          class="tab"
-          :class="{ active: t.id === wb.activeId }"
-          @click="wb.setActive(t.id)"
-        >
-          <span class="tab-method" :class="t.kind === 'websocket' ? 'ws' : t.request.method.toLowerCase()">
-            {{ t.kind === 'websocket' ? 'WS' : t.request.method }}
-          </span>
-          <span class="tab-title">{{ t.title }}</span>
-          <el-icon class="tab-close" @click.stop="wb.closeTab(t.id)"><Close /></el-icon>
+        <div class="tabs-left">
+          <div
+            v-for="t in wb.tabs"
+            :key="t.id"
+            class="tab"
+            :class="{ active: t.id === wb.activeId }"
+            @click="wb.setActive(t.id)"
+          >
+            <span class="tab-method" :class="t.kind === 'websocket' ? 'ws' : t.request.method.toLowerCase()">
+              {{ t.kind === 'websocket' ? 'WS' : t.request.method }}
+            </span>
+            <span class="tab-title">{{ t.title }}</span>
+            <el-icon class="tab-close" @click.stop="wb.closeTab(t.id)"><Close /></el-icon>
+          </div>
+          <el-dropdown trigger="click" @command="(k: string) => wb.openBlank(k as 'http' | 'websocket')">
+            <el-button circle size="small" :icon="Plus" />
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="http">HTTP Request</el-dropdown-item>
+                <el-dropdown-item command="websocket">WebSocket</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
-        <el-dropdown trigger="click" @command="(k: string) => wb.openBlank(k as 'http' | 'websocket')">
-          <el-button circle size="small" :icon="Plus" />
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item command="http">HTTP Request</el-dropdown-item>
-              <el-dropdown-item command="websocket">WebSocket</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+        <div class="tabs-right">
+          <el-tooltip :content="sidebarHidden ? '显示侧边栏' : '隐藏侧边栏'" placement="bottom">
+            <el-button size="small" :icon="sidebarHidden ? Expand : Fold" @click="sidebarHidden = !sidebarHidden" />
+          </el-tooltip>
+          <el-tooltip :content="responseLayout === 'bottom' ? '响应区放右侧' : '响应区放下方'" placement="bottom">
+            <el-button size="small" :icon="Operation" @click="toggleLayout" />
+          </el-tooltip>
+        </div>
       </div>
 
-      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id">
+      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id" ref="paneRef">
         <template v-if="wb.activeTab.kind === 'http'">
-          <div class="half top">
-            <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" />
-          </div>
-          <div class="half bottom">
-            <ResponsePane :tab="wb.activeTab" />
-          </div>
+          <template v-if="responseLayout === 'bottom'">
+            <div class="half" :style="{ height: (100 - responseRatio) + '%' }">
+              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" />
+            </div>
+            <div class="splitter h-splitter" @mousedown="startRespDrag" />
+            <div class="half" :style="{ height: responseRatio + '%' }">
+              <ResponsePane :tab="wb.activeTab" />
+            </div>
+          </template>
+          <template v-else>
+            <div class="half" :style="{ width: (100 - responseRatio) + '%' }">
+              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" />
+            </div>
+            <div class="splitter v-splitter" @mousedown="startRespDrag" />
+            <div class="half" :style="{ width: responseRatio + '%' }">
+              <ResponsePane :tab="wb.activeTab" />
+            </div>
+          </template>
         </template>
         <WebSocketPane v-else :tab="wb.activeTab" />
       </div>
@@ -69,7 +93,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
-import { ArrowDown, ArrowRight, Close, Plus } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowRight, Close, Plus, Fold, Expand, Operation } from '@element-plus/icons-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
 import RequestPane from '@/components/RequestPane.vue'
@@ -88,10 +112,58 @@ const http = useHttpStore()
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(true)
 
+// 布局状态
+const sidebarHidden = ref(false)
+const sidebarWidth = ref(280)
+const responseLayout = ref<'bottom' | 'right'>('bottom')
+const responseRatio = ref(50)
+const paneRef = ref<HTMLElement | null>(null)
+
 onMounted(async () => {
   await Promise.all([collections.load(), http.loadHistory()])
   history.value = http.history
 })
+
+function toggleLayout() {
+  responseLayout.value = responseLayout.value === 'bottom' ? 'right' : 'bottom'
+}
+
+// 通用拖拽：监听 mousemove / mouseup
+function startDrag(e: MouseEvent, onMove: (dx: number, dy: number) => void) {
+  e.preventDefault()
+  const startX = e.clientX
+  const startY = e.clientY
+  function move(ev: MouseEvent) {
+    onMove(ev.clientX - startX, ev.clientY - startY)
+  }
+  function up() {
+    document.removeEventListener('mousemove', move)
+    document.removeEventListener('mouseup', up)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+  document.addEventListener('mousemove', move)
+  document.addEventListener('mouseup', up)
+  document.body.style.cursor = responseLayout.value === 'bottom' ? 'row-resize' : 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
+function startSidebarDrag(e: MouseEvent) {
+  startDrag(e, (dx) => {
+    const next = sidebarWidth.value + dx
+    sidebarWidth.value = Math.min(480, Math.max(180, next))
+  })
+}
+
+function startRespDrag(e: MouseEvent) {
+  const rect = paneRef.value?.getBoundingClientRect()
+  const total = responseLayout.value === 'bottom' ? rect?.height || 1 : rect?.width || 1
+  const startRatio = responseRatio.value
+  startDrag(e, (dx, dy) => {
+    const delta = responseLayout.value === 'bottom' ? dy : dx
+    responseRatio.value = Math.min(80, Math.max(20, startRatio + (delta / total) * 100))
+  })
+}
 
 function onOpenNode(node: CollectionNode) {
   wb.openFromNode(node)
@@ -135,7 +207,7 @@ function statusClass(code: number) {
 <style scoped>
 .postman-view { display: flex; height: 100%; }
 .sidebar {
-  width: 280px; flex-shrink: 0; border-right: 1px solid var(--el-border-color);
+  flex-shrink: 0; border-right: 1px solid var(--el-border-color);
   display: flex; flex-direction: column; background: #fff;
 }
 .side-divider { height: 1px; background: var(--el-border-color-lighter); }
@@ -158,14 +230,17 @@ function statusClass(code: number) {
 
 .workbench { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #fff; }
 .tab-bar {
-  display: flex; align-items: center; gap: 2px; padding: 4px 8px 0;
-  border-bottom: 1px solid var(--el-border-color); background: var(--el-bg-color-page);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 4px 8px 0; border-bottom: 1px solid var(--el-border-color);
+  background: var(--el-bg-color-page);
 }
+.tabs-left { display: flex; align-items: center; gap: 2px; overflow-x: auto; }
+.tabs-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .tab {
   display: flex; align-items: center; gap: 6px; padding: 4px 10px;
   border: 1px solid var(--el-border-color); border-bottom: none;
   border-radius: 6px 6px 0 0; cursor: pointer; font-size: 12px;
-  background: #fff; max-width: 200px;
+  background: #fff; max-width: 200px; flex-shrink: 0;
 }
 .tab.active { font-weight: 600; background: var(--el-color-primary-light-9); }
 .tab-method { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; color: #fff; }
@@ -176,9 +251,14 @@ function statusClass(code: number) {
 .tab-close { cursor: pointer; border-radius: 50%; }
 .tab-close:hover { background: var(--el-fill-color-dark); }
 
-.pane { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.half { display: flex; flex-direction: column; min-height: 0; }
-.half.top { flex: 1; border-bottom: 1px solid var(--el-border-color); }
-.half.bottom { flex: 1; }
+.pane { flex: 1; display: flex; min-height: 0; }
+.half { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .empty { flex: 1; display: flex; align-items: center; justify-content: center; }
+
+/* 拖拽条 */
+.splitter { flex-shrink: 0; z-index: 5; }
+.v-splitter { width: 4px; cursor: col-resize; background: transparent; }
+.v-splitter:hover { background: var(--el-color-primary-light-5); }
+.h-splitter { height: 4px; cursor: row-resize; background: transparent; }
+.h-splitter:hover { background: var(--el-color-primary-light-5); }
 </style>
