@@ -1,9 +1,9 @@
 ﻿<template>
-  <el-container class="main-layout">
-    <el-main class="main-content">
+  <a-layout class="main-layout">
+    <a-layout-content class="main-content">
       <RouterView />
-    </el-main>
-  </el-container>
+    </a-layout-content>
+  </a-layout>
 </template>
 
 <script setup lang="ts">
@@ -13,9 +13,9 @@ import { RouterView } from 'vue-router'
 <style lang="less" scoped>
 .main-layout {
   height: 100vh;
-}
-.main-content {
-  padding: 0;
-  overflow: hidden;
+  .main-content {
+    padding: 0;
+    overflow: hidden;
+  }
 }
 </style>

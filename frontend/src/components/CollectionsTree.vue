@@ -2,7 +2,9 @@
   <div class="collections-tree">
     <div class="tree-toolbar">
       <span class="tree-title">Collections</span>
-      <el-button size="small" circle :icon="Plus" title="新建集合" @click="onNewCollection" />
+      <a-button size="small" shape="circle" title="新建集合" @click="onNewCollection">
+        <template #icon><icon-plus /></template>
+      </a-button>
     </div>
     <div class="tree-body">
       <template v-for="node in collections.tree" :key="node.id">
@@ -17,17 +19,16 @@
           @remove="onRemove"
         />
       </template>
-      <el-empty v-if="!collections.tree.length" description="暂无集合，点击 + 新建" :image-size="50" />
+      <a-empty v-if="!collections.tree.length" description="暂无集合，点击 + 新建" style="padding: 16px 0" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ElMessageBox, ElMessage } from 'element-plus'
-import { Plus } from '@element-plus/icons-vue'
 
 import { useCollectionsStore } from '@/stores/collections'
+import { confirmDialog, promptInput, toast } from '@/utils/feedback'
 import type { CollectionNode } from '@/api/types'
 import NodeRow from './CollectionsNode.vue'
 
@@ -42,16 +43,16 @@ function toggle(id: string) {
 }
 
 async function onNewCollection() {
-  try {
-    const { value } = await ElMessageBox.prompt('集合名称', '新建集合', { inputValue: 'My Collection' })
-    await collections.addCollection(value)
-  } catch { /* cancelled */ }
+  const value = await promptInput('新建集合', 'My Collection')
+  if (!value) return
+  await collections.addCollection(value)
 }
 
 async function onAddChild(payload: { parentId: string; kind: string }) {
   const { parentId, kind } = payload
   if (kind === 'folder') {
-    const { value } = await ElMessageBox.prompt('子集合名称', '新建子集合', { inputValue: 'New Folder' })
+    const value = await promptInput('新建子集合', 'New Folder')
+    if (!value) return
     await collections.addFolder(parentId, value)
   } else if (kind === 'http' || kind === 'websocket' || kind === 'mcp') {
     const node = await collections.addRequest(parentId, kind, kind === 'mcp' ? 'New MCP' : kind === 'websocket' ? 'New WebSocket' : 'New Request')
@@ -61,18 +62,16 @@ async function onAddChild(payload: { parentId: string; kind: string }) {
 }
 
 async function onRename(node: CollectionNode) {
-  try {
-    const { value } = await ElMessageBox.prompt('新名称', '重命名', { inputValue: node.name })
-    await collections.renameNode(node.id, value)
-  } catch { /* cancelled */ }
+  const value = await promptInput('重命名', node.name)
+  if (!value) return
+  await collections.renameNode(node.id, value)
 }
 
 async function onRemove(node: CollectionNode) {
-  try {
-    await ElMessageBox.confirm(`确定删除「${node.name}」？`, '删除', { type: 'warning' })
-    await collections.removeNode(node.id)
-    ElMessage.success('已删除')
-  } catch { /* cancelled */ }
+  const ok = await confirmDialog('删除', `确定删除「${node.name}」？`)
+  if (!ok) return
+  await collections.removeNode(node.id)
+  toast.success('已删除')
 }
 </script>
 

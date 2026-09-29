@@ -1,9 +1,60 @@
 // 全局样式（Less）
+// Arco Design Vue 主题变量兼容层：将旧 Element Plus 变量映射到 Arco 变量，
+// 使组件内的 var(--el-*) 自动跟随明暗主题。
+
 :root {
   --app-bg: #f5f7fa;
   --app-font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'PingFang SC', 'Microsoft YaHei', sans-serif;
   --app-font-size: 13px;
+}
+
+// Arco 的颜色变量（浅色/深色）都定义在 body 选择器上，兼容层必须与它同作用域，
+// 放在 :root 会导致 var(--color-*) 在 :root 上解析失败、整个映射失效。
+body {
+  // ---- Arco → Element 兼容变量映射 ----
+  // 背景
+  --el-bg-color-page: var(--color-bg-1);
+  --el-bg-color: var(--color-bg-2);
+  --el-bg-color-overlay: var(--color-bg-5);
+
+  // 边框
+  --el-border-color: var(--color-border-2);
+  --el-border-color-lighter: var(--color-border-1);
+  --el-border-color-light: var(--color-border-1);
+
+  // 文本
+  --el-text-color-primary: var(--color-text-1);
+  --el-text-color-regular: var(--color-text-2);
+  --el-text-color-secondary: var(--color-text-2);
+  --el-text-color-placeholder: var(--color-text-4);
+  --el-text-color-disabled: var(--color-text-4);
+
+  // 填充（hover 等）
+  --el-fill-color: var(--color-fill-2);
+  --el-fill-color-light: var(--color-fill-1);
+  --el-fill-color-lighter: var(--color-fill-1);
+  --el-fill-color-dark: var(--color-fill-3);
+  --el-fill-color-blank: var(--color-bg-2);
+
+  // 功能色
+  --el-color-primary: rgb(var(--primary-6));
+  --el-color-primary-light-3: rgb(var(--primary-4));
+  --el-color-primary-light-5: rgb(var(--primary-3));
+  --el-color-primary-light-7: rgb(var(--primary-2));
+  --el-color-primary-light-8: rgb(var(--primary-1));
+  --el-color-primary-light-9: rgb(var(--primary-1));
+  --el-color-primary-dark-2: rgb(var(--primary-7));
+
+  --el-color-success: rgb(var(--success-6));
+  --el-color-success-light-9: rgb(var(--success-1));
+  --el-color-warning: rgb(var(--warning-6));
+  --el-color-warning-light-9: rgb(var(--warning-1));
+  --el-color-danger: rgb(var(--danger-6));
+  --el-color-danger-light-9: rgb(var(--danger-1));
+  --el-color-error: rgb(var(--danger-6));
+  --el-color-info: rgb(var(--primary-6));
+  --el-color-info-light-9: rgb(var(--primary-1));
 }
 
 html,
@@ -15,8 +66,22 @@ body,
   font-family: var(--app-font-family);
   font-size: var(--app-font-size);
   background-color: var(--el-bg-color-page, var(--app-bg));
+  color: var(--color-text-1);
 }
 
 * {
   box-sizing: border-box;
+}
+
+// 滚动条美化（跟随主题）
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-fill-3);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

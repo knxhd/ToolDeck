@@ -8,9 +8,10 @@
       <div class="side-divider"></div>
       <div class="side-section">
         <div class="section-header" @click="historyOpen = !historyOpen">
-          <el-icon><ArrowDown v-if="historyOpen" /><ArrowRight v-else /></el-icon>
+          <icon-down v-if="historyOpen" />
+          <icon-right v-else />
           <span>History</span>
-          <el-button v-if="history.length" size="small" type="danger" plain :disabled="!history.length" @click.stop="onClear">清空</el-button>
+          <a-button v-if="history.length" size="mini" status="danger" type="secondary" :disabled="!history.length" @click.stop="onClear">清空</a-button>
         </div>
         <div v-if="historyOpen" class="history-list">
           <div v-for="(item, i) in history" :key="i" class="history-item" @click="onLoadHistory(item)">
@@ -18,7 +19,7 @@
             <span class="u" :title="item.url">{{ item.url }}</span>
             <span class="s" :class="statusClass(item.status_code)">{{ item.status_code || '—' }}</span>
           </div>
-          <el-empty v-if="!history.length" description="暂无历史" :image-size="40" />
+          <a-empty v-if="!history.length" description="暂无历史" style="padding: 12px 0" />
         </div>
       </div>
     </aside>
@@ -40,29 +41,33 @@
               {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
             </span>
             <span class="tab-title">{{ t.title }}</span>
-            <el-icon class="tab-close" @click.stop="wb.closeTab(t.id)"><Close /></el-icon>
+            <icon-close class="tab-close" @click.stop="wb.closeTab(t.id)" />
           </div>
-          <el-dropdown trigger="click" @command="(k: string) => wb.openBlank(k as 'http' | 'websocket' | 'mcp')">
-            <el-button circle size="small" :icon="Plus" />
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item command="http">HTTP Request</el-dropdown-item>
-                <el-dropdown-item command="websocket">WebSocket</el-dropdown-item>
-                <el-dropdown-item command="mcp">MCP Request</el-dropdown-item>
-              </el-dropdown-menu>
+          <a-dropdown @select="(k) => wb.openBlank(String(k) as 'http' | 'websocket' | 'mcp')">
+            <a-button shape="circle" size="small"><icon-plus /></a-button>
+            <template #content>
+              <a-doption value="http">HTTP Request</a-doption>
+              <a-doption value="websocket">WebSocket</a-doption>
+              <a-doption value="mcp">MCP Request</a-doption>
             </template>
-          </el-dropdown>
+          </a-dropdown>
         </div>
         <div class="tabs-right">
-          <el-tooltip :content="sidebarHidden ? '显示侧边栏' : '隐藏侧边栏'" placement="bottom">
-            <el-button size="small" :icon="sidebarHidden ? Expand : Fold" @click="sidebarHidden = !sidebarHidden" />
-          </el-tooltip>
-          <el-tooltip :content="responseLayout === 'bottom' ? '响应区放右侧' : '响应区放下方'" placement="bottom">
-            <el-button size="small" :icon="Operation" @click="toggleLayout" />
-          </el-tooltip>
-          <el-tooltip content="系统设置" placement="bottom">
-            <el-button size="small" :icon="Setting" @click="settingsOpen = true" />
-          </el-tooltip>
+          <a-tooltip :content="sidebarHidden ? '显示侧边栏' : '隐藏侧边栏'" position="bottom">
+            <a-button size="small" @click="sidebarHidden = !sidebarHidden">
+              <template #icon><icon-expand v-if="sidebarHidden" /><icon-fold v-else /></template>
+            </a-button>
+          </a-tooltip>
+          <a-tooltip :content="responseLayout === 'bottom' ? '响应区放右侧' : '响应区放下方'" position="bottom">
+            <a-button size="small" @click="toggleLayout">
+              <template #icon><icon-swap /></template>
+            </a-button>
+          </a-tooltip>
+          <a-tooltip content="系统设置" position="bottom">
+            <a-button size="small" @click="settingsOpen = true">
+              <template #icon><icon-settings /></template>
+            </a-button>
+          </a-tooltip>
         </div>
       </div>
 
@@ -92,7 +97,7 @@
         <WebSocketPane v-else :tab="wb.activeTab" />
       </div>
       <div class="empty" v-else>
-        <el-empty description="从左侧 Collections 选择请求，或点击 + 新建" />
+        <a-empty description="从左侧 Collections 选择请求，或点击 + 新建" />
       </div>
     </section>
 
@@ -102,8 +107,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ElMessageBox } from 'element-plus'
-import { ArrowDown, ArrowRight, Close, Plus, Fold, Expand, Operation, Setting } from '@element-plus/icons-vue'
+import { Modal } from '@arco-design/web-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
 import RequestPane from '@/components/RequestPane.vue'
@@ -215,7 +219,18 @@ function onLoadHistory(item: HttpCallRecord) {
 }
 
 async function onClear() {
-  await ElMessageBox.confirm('确定清空所有 HTTP 历史？', '确认', { type: 'warning' })
+  try {
+    await new Promise<void>((resolve, reject) => {
+      Modal.confirm({
+        title: '确认',
+        content: '确定清空所有 HTTP 历史？',
+        onOk: () => { resolve() },
+        onCancel: () => { reject(new Error('cancel')) },
+      })
+    })
+  } catch {
+    return
+  }
   await api.del('/api/http/history')
   await http.loadHistory()
   history.value = http.history

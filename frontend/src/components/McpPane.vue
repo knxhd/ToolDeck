@@ -2,12 +2,15 @@
   <div class="mcp-pane">
     <!-- 顶部：URL 输入 + 连接 + Run -->
     <div class="mcp-top">
-      <el-input v-model="tab.mcp_url" placeholder="输入 MCP 地址，如 http://127.0.0.1:8001/mcp" style="flex: 1" @keyup.enter="onConnect" />
-      <el-button :loading="connecting" type="primary" @click="onConnect">
+      <a-input v-model="tab.mcp_url" placeholder="输入 MCP 地址，如 http://127.0.0.1:8001/mcp" allow-clear style="flex: 1" @press-enter="onConnect" />
+      <a-button :loading="connecting" type="primary" @click="onConnect">
         {{ connected ? '重新连接' : '连接' }}
-      </el-button>
+      </a-button>
       <div class="spacer"></div>
-      <el-button type="success" :icon="VideoPlay" :loading="tab.mcp_loading" :disabled="!selectedTool" @click="onRun">Run</el-button>
+      <a-button status="success" :loading="tab.mcp_loading" :disabled="!selectedTool" @click="onRun">
+        <template #icon><icon-play-arrow /></template>
+        Run
+      </a-button>
     </div>
 
     <!-- Message / Headers -->
@@ -30,8 +33,12 @@
             <span class="sub-tab active">Tools</span>
             <span class="sub-tab disabled">Prompts</span>
             <span class="sub-tab disabled">Resources</span>
-            <el-input v-model="keyword" size="small" placeholder="搜索" :prefix-icon="Search" style="margin-left: auto; width: 120px" />
-            <el-button size="small" :icon="Refresh" circle @click="onConnect" />
+            <a-input v-model="keyword" size="small" placeholder="搜索" style="margin-left: auto; width: 120px">
+              <template #prefix><icon-search /></template>
+            </a-input>
+            <a-button size="small" shape="circle" @click="onConnect">
+              <template #icon><icon-refresh /></template>
+            </a-button>
           </div>
           <div class="tool-list">
             <div
@@ -44,7 +51,7 @@
               <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
               <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
             </div>
-            <el-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接'" :image-size="50" />
+            <a-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接'" style="padding: 16px 0" />
           </div>
           <div v-if="selectedTool" class="param-form">
             <div v-for="f in fields" :key="f.key" class="field">
@@ -53,9 +60,10 @@
                 <span class="field-type">{{ f.type }}</span>
               </div>
               <div class="field-desc" v-if="f.description">{{ f.description }}</div>
-              <el-switch v-if="f.type === 'boolean'" v-model="formValues[f.key]" />
-              <el-input-number v-else-if="f.type === 'number' || f.type === 'integer'" v-model="formValues[f.key]" style="width: 100%" />
-              <el-input v-else v-model="formValues[f.key]" :type="f.longText ? 'textarea' : 'text'" :rows="3" />
+              <a-switch :model-value="boolVal(formValues[f.key])" @change="(v) => (formValues[f.key] = !!v)" />
+              <a-input-number :model-value="numVal(formValues[f.key])" @change="(v?: number) => (formValues[f.key] = v ?? 0)" style="width: 100%" />
+              <a-textarea :model-value="strVal(formValues[f.key])" @change="(v: string) => (formValues[f.key] = v)" :auto-size="{ minRows: 3 }" />
+              <a-input :model-value="strVal(formValues[f.key])" @change="(v: string) => (formValues[f.key] = v)" />
             </div>
           </div>
         </div>
@@ -68,7 +76,7 @@
         <div class="col col-resp">
           <div class="col-head resp-head">
             <span>Response</span>
-            <el-tag v-if="connected" type="success" size="small" effect="plain">Connected</el-tag>
+            <a-tag v-if="connected" color="green" size="small">Connected</a-tag>
           </div>
           <div v-if="tab.mcp_result" class="resp-body">
             <MonacoEditor :model-value="tab.mcp_result" language="json" read-only height="100%" auto-scroll-to-end />
@@ -82,12 +90,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Search, Refresh, VideoPlay } from '@element-plus/icons-vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import { useMcpStore, type McpTool } from '@/stores/mcp'
+import { toast } from '@/utils/feedback'
 import type { KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
@@ -120,6 +127,10 @@ const filteredTools = computed(() =>
   mcp.tools.filter((t) => !keyword.value || t.name.toLowerCase().includes(keyword.value.toLowerCase())),
 )
 
+const strVal = (v: unknown): string => (typeof v === 'string' ? v : String(v ?? ''))
+const numVal = (v: unknown): number | undefined => (typeof v === 'number' ? v : Number(v) || 0)
+const boolVal = (v: unknown): boolean => !!v
+
 interface FieldDef {
   key: string
   type: string
@@ -145,7 +156,7 @@ const fields = computed<FieldDef[]>(() => {
 
 async function onConnect() {
   if (!props.tab.mcp_url) {
-    ElMessage.warning('请输入 MCP 地址')
+    toast.warning('请输入 MCP 地址')
     return
   }
   connecting.value = true
@@ -154,7 +165,7 @@ async function onConnect() {
     connected.value = true
     emit('save')
   } catch (e) {
-    ElMessage.error((e as Error).message)
+    toast.error((e as Error).message)
   } finally {
     connecting.value = false
   }
@@ -204,7 +215,7 @@ async function onRun() {
     props.tab.mcp_result = JSON.stringify(res, null, 2)
     emit('save')
   } catch (e) {
-    ElMessage.error((e as Error).message)
+    toast.error((e as Error).message)
   } finally {
     props.tab.mcp_loading = false
   }

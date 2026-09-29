@@ -1,32 +1,36 @@
 <template>
-  <el-dialog :model-value="modelValue" title="系统设置" width="480px" :close-on-click-modal="false"
-    @update:model-value="emit('update:modelValue', $event)">
-    <el-form label-width="80px">
-      <el-form-item label="字体">
-        <el-select v-model="settings.fontFamily" style="width: 100%">
-          <el-option v-for="o in FONT_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="字号">
-        <el-select v-model="settings.fontSize" style="width: 100%">
-          <el-option v-for="s in FONT_SIZE_OPTIONS" :key="s" :label="s + ' px'" :value="s" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="主题">
-        <el-radio-group v-model="settings.dark">
-          <el-radio-button :value="false">浅色</el-radio-button>
-          <el-radio-button :value="true">深色</el-radio-button>
-        </el-radio-group>
-      </el-form-item>
-      <el-form-item label="预览">
+  <a-modal :visible="modelValue" title="系统设置" width="480px" :mask-closable="false"
+    @update:visible="(v: boolean) => emit('update:modelValue', v)">
+    <div class="settings-form">
+      <div class="form-row">
+        <span class="form-label">字体</span>
+        <a-select v-model="settings.fontFamily" style="width: 100%">
+          <a-option v-for="o in FONT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</a-option>
+        </a-select>
+      </div>
+      <div class="form-row">
+        <span class="form-label">字号</span>
+        <a-select v-model="settings.fontSize" style="width: 100%">
+          <a-option v-for="s in FONT_SIZE_OPTIONS" :key="s" :value="s">{{ s }} px</a-option>
+        </a-select>
+      </div>
+      <div class="form-row">
+        <span class="form-label">主题</span>
+        <a-radio-group v-model="settings.dark" type="button">
+          <a-radio :value="false">浅色</a-radio>
+          <a-radio :value="true">深色</a-radio>
+        </a-radio-group>
+      </div>
+      <div class="form-row">
+        <span class="form-label">预览</span>
         <div class="preview">The quick brown fox 敏捷的棕色狐狸 123</div>
-      </el-form-item>
-    </el-form>
+      </div>
+    </div>
     <template #footer>
-      <el-button @click="onReset">恢复默认</el-button>
-      <el-button type="primary" @click="emit('update:modelValue', false)">完成</el-button>
+      <a-button @click="onReset">恢复默认</a-button>
+      <a-button type="primary" @click="emit('update:modelValue', false)">完成</a-button>
     </template>
-  </el-dialog>
+  </a-modal>
 </template>
 
 <script setup lang="ts">
@@ -44,6 +48,24 @@ function onReset() {
 </script>
 
 <style lang="less" scoped>
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+
+  .form-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .form-label {
+      width: 60px;
+      flex-shrink: 0;
+      color: var(--el-text-color-primary);
+      font-size: 13px;
+    }
+  }
+}
 .preview {
   width: 100%;
   padding: 10px;

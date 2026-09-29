@@ -1,19 +1,23 @@
 <template>
   <div class="kv-editor">
     <div v-for="(item, i) in local" :key="i" class="kv-row">
-      <el-checkbox v-model="item.enabled" />
-      <el-input v-model="item.key" placeholder="key" size="small" @change="emitChange" />
+      <a-checkbox v-model="item.enabled" />
+      <a-input v-model="item.key" placeholder="key" size="small" @change="emitChange" />
       <span class="kv-sep">:</span>
-      <el-input v-model="item.value" placeholder="value" size="small" @change="emitChange" />
-      <el-button size="small" type="danger" plain circle :icon="Delete" @click="remove(i)" />
+      <a-input v-model="item.value" placeholder="value" size="small" @change="emitChange" />
+      <a-button size="small" status="danger" type="secondary" shape="circle" @click="remove(i)">
+        <template #icon><icon-delete /></template>
+      </a-button>
     </div>
-    <el-button size="small" type="primary" plain :icon="Plus" @click="add">添加</el-button>
+    <a-button size="small" type="secondary" @click="add">
+      <template #icon><icon-plus /></template>
+      添加
+    </a-button>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Delete, Plus } from '@element-plus/icons-vue'
 import type { KeyValue } from '@/api/types'
 
 const props = defineProps<{ modelValue: KeyValue[] }>()

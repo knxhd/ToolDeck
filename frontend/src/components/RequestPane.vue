@@ -1,31 +1,32 @@
 <template>
   <div class="request-pane">
     <div class="url-bar">
-      <el-select v-model="tab.request.method" style="width: 110px">
-        <el-option v-for="m in methods" :key="m" :label="m" :value="m" />
-      </el-select>
-      <el-input
+      <a-select v-model="tab.request.method" style="width: 110px">
+        <a-option v-for="m in methods" :key="m" :value="m">{{ m }}</a-option>
+      </a-select>
+      <a-input
         v-model="tab.request.url"
         placeholder="https://api.example.com/path"
-        @keyup.enter="onSend"
+        allow-clear
+        @press-enter="onSend"
       />
-      <el-button v-if="!tab.streaming" type="primary" @click="onSend">发送</el-button>
-      <el-button v-else type="danger" plain @click="$emit('cancel')">停止</el-button>
+      <a-button v-if="!tab.streaming" type="primary" @click="onSend">发送</a-button>
+      <a-button v-else status="danger" type="secondary" @click="$emit('cancel')">停止</a-button>
     </div>
-    <el-tabs class="req-tabs">
-      <el-tab-pane label="Params">
+    <a-tabs class="req-tabs" :default-active-key="'params'">
+      <a-tab-pane key="params" title="Params">
         <KeyValueEditor v-model="tab.request.params" />
-      </el-tab-pane>
-      <el-tab-pane label="Headers">
+      </a-tab-pane>
+      <a-tab-pane key="headers" title="Headers">
         <KeyValueEditor v-model="tab.request.headers" />
-      </el-tab-pane>
-      <el-tab-pane label="Body">
-        <el-radio-group v-model="tab.request.body_type" style="margin-bottom: 8px">
-          <el-radio-button value="none">none</el-radio-button>
-          <el-radio-button value="json">JSON</el-radio-button>
-          <el-radio-button value="raw">raw</el-radio-button>
-          <el-radio-button value="form-data">form-data</el-radio-button>
-        </el-radio-group>
+      </a-tab-pane>
+      <a-tab-pane key="body" title="Body">
+        <a-radio-group v-model="tab.request.body_type" type="button" style="margin-bottom: 8px">
+          <a-radio value="none">none</a-radio>
+          <a-radio value="json">JSON</a-radio>
+          <a-radio value="raw">raw</a-radio>
+          <a-radio value="form-data">form-data</a-radio>
+        </a-radio-group>
         <MonacoEditor
           v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
           v-model="tab.request.body"
@@ -37,9 +38,9 @@
           :model-value="formPairs"
           @update:model-value="onFormChange"
         />
-        <el-empty v-else description="无 Body" :image-size="40" />
-      </el-tab-pane>
-    </el-tabs>
+        <a-empty v-else description="无 Body" style="padding: 12px 0" />
+      </a-tab-pane>
+    </a-tabs>
   </div>
 </template>
 

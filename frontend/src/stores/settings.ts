@@ -21,7 +21,7 @@ interface Settings {
 
 const DEFAULTS: Settings = {
   fontFamily: FONT_OPTIONS[0].value,
-  fontSize: 13,
+  fontSize: 14,
   dark: false,
 }
 
@@ -40,7 +40,8 @@ export const useSettingsStore = defineStore('settings', () => {
     const root = document.documentElement
     root.style.setProperty('--app-font-family', settings.value.fontFamily)
     root.style.setProperty('--app-font-size', settings.value.fontSize + 'px')
-    root.classList.toggle('dark', settings.value.dark)
+    // Arco Design Vue 深色模式：body[arco-theme='dark']
+    document.body.setAttribute('arco-theme', settings.value.dark ? 'dark' : 'light')
   }
 
   function persist() {

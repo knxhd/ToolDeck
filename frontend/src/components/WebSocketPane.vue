@@ -1,28 +1,28 @@
 ﻿<template>
   <div class="ws-pane">
     <div class="ws-bar">
-      <el-input v-model="tab.ws_url" placeholder="wss://echo.websocket.events" style="flex: 1" />
-      <el-button v-if="!ws" type="primary" @click="connect">连接</el-button>
-      <el-button v-else type="danger" plain @click="disconnect">断开</el-button>
+      <a-input v-model="tab.ws_url" placeholder="wss://echo.websocket.events" allow-clear style="flex: 1" />
+      <a-button v-if="!ws" type="primary" @click="connect">连接</a-button>
+      <a-button v-else status="danger" type="secondary" @click="disconnect">断开</a-button>
     </div>
     <div class="ws-log" ref="logEl">
       <div v-for="(m, i) in messages" :key="i" class="ws-msg" :class="m.dir">
         <span class="ws-time">{{ m.time }}</span>
         <span class="ws-text">{{ m.data }}</span>
       </div>
-      <el-empty v-if="!messages.length" description="连接后在此收发消息" :image-size="50" />
+      <a-empty v-if="!messages.length" description="连接后在此收发消息" style="padding: 16px 0" />
     </div>
     <div class="ws-input">
-      <el-input v-model="draft" type="textarea" :rows="3" placeholder="输入要发送的消息，Ctrl+Enter 发送"
-        @keydown.ctrl.enter="send" />
-      <el-button type="primary" :disabled="!ws" @click="send">发送</el-button>
+      <a-textarea v-model="draft" :auto-size="{ minRows: 3 }" placeholder="输入要发送的消息，Ctrl+Enter 发送"
+        @keydown.ctrl.enter="send" style="flex: 1" />
+      <a-button type="primary" :disabled="!ws" @click="send">发送</a-button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { toast } from '@/utils/feedback'
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
@@ -54,7 +54,7 @@ function connect() {
       ws.value = null
     }
   } catch (e) {
-    ElMessage.error((e as Error).message)
+    toast.error((e as Error).message)
   }
 }
 
@@ -82,5 +82,4 @@ onBeforeUnmount(() => ws.value?.close())
 .ws-msg.out .ws-text { color: var(--el-color-primary); }
 .ws-msg.sys .ws-text { color: var(--el-text-color-secondary); }
 .ws-input { display: flex; gap: 8px; align-items: flex-end; }
-.ws-input .el-textarea { flex: 1; }
 </style>

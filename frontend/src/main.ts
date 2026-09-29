@@ -1,9 +1,8 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import 'element-plus/theme-chalk/dark/css-vars.css'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import ArcoVue from '@arco-design/web-vue'
+import ArcoVueIcon from '@arco-design/web-vue/es/icon'
+import '@arco-design/web-vue/dist/arco.css'
 
 // Monaco Editor worker 配置（Vite 环境必需）
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
@@ -27,11 +26,8 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus)
-
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
-}
+app.use(ArcoVue)
+app.use(ArcoVueIcon)
 
 useSettingsStore(pinia).init()
 

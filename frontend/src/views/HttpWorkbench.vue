@@ -4,7 +4,7 @@
     <div class="panel history-panel">
       <div class="panel-header">
         <span>历史</span>
-        <el-button size="small" type="danger" plain :disabled="!store.history.length" @click="onClear">清空</el-button>
+        <a-button size="small" status="danger" type="secondary" :disabled="!store.history.length" @click="onClear">清空</a-button>
       </div>
       <div class="history-list">
         <div
@@ -13,37 +13,37 @@
           class="history-item"
           @click="store.loadFromHistory(item)"
         >
-          <el-tag size="small" :type="methodTag(item.method)">{{ item.method }}</el-tag>
+          <a-tag size="small" :color="methodTag(item.method)">{{ item.method }}</a-tag>
           <span class="history-url" :title="item.url">{{ item.url }}</span>
           <span class="history-status" :class="statusClass(item.status_code)">{{ item.status_code || '—' }}</span>
         </div>
-        <el-empty v-if="!store.history.length" description="暂无历史" :image-size="60" />
+        <a-empty v-if="!store.history.length" description="暂无历史" style="padding: 16px 0" />
       </div>
     </div>
 
     <!-- 中：请求编辑 -->
     <div class="panel request-panel">
       <div class="url-bar">
-        <el-select v-model="store.request.method" style="width: 120px">
-          <el-option v-for="m in methods" :key="m" :label="m" :value="m" />
-        </el-select>
-        <el-input v-model="store.request.url" placeholder="https://api.example.com/path" @keyup.enter="store.send" />
-        <el-button type="primary" :loading="store.loading" @click="store.send">发送</el-button>
+        <a-select v-model="store.request.method" style="width: 120px">
+          <a-option v-for="m in methods" :key="m" :value="m">{{ m }}</a-option>
+        </a-select>
+        <a-input v-model="store.request.url" placeholder="https://api.example.com/path" allow-clear @press-enter="store.send" />
+        <a-button type="primary" :loading="store.loading" @click="store.send">发送</a-button>
       </div>
-      <el-tabs class="request-tabs">
-        <el-tab-pane label="Params">
+      <a-tabs class="request-tabs">
+        <a-tab-pane key="params" title="Params">
           <KeyValueEditor v-model="store.request.params" />
-        </el-tab-pane>
-        <el-tab-pane label="Headers">
+        </a-tab-pane>
+        <a-tab-pane key="headers" title="Headers">
           <KeyValueEditor v-model="store.request.headers" />
-        </el-tab-pane>
-        <el-tab-pane label="Body">
-          <el-radio-group v-model="store.request.body_type" style="margin-bottom: 8px">
-            <el-radio-button value="none">none</el-radio-button>
-            <el-radio-button value="json">JSON</el-radio-button>
-            <el-radio-button value="raw">raw</el-radio-button>
-            <el-radio-button value="form-data">form-data</el-radio-button>
-          </el-radio-group>
+        </a-tab-pane>
+        <a-tab-pane key="body" title="Body">
+          <a-radio-group v-model="store.request.body_type" type="button" style="margin-bottom: 8px">
+            <a-radio value="none">none</a-radio>
+            <a-radio value="json">JSON</a-radio>
+            <a-radio value="raw">raw</a-radio>
+            <a-radio value="form-data">form-data</a-radio>
+          </a-radio-group>
           <MonacoEditor
             v-if="store.request.body_type !== 'none' && store.request.body_type !== 'form-data'"
             v-model="store.request.body"
@@ -55,9 +55,9 @@
             :model-value="formPairs"
             @update:model-value="onFormChange"
           />
-          <el-empty v-else description="无 Body" :image-size="40" />
-        </el-tab-pane>
-      </el-tabs>
+          <a-empty v-else description="无 Body" style="padding: 12px 0" />
+        </a-tab-pane>
+      </a-tabs>
     </div>
 
     <!-- 右：响应 -->
@@ -65,17 +65,19 @@
       <div v-if="store.error" class="error-box">{{ store.error }}</div>
       <template v-else-if="store.response">
         <div class="response-meta">
-          <el-tag :type="statusTagType(store.response.status_code)">
+          <a-tag :color="statusTagType(store.response.status_code)">
             {{ store.response.status_code }} {{ store.response.status_text }}
-          </el-tag>
+          </a-tag>
           <span>耗时 {{ store.response.elapsed_ms }} ms</span>
           <span>{{ formatSize(store.response.size_bytes) }}</span>
         </div>
-        <el-input v-model="headerSearch" placeholder="搜索响应头" size="small" style="margin: 8px 0" />
-        <el-table :data="filteredHeaders" size="small" max-height="180" border>
-          <el-table-column prop="key" label="Header" />
-          <el-table-column prop="value" label="Value" show-overflow-tooltip />
-        </el-table>
+        <a-input v-model="headerSearch" placeholder="搜索响应头" size="small" allow-clear style="margin: 8px 0" />
+        <a-table :data="filteredHeaders" :pagination="false" :scroll="{ y: 180 }" size="small">
+          <template #columns>
+            <a-table-column data-index="key" title="Header" />
+            <a-table-column data-index="value" title="Value" ellipsis tooltip />
+          </template>
+        </a-table>
         <div class="response-body-label">响应体</div>
         <MonacoEditor
           :model-value="responseBody"
@@ -84,18 +86,18 @@
           height="calc(100% - 280px)"
         />
       </template>
-      <el-empty v-else description="发送请求后查看响应" />
+      <a-empty v-else description="发送请求后查看响应" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
+import { computed, onMounted, ref } from 'vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import { useHttpStore } from '@/stores/http'
+import { confirmDialog } from '@/utils/feedback'
 import type { HttpMethod, KeyValue } from '@/api/types'
 
 const store = useHttpStore()
@@ -136,15 +138,16 @@ function onFormChange(pairs: KeyValue[]) {
 }
 
 async function onClear() {
-  await ElMessageBox.confirm('确定清空所有 HTTP 历史？', '确认', { type: 'warning' })
+  const ok = await confirmDialog('确认', '确定清空所有 HTTP 历史？')
+  if (!ok) return
   await store.clearHistory()
 }
 
 function methodTag(m: string) {
-  const map: Record<string, 'success' | 'warning' | 'danger' | 'info'> = {
-    GET: 'success', POST: 'warning', DELETE: 'danger', PUT: 'info',
+  const map: Record<string, 'green' | 'orange' | 'red' | 'blue'> = {
+    GET: 'green', POST: 'orange', DELETE: 'red', PUT: 'blue',
   }
-  return map[m] || 'info'
+  return map[m] || 'blue'
 }
 
 function statusClass(code: number) {
@@ -155,10 +158,10 @@ function statusClass(code: number) {
 }
 
 function statusTagType(code: number) {
-  if (code === 0) return 'info'
-  if (code < 300) return 'success'
-  if (code < 400) return 'warning'
-  return 'danger'
+  if (code === 0) return 'blue'
+  if (code < 300) return 'green'
+  if (code < 400) return 'orange'
+  return 'red'
 }
 
 function formatSize(bytes: number) {
@@ -166,8 +169,6 @@ function formatSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
-
-watch(() => store.history, () => {}, { deep: true })
 </script>
 
 <style lang="less" scoped>
@@ -178,7 +179,7 @@ watch(() => store.history, () => {}, { deep: true })
   background: var(--el-border-color);
 }
 .panel {
-  background: #fff;
+  background: var(--el-bg-color);
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -202,8 +203,8 @@ watch(() => store.history, () => {}, { deep: true })
   padding: 6px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--el-border-color-lighter);
+  &:hover { background: var(--el-fill-color-light); }
 }
-.history-item:hover { background: var(--el-fill-color-light); }
 .history-url {
   flex: 1;
   white-space: nowrap;

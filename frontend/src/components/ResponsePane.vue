@@ -1,11 +1,11 @@
 ﻿<template>
   <div class="response-pane">
     <div class="resp-meta">
-      <el-tag v-if="tab.error" type="danger" size="small">请求错误</el-tag>
-      <el-tag v-else-if="tab.status_code" :type="statusType" size="small">
+      <a-tag v-if="tab.error" color="red" size="small">请求错误</a-tag>
+      <a-tag v-else-if="tab.status_code" :color="statusType" size="small">
         {{ tab.status_code }} {{ tab.status_text }}
-      </el-tag>
-      <el-tag v-else-if="tab.streaming" type="warning" size="small" effect="dark">接收中…</el-tag>
+      </a-tag>
+      <a-tag v-else-if="tab.streaming" color="orange" size="small">接收中…</a-tag>
       <span v-if="tab.elapsed_ms">耗时 {{ tab.elapsed_ms }} ms</span>
       <span v-if="tab.size_bytes"> {{ formatSize(tab.size_bytes) }}</span>
       <span v-if="!tab.body && !tab.error && !tab.status_code && !tab.streaming" class="hint">
@@ -13,8 +13,8 @@
       </span>
     </div>
     <div v-if="tab.error" class="error-box">{{ tab.error }}</div>
-    <el-tabs v-else class="resp-tabs">
-      <el-tab-pane label="Body" class="body-pane">
+    <a-tabs v-else class="resp-tabs">
+      <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
           <div class="stream-layout">
             <div class="frame-list">
@@ -29,39 +29,38 @@
               <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
             </div>
             <div class="frame-detail">
-              <SingleDataView :data="currentFrame.data" />
+              <SingleDataView :data="currentFrame?.data || ''" />
             </div>
           </div>
         </template>
         <SingleDataView v-else :data="tab.body" />
-      </el-tab-pane>
-      <el-tab-pane label="Headers">
-        <el-table :data="headerRows" size="small" max-height="260" border>
-          <el-table-column prop="key" label="Header" width="40%" />
-          <el-table-column prop="value" label="Value" show-overflow-tooltip />
-        </el-table>
-      </el-tab-pane>
-    </el-tabs>
+      </a-tab-pane>
+      <a-tab-pane key="headers" title="Headers">
+        <a-table :data="headerRows" :pagination="false" :scroll="{ y: 260 }" size="small">
+          <template #columns>
+            <a-table-column data-index="key" title="Header" :width="200" />
+            <a-table-column data-index="value" title="Value" ellipsis tooltip />
+          </template>
+        </a-table>
+      </a-tab-pane>
+    </a-tabs>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import MonacoEditor from '@/components/MonacoEditor.vue'
 import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
 const selectedFrame = ref(0)
-const frameFmt = ref<'text' | 'json'>('text')
 
 const currentFrame = computed(() => props.tab.stream_events[selectedFrame.value] || null)
 
 const headerRows = computed(() =>
   Object.entries(props.tab.headers || {}).map(([key, value]) => ({ key, value })),
 )
-
 
 const contentTypeName = computed(() => {
   const headers = props.tab.headers || {}
@@ -79,20 +78,11 @@ function preview(data: string) {
   return s.length > 60 ? s.slice(0, 60) + '…' : s
 }
 
-function renderedFrame(raw: string) {
-  if (frameFmt.value !== 'json' || !raw) return raw || ''
-  try {
-    return JSON.stringify(JSON.parse(raw), null, 2)
-  } catch {
-    return raw
-  }
-}
-
 const statusType = computed(() => {
   const c = props.tab.status_code
-  if (c < 300) return 'success'
-  if (c < 400) return 'warning'
-  return 'danger'
+  if (c < 300) return 'green'
+  if (c < 400) return 'orange'
+  return 'red'
 })
 
 function formatSize(bytes: number) {
@@ -138,45 +128,31 @@ function formatSize(bytes: number) {
   display: flex;
   flex-direction: column;
 
-  :deep(.el-tabs__content) {
+  :deep(.arco-tabs-header) {
+    flex-shrink: 0;
+  }
+
+  :deep(.arco-tabs-content) {
     flex: 1;
     min-height: 0;
     overflow: hidden;
   }
 
-  :deep(.el-tab-pane) {
+  :deep(.arco-tabs-content-inner) {
     height: 100%;
   }
 
-  .body-pane {
+  :deep(.arco-tabs-pane) {
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    overflow: auto;
   }
 }
 
-.body-toolbar {
+.body-pane {
+  height: 100%;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 2px 0 6px;
-}
-
-.ct {
-  font-size: 12px;
-  color: var(--el-text-color-placeholder);
-}
-
-.frame-count {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
-}
-
-.body-view {
-  flex: 1;
-  min-height: 0;
-  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .stream-layout {
@@ -290,7 +266,6 @@ function formatSize(bytes: number) {
     color: var(--el-text-color-placeholder);
   }
 }
-
 
 .stream-live {
   color: var(--el-color-success);

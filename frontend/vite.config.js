@@ -30,7 +30,7 @@ export default defineConfig({
             output: {
                 manualChunks: {
                     'monaco-editor': ['monaco-editor'],
-                    'element-plus': ['element-plus', '@element-plus/icons-vue'],
+                    'arco-design': ['@arco-design/web-vue'],
                     'vue-vendor': ['vue', 'vue-router', 'pinia'],
                 },
             },
