@@ -11,7 +11,8 @@
           <icon-down v-if="historyOpen" />
           <icon-right v-else />
           <span>History</span>
-          <a-button v-if="history.length" size="mini" status="danger" type="secondary" :disabled="!history.length" @click.stop="onClear">清空</a-button>
+          <a-button v-if="history.length" size="mini" status="danger" type="secondary" :disabled="!history.length"
+            @click.stop="onClear">清空</a-button>
         </div>
         <div v-if="historyOpen" class="history-list">
           <div v-for="(item, i) in history" :key="i" class="history-item" @click="onLoadHistory(item)">
@@ -30,14 +31,10 @@
     <section class="workbench">
       <div class="tab-bar">
         <div class="tabs-left">
-          <div
-            v-for="t in wb.tabs"
-            :key="t.id"
-            class="tab"
-            :class="{ active: t.id === wb.activeId }"
-            @click="wb.setActive(t.id)"
-          >
-            <span class="tab-method" :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
+          <div v-for="t in wb.tabs" :key="t.id" class="tab" :class="{ active: t.id === wb.activeId }"
+            @click="wb.setActive(t.id)">
+            <span class="tab-method"
+              :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
               {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
             </span>
             <span class="tab-title">{{ t.title }}</span>
@@ -53,21 +50,21 @@
           </a-dropdown>
         </div>
         <div class="tabs-right">
-          <a-tooltip :content="sidebarHidden ? '显示侧边栏' : '隐藏侧边栏'" position="bottom">
-            <a-button size="small" @click="sidebarHidden = !sidebarHidden">
-              <template #icon><icon-expand v-if="sidebarHidden" /><icon-fold v-else /></template>
-            </a-button>
-          </a-tooltip>
-          <a-tooltip :content="responseLayout === 'bottom' ? '响应区放右侧' : '响应区放下方'" position="bottom">
-            <a-button size="small" @click="toggleLayout">
-              <template #icon><icon-swap /></template>
-            </a-button>
-          </a-tooltip>
-          <a-tooltip content="系统设置" position="bottom">
-            <a-button size="small" @click="settingsOpen = true">
-              <template #icon><icon-settings /></template>
-            </a-button>
-          </a-tooltip>
+          <a-button size="small" @click="sidebarHidden = !sidebarHidden">
+            <template #icon>
+              <IconShowLeft v-if="sidebarHidden" class="svg-icon" />
+              <IconHiddenLeft v-else class="svg-icon" />
+            </template>
+          </a-button>
+          <a-button size="small" @click="toggleLayout">
+            <template #icon>
+              <IconRightLeft v-if="responseLayout === 'bottom'" class="svg-icon" />
+              <IconTopBottom v-else class="svg-icon" />
+            </template>
+          </a-button>
+          <a-button size="small" @click="settingsOpen = true">
+            <template #icon><icon-settings /></template>
+          </a-button>
         </div>
       </div>
 
@@ -119,6 +116,10 @@ import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useHttpStore } from '@/stores/http'
 import { api } from '@/api/client'
+import IconShowLeft from '@/imgs/icon/show_left.svg?component'
+import IconHiddenLeft from '@/imgs/icon/hidden_left.svg?component'
+import IconRightLeft from '@/imgs/icon/right_left.svg?component'
+import IconTopBottom from '@/imgs/icon/top_bottom.svg?component'
 import type { CollectionNode, HttpCallRecord } from '@/api/types'
 
 const collections = useCollectionsStore()
@@ -262,54 +263,242 @@ function statusClass(code: number) {
   background: var(--el-bg-color);
   overflow: hidden;
 }
-.side-collections { flex: 1 1 55%; min-height: 0; display: flex; flex-direction: column; }
-.side-divider { height: 1px; background: var(--el-border-color-lighter); flex-shrink: 0; }
-.side-section { display: flex; flex-direction: column; min-height: 0; flex: 1 1 45%; }
-.section-header {
-  display: flex; align-items: center; gap: 4px; padding: 6px 8px;
-  font-weight: 600; font-size: 13px; cursor: pointer;
-}
-.history-list { flex: 1; overflow-y: auto; }
-.history-item {
-  display: flex; align-items: center; gap: 6px; padding: 4px 10px;
-  cursor: pointer; font-size: 12px;
-  &:hover { background: var(--el-fill-color-light); }
-  .m { font-weight: 700; width: 48px; }
-  .m.get { color: #49cc90; } .m.post { color: #fca130; }
-  .m.put { color: #61affe; } .m.delete { color: #f93e3e; }
-  .u { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .s.ok { color: var(--el-color-success); } .s.err { color: var(--el-color-danger); }
+
+.side-collections {
+  flex: 1 1 55%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.workbench { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--el-bg-color); }
+.side-divider {
+  height: 1px;
+  background: var(--el-border-color-lighter);
+  flex-shrink: 0;
+}
+
+.side-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1 1 45%;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
+
+  .m {
+    font-weight: 700;
+    width: 48px;
+  }
+
+  .m.get {
+    color: #49cc90;
+  }
+
+  .m.post {
+    color: #fca130;
+  }
+
+  .m.put {
+    color: #61affe;
+  }
+
+  .m.delete {
+    color: #f93e3e;
+  }
+
+  .u {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .s.ok {
+    color: var(--el-color-success);
+  }
+
+  .s.err {
+    color: var(--el-color-danger);
+  }
+}
+
+.workbench {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--el-bg-color);
+}
+
 .tab-bar {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 4px 8px 0; border-bottom: 1px solid var(--el-border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 0;
+  border-bottom: 1px solid var(--el-border-color);
   background: var(--el-bg-color-page);
 }
-.tabs-left { display: flex; align-items: center; gap: 2px; overflow-x: auto; }
-.tabs-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
-.tab {
-  display: flex; align-items: center; gap: 6px; padding: 4px 10px;
-  border: 1px solid var(--el-border-color); border-bottom: none;
-  border-radius: 6px 6px 0 0; cursor: pointer; font-size: 12px;
-  background: var(--el-bg-color); max-width: 200px; flex-shrink: 0;
-  &.active { font-weight: 600; background: var(--el-color-primary-light-9); }
-  .tab-method { font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 3px; color: #fff;
-    &.get { background: #49cc90; } &.post { background: #fca130; }
-    &.put { background: #61affe; } &.delete { background: #f93e3e; }
-    &.patch { background: #50e3c2; } &.ws { background: #8e44ad; } &.mcp { background: #e6a23c; }
-  }
-  .tab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .tab-close { cursor: pointer; border-radius: 50%; &:hover { background: var(--el-fill-color-dark); } }
+
+.tabs-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
 }
 
-.pane { flex: 1; display: flex; min-height: 0; }
-.half { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
-.empty { flex: 1; display: flex; align-items: center; justify-content: center; }
+.tabs-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+
+  .svg-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--el-border-color);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 12px;
+  background: var(--el-bg-color);
+  max-width: 200px;
+  flex-shrink: 0;
+
+  &.active {
+    font-weight: 600;
+    background: var(--el-color-primary-light-9);
+  }
+
+  .tab-method {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #fff;
+
+    &.get {
+      background: #49cc90;
+    }
+
+    &.post {
+      background: #fca130;
+    }
+
+    &.put {
+      background: #61affe;
+    }
+
+    &.delete {
+      background: #f93e3e;
+    }
+
+    &.patch {
+      background: #50e3c2;
+    }
+
+    &.ws {
+      background: #8e44ad;
+    }
+
+    &.mcp {
+      background: #e6a23c;
+    }
+  }
+
+  .tab-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .tab-close {
+    cursor: pointer;
+    border-radius: 50%;
+
+    &:hover {
+      background: var(--el-fill-color-dark);
+    }
+  }
+}
+
+.pane {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.half {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* 拖拽条 */
-.splitter { flex-shrink: 0; z-index: 5; }
-.v-splitter { width: 4px; cursor: col-resize; background: transparent; &:hover { background: var(--el-color-primary-light-5); } }
-.h-splitter { height: 4px; cursor: row-resize; background: transparent; &:hover { background: var(--el-color-primary-light-5); } }
+.splitter {
+  flex-shrink: 0;
+  z-index: 5;
+}
+
+.v-splitter {
+  width: 4px;
+  cursor: col-resize;
+  background: transparent;
+
+  &:hover {
+    background: var(--el-color-primary-light-5);
+  }
+}
+
+.h-splitter {
+  height: 4px;
+  cursor: row-resize;
+  background: transparent;
+
+  &:hover {
+    background: var(--el-color-primary-light-5);
+  }
+}
 </style>
