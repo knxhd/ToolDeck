@@ -9,7 +9,9 @@
       <span class="node-name" :title="node.name">{{ node.name }}</span>
       <span class="node-actions" @click.stop>
         <a-dropdown v-if="node.type !== 'request'" @select="onCommand">
-          <icon-plus class="action-btn" title="新建子项" />
+          <a-button size="mini" type="text" shape="circle" title="新建子项">
+            <template #icon><icon-plus /></template>
+          </a-button>
           <template #content>
             <a-doption value="http">HTTP Request</a-doption>
             <a-doption value="websocket">WebSocket Request</a-doption>
@@ -17,8 +19,12 @@
             <a-doption value="folder">Folder</a-doption>
           </template>
         </a-dropdown>
-        <icon-edit class="action-btn" title="重命名" @click="emit('rename', node)" />
-        <icon-delete class="action-btn danger" title="删除" @click="emit('remove', node)" />
+        <a-button size="mini" type="text" shape="circle" title="重命名" @click="emit('rename', node)">
+          <template #icon><icon-edit /></template>
+        </a-button>
+        <a-button size="mini" type="text" shape="circle" title="删除" status="danger" @click="emit('remove', node)">
+          <template #icon><icon-delete /></template>
+        </a-button>
       </span>
     </div>
     <div v-if="expanded.has(node.id)" class="node-children">
@@ -102,7 +108,7 @@ function onChildRemove(n: CollectionNode) { emit('remove', n) }
     }
 
     &:hover .node-actions {
-      display: inline-flex;
+      visibility: visible;
     }
   }
 
@@ -123,23 +129,15 @@ function onChildRemove(n: CollectionNode) { emit('remove', n) }
   }
 
   .node-actions {
-    display: none;
+    // visibility 隐藏而非 display:none：保留布局空间，保证 dropdown 打开时 trigger 的
+    // getBoundingClientRect 稳定，避免弹出层定位到左上角 (0,0)。
+    visibility: hidden;
     align-items: center;
     gap: 2px;
-  }
+    display: inline-flex;
 
-  .action-btn {
-    cursor: pointer;
-    font-size: 18px;
-    padding: 2px;
-    border-radius: 3px;
-
-    &:hover {
-      background: var(--el-fill-color-dark);
-    }
-
-    &.danger:hover {
-      color: var(--el-color-danger);
+    .arco-btn {
+      color: var(--el-text-color-secondary);
     }
   }
 
