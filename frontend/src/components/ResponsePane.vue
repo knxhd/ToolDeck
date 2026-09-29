@@ -25,7 +25,7 @@
                       <div class="frame-row" :class="{ active: index === selectedFrame }"
                         @click="selectedFrame = index">
                         <span class="frame-dot" :class="item.type"></span>
-                        <span class="frame-preview">{{ preview(item.data) }}</span>
+                        <span class="frame-preview">{{ item.data }}</span>
                         <span class="frame-time">{{ item.time }}</span>
                       </div>
                     </template>
@@ -181,7 +181,6 @@ function formatSize(bytes: number) {
 }
 
 .frame-list {
-  flex: 0 0 500px;
   width: 100%;
   min-height: 0;
   border-right: 1px solid var(--el-border-color);
@@ -190,6 +189,7 @@ function formatSize(bytes: number) {
 
   .frame-row {
     display: flex;
+    width: 100%;
     align-items: center;
     justify-content: space-between;
     gap: 6px;
