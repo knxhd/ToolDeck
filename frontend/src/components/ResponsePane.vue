@@ -17,19 +17,25 @@
       <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
           <div class="stream-layout">
-            <div class="frame-list">
-              <div v-for="(e, i) in tab.stream_events" :key="i" class="frame-row"
-                :class="{ active: i === selectedFrame }" @click="selectedFrame = i">
-                <template v-if="e.data.trim().length > 0">
-                  <span class="frame-dot" :class="e.type"></span>
-                  <span class="frame-preview">{{ preview(e.data) }}</span>
-                  <span class="frame-time">{{ e.time }}</span>
+            <div class="frame-list custom-arco-design">
+              <a-collapse :show-expand-icon="false" :bordered="false">
+                <template v-for="(item, index) in tab.stream_events" :key="index">
+                  <a-collapse-item v-if="item.data.trim().length > 0" :key="index">
+                    <template #header>
+                      <div class="frame-row" :class="{ active: index === selectedFrame }"
+                        @click="selectedFrame = index">
+                        <span class="frame-dot" :class="item.type"></span>
+                        <span class="frame-preview">{{ preview(item.data) }}</span>
+                        <span class="frame-time">{{ item.time }}</span>
+                      </div>
+                    </template>
+                    <div style="width: 100%;height: 200px;overflow: auto;">
+                      <SingleDataView :data="item.data || ''" />
+                    </div>
+                  </a-collapse-item>
                 </template>
-              </div>
+              </a-collapse>
               <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
-            </div>
-            <div class="frame-detail">
-              <SingleDataView :data="currentFrame?.data || ''" />
             </div>
           </div>
         </template>
@@ -176,7 +182,7 @@ function formatSize(bytes: number) {
 
 .frame-list {
   flex: 0 0 500px;
-  width: 500px;
+  width: 100%;
   min-height: 0;
   border-right: 1px solid var(--el-border-color);
   overflow-y: auto;
@@ -243,40 +249,6 @@ function formatSize(bytes: number) {
       text-overflow: ellipsis;
       color: var(--el-text-color-secondary);
     }
-  }
-}
-
-.frame-detail {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  padding-left: 8px;
-
-  .frame-detail-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 2px 0 6px;
-    flex-shrink: 0;
-  }
-
-  .frame-time {
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
-  }
-
-  .frame-detail-body {
-    flex: 1;
-    min-height: 0;
-  }
-
-  .resp-empty {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--el-text-color-placeholder);
   }
 }
 

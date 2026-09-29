@@ -1,7 +1,7 @@
 <template>
   <div class="single-data-view">
     <div class="body-toolbar">
-      <a-select v-model="formatType" size="small" style="width: 110px">
+      <a-select v-model="formatType" size="mini" style="width: 110px">
         <a-option value="text">Text</a-option>
         <a-option value="json">JSON</a-option>
         <a-option value="html">HTML</a-option>
