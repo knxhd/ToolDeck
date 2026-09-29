@@ -1,4 +1,4 @@
-export const parseMessages = (message, type) => {
+export const parseMessages = (message: string, type: string) => {
     try {
         if (message == '\n') {
             return '\n'

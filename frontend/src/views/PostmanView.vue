@@ -68,27 +68,22 @@
         </div>
       </div>
 
-      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id" ref="paneRef"
-        :style="{ flexDirection: responseLayout === 'bottom' ? 'column' : 'row' }">
+      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id">
         <template v-if="wb.activeTab.kind === 'http'">
-          <template v-if="responseLayout === 'bottom'">
-            <div class="half" :style="{ height: (100 - responseRatio) + '%' }">
-              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
+          <RequestBar :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
+          <div class="http-body" ref="paneRef"
+            :style="{ flexDirection: responseLayout === 'bottom' ? 'column' : 'row' }">
+            <div class="half"
+              :style="responseLayout === 'bottom' ? { height: (100 - responseRatio) + '%' } : { width: (100 - responseRatio) + '%' }">
+              <RequestPane :tab="wb.activeTab" />
             </div>
-            <div class="splitter h-splitter" @mousedown="startRespDrag" />
-            <div class="half" :style="{ height: responseRatio + '%' }">
+            <div class="splitter" :class="responseLayout === 'bottom' ? 'h-splitter' : 'v-splitter'"
+              @mousedown="startRespDrag" />
+            <div class="half"
+              :style="responseLayout === 'bottom' ? { height: responseRatio + '%' } : { width: responseRatio + '%' }">
               <ResponsePane :tab="wb.activeTab" />
             </div>
-          </template>
-          <template v-else>
-            <div class="half" :style="{ width: (100 - responseRatio) + '%' }">
-              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
-            </div>
-            <div class="splitter v-splitter" @mousedown="startRespDrag" />
-            <div class="half" :style="{ width: responseRatio + '%' }">
-              <ResponsePane :tab="wb.activeTab" />
-            </div>
-          </template>
+          </div>
         </template>
         <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp" />
         <WebSocketPane v-else :tab="wb.activeTab" />
@@ -107,6 +102,7 @@ import { onMounted, ref } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
+import RequestBar from '@/components/RequestBar.vue'
 import RequestPane from '@/components/RequestPane.vue'
 import ResponsePane from '@/components/ResponsePane.vue'
 import WebSocketPane from '@/components/WebSocketPane.vue'
@@ -132,7 +128,7 @@ const historyOpen = ref(true)
 // 布局状态
 const sidebarHidden = ref(false)
 const sidebarWidth = ref(280)
-const responseLayout = ref<'bottom' | 'right'>('bottom')
+const responseLayout = ref<'bottom' | 'right'>('right')
 const responseRatio = ref(50)
 const settingsOpen = ref(false)
 const paneRef = ref<HTMLElement | null>(null)
@@ -469,7 +465,14 @@ function statusClass(code: number) {
 .pane {
   flex: 1;
   display: flex;
+  flex-direction: column;
   min-height: 0;
+}
+
+.http-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
 
 .half {

@@ -73,8 +73,6 @@ const props = defineProps<{ tab: OpenTab }>()
 
 const selectedFrame = ref(0)
 
-const currentFrame = computed(() => props.tab.stream_events[selectedFrame.value] || null)
-
 const headerRows = computed(() =>
   Object.entries(props.tab.headers || {}).map(([key, value]) => ({ key, value })),
 )
@@ -90,11 +88,6 @@ watch(
   () => { selectedFrame.value = props.tab.stream_events.length - 1 },
 )
 
-function preview(data: string) {
-  const s = (data || '').replace(/\s+/g, ' ').trim()
-  return s.length > 60 ? s.slice(0, 60) + '…' : s
-}
-
 const statusType = computed(() => {
   const c = props.tab.status_code
   if (c < 300) return 'green'
@@ -109,7 +102,7 @@ function formatSize(bytes: number) {
 }
 
 const mergeType = ref('')
-const mergeMessage = (messages) => {
+const mergeMessage = (messages: Array<{ data: string }>) => {
   try {
     let fullMessage = ''
     for (const item of messages) {
