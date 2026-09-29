@@ -18,9 +18,9 @@
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
           <div>
             <a-select v-model="mergeType" :style="{ width: '320px' }" placeholder="数据合并" :allow-clear="true">
-              <a-option>OpenAi</a-option>
-              <a-option>Qwen协议</a-option>
-              <a-option>Qwen3协议</a-option>
+              <a-option value="OpenAi">OpenAi</a-option>
+              <a-option value="Qwen">Qwen协议</a-option>
+              <a-option value="Qwen3">Qwen3协议</a-option>
             </a-select>
           </div>
           <div class="stream-layout">
