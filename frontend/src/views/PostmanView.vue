@@ -73,7 +73,7 @@
         <template v-if="wb.activeTab.kind === 'http'">
           <template v-if="responseLayout === 'bottom'">
             <div class="half" :style="{ height: (100 - responseRatio) + '%' }">
-              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" />
+              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
             </div>
             <div class="splitter h-splitter" @mousedown="startRespDrag" />
             <div class="half" :style="{ height: responseRatio + '%' }">
@@ -82,7 +82,7 @@
           </template>
           <template v-else>
             <div class="half" :style="{ width: (100 - responseRatio) + '%' }">
-              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" />
+              <RequestPane :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
             </div>
             <div class="splitter v-splitter" @mousedown="startRespDrag" />
             <div class="half" :style="{ width: responseRatio + '%' }">
@@ -204,6 +204,16 @@ function onSaveMcp() {
   node.mcp_headers = tab.mcp_headers
   node.mcp_tool = tab.mcp_tool
   node.mcp_args = tab.mcp_args
+  collections.persist()
+}
+
+/** 从 curl 导入等操作后，把当前请求持久化到集合节点。 */
+function onSaveRequest() {
+  const tab = wb.activeTab
+  if (!tab?.nodeId) return
+  const node = collections.findNode(tab.nodeId)
+  if (!node || node.type !== 'request') return
+  node.request = JSON.parse(JSON.stringify(tab.request))
   collections.persist()
 }
 
