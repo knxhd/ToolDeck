@@ -9,7 +9,7 @@
     </div>
     <div class="body-view">
       <MonacoEditor v-if="formatType !== 'html'" :model-value="rendered(data)"
-        :language="formatType === 'json' ? 'json' : 'plaintext'" read-only height="100%" />
+        :language="formatType === 'json' ? 'json' : 'plaintext'" read-only fill />
       <iframe v-else class="html-frame" :srcdoc="data" sandbox=""></iframe>
     </div>
   </div>
@@ -61,6 +61,8 @@ const rendered = (raw: string) => {
 .body-view {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: auto;
 
   .html-frame {

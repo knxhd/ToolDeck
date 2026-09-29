@@ -128,7 +128,7 @@ function formatSize(bytes: number) {
   display: flex;
   flex-direction: column;
 
-  :deep(.arco-tabs-header) {
+  :deep(.arco-tabs-nav) {
     flex-shrink: 0;
   }
 
@@ -138,13 +138,26 @@ function formatSize(bytes: number) {
     overflow: hidden;
   }
 
-  :deep(.arco-tabs-content-inner) {
+  :deep(.arco-tabs-content-list) {
     height: 100%;
   }
 
-  :deep(.arco-tabs-pane) {
+  :deep(.arco-tabs-content-item) {
     height: 100%;
     overflow: auto;
+  }
+
+  :deep(.arco-tabs-content-item-active) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  :deep(.arco-tabs-content-item-active .arco-tabs-pane) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 }
 

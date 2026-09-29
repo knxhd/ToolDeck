@@ -1,5 +1,6 @@
 <template>
-  <div ref="containerRef" class="monaco-container" :style="{ height: height }"></div>
+  <div ref="containerRef" class="monaco-container" :class="{ 'is-fill': fill }"
+    :style="fill ? undefined : { height }"></div>
 </template>
 
 <script setup lang="ts">
@@ -15,6 +16,7 @@ const props = withDefaults(
     theme?: 'vs' | 'vs-dark'
     readOnly?: boolean
     height?: string
+    fill?: boolean
     autoScrollToEnd?: boolean
     fontSize?: number
   }>(),
@@ -22,6 +24,7 @@ const props = withDefaults(
     language: 'json',
     readOnly: false,
     height: '100%',
+    fill: false,
     autoScrollToEnd: false,
   },
 )
@@ -122,5 +125,11 @@ onBeforeUnmount(() => {
 .monaco-container {
   width: 100%; min-height: 200px;
   border: 1px solid var(--el-border-color); border-radius: 4px;
+
+  &.is-fill {
+    flex: 1;
+    min-height: 0;
+    height: auto;
+  }
 }
 </style>

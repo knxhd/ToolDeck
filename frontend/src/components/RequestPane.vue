@@ -32,7 +32,7 @@
           v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
           v-model="tab.request.body"
           :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'"
-          height="220px"
+          fill
         />
         <KeyValueEditor
           v-else-if="tab.request.body_type === 'form-data'"
@@ -140,6 +140,19 @@ function applyCurl() {
 .request-pane {
   display: flex; flex-direction: column; height: 100%;
   .url-bar { display: flex; gap: 8px; padding: 8px; border-bottom: 1px solid var(--el-border-color); }
-  .req-tabs { flex: 1; overflow: auto; padding: 0 8px; }
+  .req-tabs {
+    flex: 1; min-height: 0; padding: 0 8px;
+    display: flex; flex-direction: column;
+
+    :deep(.arco-tabs-nav) { flex-shrink: 0; }
+    :deep(.arco-tabs-content) { flex: 1; min-height: 0; overflow: hidden; }
+    :deep(.arco-tabs-content-list) { height: 100%; }
+    :deep(.arco-tabs-content-item) { height: 100%; overflow: auto; }
+    :deep(.arco-tabs-content-item-active) { display: flex; flex-direction: column; overflow: hidden; }
+    :deep(.arco-tabs-content-item-active .arco-tabs-pane) {
+      flex: 1; min-height: 0;
+      display: flex; flex-direction: column;
+    }
+  }
 }
 </style>
