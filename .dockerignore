@@ -1,0 +1,34 @@
+# 依赖目录
+**/node_modules
+frontend/node_modules
+
+# 构建产物（由 Dockerfile 阶段1 重新生成）
+frontend/dist
+
+# Python 缓存与打包产物
+**/__pycache__
+**/*.pyc
+backend/build
+backend/dist
+*.spec
+
+# 本地数据（默认 ~/.api-tool，不入镜像）
+**/.api-tool
+
+# 编辑器 / 系统
+.git
+.gitignore
+.vscode
+.idea
+*.log
+.DS_Store
+
+# Docker 自身与部署脚本
+Dockerfile
+.dockerignore
+docker-compose.yml
+build-docker.ps1
+build-docker.sh
+build-push.sh
+README-docker.md
+api-tool.tar
