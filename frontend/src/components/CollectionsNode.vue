@@ -1,10 +1,8 @@
 <template>
-  <div class="node-row" :style="{ paddingLeft: depth * 14 + 6 + 'px' }">
+  <div class="node-row" :style="{ paddingLeft: depth * 8 + 'px' }">
     <div class="node-line" :class="{ active: isRequest }" @click="onLineClick">
-      <icon-right v-if="hasChildren && !expanded.has(node.id)" class="twisty" @click.stop="onToggle" />
-      <icon-down v-else-if="hasChildren" class="twisty" @click.stop="onToggle" />
-      <!-- <icon-folder v-if="node.type !== 'request' && !expanded.has(node.id)" class="node-icon" /> -->
-      <icon-folder-open v-else-if="node.type !== 'request'" class="node-icon" />
+      <icon-right v-if="node.type !== 'request' && !expanded.has(node.id)" class="twisty" @click.stop="onToggle" />
+      <icon-down v-else-if="node.type !== 'request'" class="twisty" @click.stop="onToggle" />
       <span v-else class="method-badge" :class="methodClass">
         {{ node.kind === 'websocket' ? 'WS' : node.kind === 'mcp' ? 'MCP' : (node.request?.method || 'GET') }}
       </span>
@@ -23,7 +21,7 @@
         <icon-delete class="action-btn danger" title="删除" @click="emit('remove', node)" />
       </span>
     </div>
-    <div v-if="hasChildren && expanded.has(node.id)" class="node-children">
+    <div v-if="expanded.has(node.id)" class="node-children">
       <CollectionsNode v-for="child in node.children" :key="child.id" :node="child" :depth="depth + 1"
         :expanded="expanded" @toggle="onChildToggle" @open="onChildOpen" @add-child="onChildAdd" @rename="onChildRename"
         @remove="onChildRemove" />
@@ -70,7 +68,9 @@ function onLineClick() {
 }
 
 function onToggle() {
-  if (hasChildren.value) emit('toggle', props.node.id)
+  if (hasChildren.value) {
+    emit('toggle', props.node.id)
+  }
 }
 
 function onChildToggle(id: string) { emit('toggle', id) }
@@ -91,7 +91,7 @@ function onChildRemove(n: CollectionNode) { emit('remove', n) }
     padding: 6px;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
 
     &:hover {
       background: var(--el-fill-color-light);
@@ -130,6 +130,7 @@ function onChildRemove(n: CollectionNode) { emit('remove', n) }
 
   .action-btn {
     cursor: pointer;
+    font-size: 18px;
     padding: 2px;
     border-radius: 3px;
 
