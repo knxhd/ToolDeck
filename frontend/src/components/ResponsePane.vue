@@ -16,8 +16,18 @@
     <a-tabs v-else class="resp-tabs">
       <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
+          <div>
+            <a-select v-model="mergeType" :style="{ width: '320px' }" placeholder="数据合并" :allow-clear="true">
+              <a-option>OpenAi</a-option>
+              <a-option>Qwen协议</a-option>
+              <a-option>Qwen3协议</a-option>
+            </a-select>
+          </div>
           <div class="stream-layout">
-            <div class="frame-list custom-arco-design">
+            <div v-if="mergeType">
+              {{ mergeMessage(tab.stream_events) }}
+            </div>
+            <div class="frame-list custom-arco-design" v-else>
               <a-collapse :show-expand-icon="false" :bordered="false">
                 <template v-for="(item, index) in tab.stream_events" :key="index">
                   <a-collapse-item v-if="item.data.trim().length > 0" :key="index">
@@ -57,6 +67,7 @@
 import { computed, ref, watch } from 'vue'
 import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
+import { parseMessages } from '@/utils/llmUtil'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -95,6 +106,21 @@ function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+const mergeType = ref('')
+const mergeMessage = (messages) => {
+  try {
+    let fullMessage = ''
+    for (const item of messages) {
+      const message = parseMessages(item.data, mergeType.value)
+      fullMessage += message
+    }
+    return fullMessage
+  } catch (error) {
+    console.error(error)
+    mergeType.value = ''
+  }
 }
 </script>
 
