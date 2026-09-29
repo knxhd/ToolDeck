@@ -14,7 +14,7 @@
       <a-button v-if="!tab.streaming" type="primary" @click="onSend">发送</a-button>
       <a-button v-else status="danger" type="secondary" @click="$emit('cancel')">停止</a-button>
     </div>
-    <a-tabs class="req-tabs" :default-active-key="'params'">
+    <a-tabs v-model:active-key="activeKey" class="req-tabs">
       <a-tab-pane key="params" title="Params">
         <KeyValueEditor v-model="tab.request.params" />
       </a-tab-pane>
@@ -75,6 +75,24 @@ const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 
 const curlDialogVisible = ref(false)
 const curlText = ref('')
 
+/** 是否已有实际 body 内容（用于决定默认打开的 tab）。 */
+const hasBody = computed(() => {
+  const r = props.tab.request
+  if (r.body_type === 'none') return false
+  if (r.body_type === 'form-data') {
+    try {
+      const arr = JSON.parse(r.body || '[]')
+      return arr.some((i: { key?: string; value?: string }) => i && (i.key || i.value))
+    } catch {
+      return false
+    }
+  }
+  return !!r.body?.trim()
+})
+
+/** 打开请求时按实际情况选默认 tab：有 body 进 Body，否则进 Params。 */
+const activeKey = ref(hasBody.value ? 'body' : 'params')
+
 const formPairs = computed<KeyValue[]>(() => {
   try {
     const arr = JSON.parse(props.tab.request.body || '[]')
@@ -106,6 +124,8 @@ function applyCurl() {
     r.params = parsed.params.length ? parsed.params : [{ key: '', value: '', enabled: true }]
     r.body_type = parsed.bodyType
     r.body = parsed.body
+    // 导入后按实际情况切 tab：有 body 进 Body，否则回 Params
+    activeKey.value = parsed.bodyType !== 'none' ? 'body' : 'params'
     curlDialogVisible.value = false
     curlText.value = ''
     emit('save')
