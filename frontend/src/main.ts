@@ -8,6 +8,11 @@ import '@arco-design/web-vue/dist/arco.css'
 import editorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import jsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker'
 
+import VMdPreview from '@kangc/v-md-editor/lib/preview';
+import '@kangc/v-md-editor/lib/style/preview.css';
+import githubTheme from '@kangc/v-md-editor/lib/theme/github.js';
+import '@kangc/v-md-editor/lib/theme/style/github.css';
+
 // monaco-editor 已提供全局 MonacoEnvironment 类型声明，此处仅赋值
 self.MonacoEnvironment = {
   getWorker(_workerId: string, label: string) {
@@ -15,6 +20,13 @@ self.MonacoEnvironment = {
     return new editorWorker()
   },
 }
+
+// highlightjs
+import hljs from 'highlight.js';
+
+VMdPreview.use(githubTheme, {
+  Hljs: hljs,
+});
 
 import App from './App.vue'
 import router from './router'
@@ -25,6 +37,7 @@ const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
+app.use(VMdPreview);
 app.use(router)
 app.use(ArcoVue)
 app.use(ArcoVueIcon)

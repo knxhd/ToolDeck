@@ -25,7 +25,7 @@
           </div>
           <div class="stream-layout">
             <div v-if="mergeType">
-              {{ mergeMessage(tab.stream_events) }}
+              <v-md-preview :text="mergeMessage(tab.stream_events)" />
             </div>
             <div class="frame-list custom-arco-design" v-else>
               <a-collapse :show-expand-icon="false" :bordered="false">
