@@ -49,6 +49,7 @@ onMounted(() => {
     readOnly: props.readOnly,
     automaticLayout: true,
     minimap: { enabled: false },
+    stickyScroll: { enabled: false },
     scrollBeyondLastLine: false,
     fontSize: props.fontSize || settings.settings.fontSize || 14,
     tabSize: 2,
