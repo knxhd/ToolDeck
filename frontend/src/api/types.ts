@@ -90,6 +90,8 @@ export interface OpenTab {
   title: string
   kind: 'http' | 'websocket' | 'mcp'
   nodeId?: string
+  /** 是否有未保存的修改（仅 HTTP）。 */
+  dirty?: boolean
   request: HttpRequestData
   ws_url: string
   // MCP 请求态

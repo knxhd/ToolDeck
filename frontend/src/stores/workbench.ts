@@ -26,6 +26,7 @@ function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
     id: uid(),
     title: kind === 'websocket' ? 'WebSocket' : kind === 'mcp' ? 'MCP' : 'New Request',
     kind,
+    dirty: false,
     request: blankRequest(),
     ws_url: 'wss://',
     mcp_url: '',

@@ -48,7 +48,7 @@
                   :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
                   {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
                 </span>
-                <span class="tab-title">{{ t.title }}</span>
+                <span class="tab-title">{{ t.dirty ? '* ' : '' }}{{ t.title }}</span>
               </template>
             </a-tab-pane>
           </a-tabs>
@@ -114,7 +114,7 @@
 
     <SettingsDialog v-model="settingsOpen" />
     <EnvironmentsDialog v-model:visible="envDialogOpen" />
-    <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" />
+    <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" @saved="onRequestSaved" />
   </div>
 </template>
 
@@ -136,6 +136,7 @@ import { useWorkbenchStore } from '@/stores/workbench'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useHttpStore } from '@/stores/http'
 import { api } from '@/api/client'
+import { toast } from '@/utils/feedback'
 import IconShowLeft from '@/imgs/icon/show_left.svg?component'
 import IconHiddenLeft from '@/imgs/icon/hidden_left.svg?component'
 import IconRightLeft from '@/imgs/icon/right_left.svg?component'
@@ -166,6 +167,26 @@ watch(
   (id) => env.setCurrentNode(id),
 )
 
+// track dirty: refresh snapshot on tab switch, mark dirty on edit
+let requestSnapshot = ''
+watch(
+  () => wb.activeTab?.id,
+  () => {
+    const t = wb.activeTab
+    requestSnapshot = t && t.kind === 'http' ? JSON.stringify(t.request) : ''
+  },
+  { immediate: true },
+)
+watch(
+  () => wb.activeTab?.request,
+  (req) => {
+    const t = wb.activeTab
+    if (!t || t.kind !== 'http') return
+    if (JSON.stringify(req) !== requestSnapshot) t.dirty = true
+  },
+  { deep: true },
+)
+
 
 function onEnvSelect(value: string | number | Record<string, unknown> | undefined) {
   const v = String(value)
@@ -188,7 +209,32 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
-    if (wb.activeTab) saveDialogOpen.value = true
+    const tab = wb.activeTab
+    if (!tab || tab.kind !== 'http') return
+    if (!tab.dirty) return
+    if (tab.nodeId) silentSave(tab)
+    else saveDialogOpen.value = true
+  }
+}
+
+/** 已绑定节点的请求：直接写回集合树，不弹框。 */
+async function silentSave(tab: NonNullable<typeof wb.activeTab>) {
+  if (!tab.nodeId) return
+  const node = collections.findNode(tab.nodeId)
+  if (!node) return
+  node.request = JSON.parse(JSON.stringify(tab.request))
+  node.name = tab.title
+  await collections.persist()
+  tab.dirty = false
+  requestSnapshot = JSON.stringify(tab.request)
+  toast.success('已保存')
+}
+
+function onRequestSaved() {
+  const t = wb.activeTab
+  if (t && t.kind === 'http') {
+    t.dirty = false
+    requestSnapshot = JSON.stringify(t.request)
   }
 }
 
