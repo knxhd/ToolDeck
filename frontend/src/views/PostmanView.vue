@@ -38,8 +38,8 @@
             :show-add-button="true"
             type="card-gutter"
             class="workbench-tabs"
-            @change="(k: string) => wb.setActive(k)"
-            @delete="(k: string) => wb.closeTab(k)"
+            @change="(k: string | number) => wb.setActive(String(k))"
+            @delete="(k: string | number) => wb.closeTab(String(k))"
             @add="() => wb.openBlank('http')"
           >
             <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
