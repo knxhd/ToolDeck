@@ -17,6 +17,7 @@
             <a-doption value="websocket">WebSocket Request</a-doption>
             <a-doption value="mcp">MCP Request</a-doption>
             <a-doption value="folder">Folder</a-doption>
+            <a-doption value="__export__">导出</a-doption>
           </template>
         </a-dropdown>
         <a-button size="mini" type="text" shape="circle" title="重命名" @click="emit('rename', node)">
@@ -30,7 +31,7 @@
     <div v-if="expanded.has(node.id)" class="node-children">
       <CollectionsNode v-for="child in node.children" :key="child.id" :node="child" :depth="depth + 1"
         :expanded="expanded" @toggle="onChildToggle" @open="onChildOpen" @add-child="onChildAdd" @rename="onChildRename"
-        @remove="onChildRemove" />
+        @remove="onChildRemove" @export="onChildExport" />
     </div>
   </div>
 </template>
@@ -52,6 +53,7 @@ const emit = defineEmits<{
   addChild: [payload: { parentId: string; kind: string }]
   rename: [node: CollectionNode]
   remove: [node: CollectionNode]
+  export: [node: CollectionNode]
 }>()
 
 const hasChildren = computed(() => !!props.node.children && props.node.children.length > 0)
@@ -65,7 +67,12 @@ const methodClass = computed(() => {
 })
 
 function onCommand(kind: string | number | Record<string, unknown> | undefined) {
-  emit('addChild', { parentId: props.node.id, kind: String(kind) })
+  const k = String(kind)
+  if (k === '__export__') {
+    emit('export', props.node)
+    return
+  }
+  emit('addChild', { parentId: props.node.id, kind: k })
 }
 
 function onLineClick() {
@@ -84,6 +91,7 @@ function onChildOpen(n: CollectionNode) { emit('open', n) }
 function onChildAdd(p: { parentId: string; kind: string }) { emit('addChild', p) }
 function onChildRename(n: CollectionNode) { emit('rename', n) }
 function onChildRemove(n: CollectionNode) { emit('remove', n) }
+function onChildExport(n: CollectionNode) { emit('export', n) }
 </script>
 
 <style lang="less" scoped>
