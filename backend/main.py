@@ -31,7 +31,7 @@ def main() -> None:
         port = int(os.environ.get("APP_PORT", "8765"))
 
     uvicorn.run(
-        "main:app",
+        app,  # 直接传 app 实例，避免字符串 import（PyInstaller 打包后 "main:app" 无法 import）
         host=host,
         port=port,
         reload=False,
