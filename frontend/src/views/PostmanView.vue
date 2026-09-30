@@ -68,7 +68,7 @@
         </div>
       </div>
 
-      <div class="pane" v-if="wb.activeTab" :key="wb.activeTab.id">
+      <div class="pane custom-arco-design" v-if="wb.activeTab" :key="wb.activeTab.id">
         <template v-if="wb.activeTab.kind === 'http'">
           <RequestBar :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
           <div class="http-body" ref="paneRef"

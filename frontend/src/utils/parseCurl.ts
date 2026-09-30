@@ -102,6 +102,14 @@ export function parseUrlQuery(
   return { baseUrl, params: params.filter((p) => p.key || p.value) }
 }
 
+/** 把 Params 表拼成 query string（仅 enabled 且有 key 的行；key/value 做 URL 编码）。 */
+export function buildQueryString(params: Array<{ key: string; value: string; enabled: boolean }>): string {
+  return (params || [])
+    .filter((p) => p.enabled && p.key)
+    .map((p) => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value ?? '')}`)
+    .join('&')
+}
+
 export function parseCurl(text: string): ParsedCurl {
   const tokens = tokenize(text)
 

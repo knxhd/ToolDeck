@@ -43,22 +43,24 @@ const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 
 
 const curlDialogVisible = ref(false)
 const curlText = ref('')
-let lastSyncedUrl = ''
 
 function onSend() {
   syncQueryToParams()
   emit('send')
 }
 
-/** URL 失焦/发送时：自动把 URL 中 ?query 解析到 Params，URL 保留去掉 query 的部分。 */
+/** URL 失焦/发送时：自动把 URL 中 ?query 解析到 Params；URL 输入框保留完整 URL（Postman 式双向同步）。 */
 function syncQueryToParams() {
   const r = props.tab.request
   if (!r.url || !r.url.includes('?')) return
-  if (r.url === lastSyncedUrl) return // 同一 URL 已解析过，跳过
-  const { baseUrl, params } = parseUrlQuery(r.url)
+  const { params } = parseUrlQuery(r.url)
   if (!params.length) return
-  lastSyncedUrl = r.url
-  r.url = baseUrl
+  // 若 Params 表已与 URL query 一致则跳过（避免重复解析/重复提示）
+  const current = (r.params || []).filter((p) => p.enabled && p.key)
+  const same =
+    current.length === params.length &&
+    current.every((p, i) => p.key === params[i].key && p.value === params[i].value)
+  if (same) return
   r.params = [...params, { key: '', value: '', enabled: true }]
   emit('save')
   toast.success(`已解析 ${params.length} 个 URL 参数到 Params`)

@@ -32,10 +32,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
+import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import type { KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
@@ -70,6 +71,19 @@ const formPairs = computed<KeyValue[]>(() => {
 function onFormChange(pairs: KeyValue[]) {
   props.tab.request.body = JSON.stringify(pairs.map((p) => ({ key: p.key, value: p.value })))
 }
+
+/** Params 表编辑 → 反向同步 URL 的 query 部分（Postman 式；URL 程序性更新不会触发输入框 blur，无循环）。 */
+watch(
+  () => props.tab.request.params,
+  (pairs) => {
+    const r = props.tab.request
+    const { baseUrl } = parseUrlQuery(r.url)
+    const query = buildQueryString(pairs || [])
+    const next = query ? `${baseUrl}?${query}` : baseUrl
+    if (next !== r.url) r.url = next
+  },
+  { deep: true },
+)
 </script>
 
 <style lang="less" scoped>

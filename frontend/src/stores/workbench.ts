@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { streamPost } from '@/api/client'
+import { parseUrlQuery } from '@/utils/parseCurl'
 import type { CollectionNode, HttpRequestData, OpenTab } from '@/api/types'
 
 let seq = 0
@@ -119,7 +120,10 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     tab.streaming = true
     controller = new AbortController()
     try {
-      await streamPost('/api/http/stream', tab.request, (ev) => {
+      // URL 输入框保留完整 URL（含 query），发送时剥离 query，由后端用 params 重新拼接，避免重复参数
+      const { baseUrl } = parseUrlQuery(tab.request.url)
+      const payload: HttpRequestData = { ...tab.request, url: baseUrl }
+      await streamPost('/api/http/stream', payload, (ev) => {
         const type = ev.type
         if (type === 'meta') {
           tab.status_code = ev.status_code as number
