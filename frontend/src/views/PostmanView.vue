@@ -431,10 +431,29 @@ function statusClass(code: number) {
 
   :deep(.arco-tabs-nav) {
     margin-bottom: 0;
+    border-bottom: none;
+  }
+
+  :deep(.arco-tabs-header) {
+    border-bottom: none;
   }
 
   :deep(.arco-tabs-tab) {
     max-width: 220px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    margin-right: 4px;
+    transition: background 0.15s;
+
+    &:hover {
+      background: var(--el-fill-color-light);
+    }
+  }
+
+  :deep(.arco-tabs-tab-active) {
+    background: var(--el-fill-color);
+    font-weight: 600;
   }
 
   .tab-method {
