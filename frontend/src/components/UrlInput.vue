@@ -12,12 +12,28 @@
       :value="modelValue"
       @input="onInput"
       @scroll="syncScroll"
-      @keydown.enter="$emit('enter')"
-      @blur="$emit('blur')"
+      @keydown="onKeydown"
+      @click="detectTrigger"
+      @keyup="detectTrigger"
+      @blur="onBlur"
       spellcheck="false"
       autocomplete="off"
     />
     <span v-if="modelValue" class="clear-btn" title="清空" @click="onClear">×</span>
+
+    <!-- 变量自动补全浮层 -->
+    <div v-if="ac.visible && ac.candidates.length" class="ac-popup">
+      <div
+        v-for="(c, i) in ac.candidates"
+        :key="c"
+        class="ac-item"
+        :class="{ active: i === ac.activeIdx }"
+        @mousedown.prevent
+        @click="pick(c)"
+      >
+        {{ c }}
+      </div>
+    </div>
 
     <!-- 悬停浮层：显示变量当前值 -->
     <div v-if="tip.visible" class="var-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }">
@@ -73,7 +89,10 @@ const rendered = computed(() => {
 
 function onInput(e: Event) {
   emit('update:modelValue', (e.target as HTMLInputElement).value)
-  nextTick(syncScroll)
+  nextTick(() => {
+    syncScroll()
+    detectTrigger()
+  })
 }
 
 function syncScroll() {
@@ -85,6 +104,104 @@ function syncScroll() {
 function onClear() {
   emit('update:modelValue', '')
   inputRef.value?.focus()
+}
+
+// ---- 变量自动补全 ----
+const ac = ref({ visible: false, candidates: [] as string[], activeIdx: 0 })
+
+function closePopup() {
+  ac.value.visible = false
+}
+
+/** 根据光标位置判断是否处于 `{{partial` 状态，并刷新候选。 */
+function detectTrigger() {
+  const input = inputRef.value
+  if (!input) return
+  // 没有可用变量时完全不弹
+  const keys = Object.keys(env.vars)
+  if (!keys.length) {
+    closePopup()
+    return
+  }
+  const value = input.value
+  const caret = input.selectionStart ?? value.length
+  const before = value.slice(0, caret)
+  const openIdx = before.lastIndexOf('{{')
+  if (openIdx < 0) {
+    closePopup()
+    return
+  }
+  const partial = before.slice(openIdx + 2)
+  // 已经出现 }} 视为占位符已闭合，不弹
+  if (partial.includes('}}')) {
+    closePopup()
+    return
+  }
+  // 只允许变量名字符，否则关闭（避免在中文/空格等场景误弹）
+  if (/[^\w.-]/.test(partial)) {
+    closePopup()
+    return
+  }
+  const q = partial.toLowerCase()
+  const candidates = q ? keys.filter((k) => k.toLowerCase().includes(q)) : [...keys]
+  ac.value = { visible: true, candidates, activeIdx: 0 }
+}
+
+function onKeydown(e: KeyboardEvent) {
+  const popupOpen = ac.value.visible && ac.value.candidates.length > 0
+  if (popupOpen) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      ac.value.activeIdx = (ac.value.activeIdx + 1) % ac.value.candidates.length
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      const n = ac.value.candidates.length
+      ac.value.activeIdx = (ac.value.activeIdx - 1 + n) % n
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closePopup()
+      return
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      pick(ac.value.candidates[ac.value.activeIdx])
+      return
+    }
+  }
+  if (e.key === 'Enter') {
+    emit('enter')
+  }
+}
+
+function pick(name: string) {
+  const input = inputRef.value
+  if (!input) return
+  const value = input.value
+  const caret = input.selectionStart ?? value.length
+  const openIdx = value.slice(0, caret).lastIndexOf('{{')
+  if (openIdx < 0) {
+    closePopup()
+    return
+  }
+  const before = value.slice(0, openIdx)
+  const after = value.slice(caret)
+  const next = before + '{{' + name + '}}' + after
+  emit('update:modelValue', next)
+  closePopup()
+  nextTick(() => {
+    input.focus()
+    const pos = before.length + name.length + 4 // 插到 {{name}} 之后
+    input.setSelectionRange(pos, pos)
+  })
+}
+
+function onBlur() {
+  closePopup()
+  emit('blur')
 }
 
 // ---- 悬停 tooltip ----
@@ -273,5 +390,31 @@ async function copyValue() {
   margin-top: 4px;
   color: #f53f3f;
   font-size: 11px;
+}
+
+.ac-popup {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 220px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--arco-color-bg-2, #fff);
+  border: 1px solid var(--arco-color-border-2, #e5e6eb);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 1100;
+  font-size: 13px;
+}
+
+.ac-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+
+  &:hover, &.active {
+    background: var(--arco-color-primary-light-1, #e8f3ff);
+  }
 }
 </style>
