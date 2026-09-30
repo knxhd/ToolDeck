@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#165dff"/>
+      <stop offset="100%" stop-color="#0fc6c2"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="url(#g)"/>
+  <!-- paper plane / send icon -->
+  <path d="M7 17.5 L24 8 L18.5 25 L15.5 18.5 L7 17.5 Z" fill="#fff" stroke="#fff" stroke-width="1.2" stroke-linejoin="round" fill-opacity="0.95"/>
+  <circle cx="24" cy="24" r="3" fill="#fff"/>
+</svg>
