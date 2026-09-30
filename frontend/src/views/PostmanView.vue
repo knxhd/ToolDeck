@@ -50,6 +50,21 @@
           </a-dropdown>
         </div>
         <div class="tabs-right">
+          <!-- 环境切换 -->
+          <a-dropdown @select="onEnvSelect" :disabled="!env.collection">
+            <a-button size="small" class="env-btn">
+              <template #icon><icon-cloud /></template>
+              {{ env.activeEnv ? env.activeEnv.name : 'No Environment' }}
+            </a-button>
+            <template #content>
+              <a-doption value="__none">No Environment</a-doption>
+              <a-doption v-for="e in env.envs" :key="e.id" :value="e.id">
+                <span v-if="e.id === env.activeEnvId">✓ </span>{{ e.name }}
+              </a-doption>
+              <a-doption v-if="env.envs.length" disabled>────────</a-doption>
+              <a-doption value="__manage">管理环境…</a-doption>
+            </template>
+          </a-dropdown>
           <a-button size="small" @click="sidebarHidden = !sidebarHidden">
             <template #icon>
               <IconShowLeft v-if="sidebarHidden" class="svg-icon" />
@@ -94,11 +109,12 @@
     </section>
 
     <SettingsDialog v-model="settingsOpen" />
+    <EnvironmentsDialog v-model:visible="envDialogOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
@@ -108,8 +124,10 @@ import ResponsePane from '@/components/ResponsePane.vue'
 import WebSocketPane from '@/components/WebSocketPane.vue'
 import McpPane from '@/components/McpPane.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import EnvironmentsDialog from '@/components/EnvironmentsDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
+import { useEnvironmentsStore } from '@/stores/environments'
 import { useHttpStore } from '@/stores/http'
 import { api } from '@/api/client'
 import IconShowLeft from '@/imgs/icon/show_left.svg?component'
@@ -121,6 +139,7 @@ import type { CollectionNode, HttpCallRecord } from '@/api/types'
 const collections = useCollectionsStore()
 const wb = useWorkbenchStore()
 const http = useHttpStore()
+const env = useEnvironmentsStore()
 
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(true)
@@ -131,7 +150,24 @@ const sidebarWidth = ref(280)
 const responseLayout = ref<'bottom' | 'right'>('right')
 const responseRatio = ref(50)
 const settingsOpen = ref(false)
+const envDialogOpen = ref(false)
 const paneRef = ref<HTMLElement | null>(null)
+
+// 切换标签页时，把当前请求节点 id 同步给环境 store，据此找到所属集合
+watch(
+  () => wb.activeTab?.nodeId ?? null,
+  (id) => env.setCurrentNode(id),
+)
+
+function onEnvSelect(value: string | number | Record<string, unknown> | undefined) {
+  const v = String(value)
+  if (v === '__manage') {
+    env.openDialog()
+    envDialogOpen.value = true
+    return
+  }
+  env.setActiveEnv(v === '__none' ? null : v)
+}
 
 onMounted(async () => {
   await Promise.all([collections.load(), http.loadHistory()])

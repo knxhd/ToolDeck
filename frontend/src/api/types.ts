@@ -46,6 +46,21 @@ export interface HttpCallRecord {
   timestamp: string
 }
 
+/** 环境变量条目。 */
+export interface EnvVariable {
+  key: string
+  value: string
+  enabled: boolean
+  description?: string
+}
+
+/** 一套环境（local / test / prod …），挂在 collection 根节点上。 */
+export interface Environment {
+  id: string
+  name: string
+  variables: EnvVariable[]
+}
+
 /** Collections 树节点：collection / folder / request。 */
 export interface CollectionNode {
   id: string
@@ -63,6 +78,10 @@ export interface CollectionNode {
   mcp_headers?: Record<string, string>
   mcp_tool?: string
   mcp_args?: string
+  /** 仅 collection 节点：该集合下的多套环境 */
+  environments?: Environment[]
+  /** 仅 collection 节点：当前激活环境 id，null 表示不启用环境变量 */
+  activeEnvId?: string | null
 }
 
 /** 工作台中一个打开的标签页。 */

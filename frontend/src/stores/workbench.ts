@@ -3,7 +3,10 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { streamPost } from '@/api/client'
+import { useEnvironmentsStore } from './environments'
+import { missingVars, resolveRequest } from '@/utils/env'
 import { parseUrlQuery } from '@/utils/parseCurl'
+import { toast } from '@/utils/feedback'
 import type { CollectionNode, HttpRequestData, OpenTab } from '@/api/types'
 
 let seq = 0
@@ -120,9 +123,24 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     tab.streaming = true
     controller = new AbortController()
     try {
+      // 环境变量插值：用当前集合激活环境里的变量替换 url/headers/params/body 中的 {{var}}
+      const env = useEnvironmentsStore()
+      const vars = env.vars
+      const resolved = resolveRequest(tab.request, vars)
+
+      // 发送前提醒未定义的占位符（不阻断请求）
+      const rawText = [
+        tab.request.url,
+        tab.request.body || '',
+        ...(tab.request.headers || []).map((h) => h.value),
+        ...(tab.request.params || []).map((p) => p.value),
+      ].join('\n')
+      const missing = [...new Set(missingVars(rawText, vars))]
+      if (missing.length) toast.warning(`未定义的环境变量：${missing.join(', ')}`)
+
       // URL 输入框保留完整 URL（含 query），发送时剥离 query，由后端用 params 重新拼接，避免重复参数
-      const { baseUrl } = parseUrlQuery(tab.request.url)
-      const payload: HttpRequestData = { ...tab.request, url: baseUrl }
+      const { baseUrl } = parseUrlQuery(resolved.url)
+      const payload: HttpRequestData = { ...resolved, url: baseUrl }
       await streamPost('/api/http/stream', payload, (ev) => {
         const type = ev.type
         if (type === 'meta') {
