@@ -34,6 +34,8 @@
           <a-tabs
             :active-key="wb.activeId ?? ''"
             :hide-content="true"
+            :editable="true"
+            :show-add-button="true"
             type="card-gutter"
             class="workbench-tabs"
             @change="(k: string) => wb.setActive(k)"
