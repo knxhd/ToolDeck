@@ -1,46 +1,62 @@
-"""应用入口：解析 APP_ENV，构造 FastAPI，启动 uvicorn 并打开浏览器。
+"""应用入口：解析 APP_ENV，构造 FastAPI，启动 uvicorn（无界面 headless 服务）。
+
+支持命令行参数（headless 服务器）：
+    python backend/main.py --host 0.0.0.0 --port 9000 --data-dir /srv/api-tool
+
+参数与环境变量优先级：命令行 > 环境变量 > 默认值
+    --host      默认 127.0.0.1（对应环境变量 APP_HOST）
+    --port      默认 8765（对应环境变量 APP_PORT）
+    --data-dir  数据目录，默认 ~/.api-tool（对应环境变量 APP_CONFIG_DIR）
 
 开发模式：APP_ENV=development uvicorn backend.main:app --reload --port 8765
-生产模式：直接 python backend/main.py（自动选端口 + 打开浏览器）
+生产模式（Docker）：uvicorn backend.main:app --host 0.0.0.0 --port 8765
 """
 from __future__ import annotations
 
+import argparse
 import os
+import sys
 
 import uvicorn
-import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from backend.app import create_app
-from backend.app.launcher import open_browser_after_delay
-from backend.app.port import find_available_port
+
+# FastAPI 实例供 uvicorn import 使用（Docker / uvicorn 直接加载）
+app = create_app()
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="API Tool headless server")
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("APP_HOST", "127.0.0.1"),
+        help="监听地址，默认 127.0.0.1（对外服务请用 0.0.0.0）",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("APP_PORT", "8765")),
+        help="监听端口，默认 8765",
+    )
+    parser.add_argument(
+        "--data-dir",
+        default=os.environ.get("APP_CONFIG_DIR", ""),
+        help="数据目录（collections.json / history.json / config.json），默认 ~/.api-tool",
+    )
+    return parser.parse_args()
 
 
 def main() -> None:
-    env = os.environ.get("APP_ENV", "production")
-    host = os.environ.get("APP_HOST", "127.0.0.1")
+    global app
+    args = parse_args()
 
-    if env == "production":
-        # 生产模式：自动探测端口并打开浏览器
-        port = find_available_port(
-            int(os.environ.get("APP_PORT", "8765")),
-            int(os.environ.get("APP_PORT", "8765")) + 10,
-        )
-        open_browser_after_delay(f"http://{host}:{port}")
-    else:
-        port = int(os.environ.get("APP_PORT", "8765"))
+    if args.data_dir:
+        # 自定义数据目录：必须在 create_app（初始化配置目录）之前设置环境变量
+        os.environ["APP_CONFIG_DIR"] = args.data_dir
+        app = create_app()
 
-    uvicorn.run(
-        app,  # 直接传 app 实例，避免字符串 import（PyInstaller 打包后 "main:app" 无法 import）
-        host=host,
-        port=port,
-        reload=False,
-        log_level="info",
-    )
-
-
-# FastAPI 实例供 uvicorn import 使用
-app = create_app()
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 if __name__ == "__main__":
