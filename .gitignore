@@ -45,3 +45,4 @@ build/
 /**/.npm-cache
 /**/dist
 /**/__pycache__
+.venv-linux
