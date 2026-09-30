@@ -3,12 +3,10 @@
     <a-select v-model="tab.request.method" style="width: 110px">
       <a-option v-for="m in methods" :key="m" :value="m">{{ m }}</a-option>
     </a-select>
-    <a-input
+    <UrlInput
       v-model="tab.request.url"
-      placeholder="https://api.example.com/path"
-      allow-clear
       @blur="syncQueryToParams"
-      @press-enter="onSend"
+      @enter="onSend"
     />
     <a-button @click="curlDialogVisible = true">导入 curl</a-button>
     <a-button v-if="!tab.streaming" type="primary" @click="onSend">发送</a-button>
@@ -32,6 +30,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
+import UrlInput from '@/components/UrlInput.vue'
 import { parseCurl, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
 import type { HttpMethod, OpenTab } from '@/api/types'
