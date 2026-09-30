@@ -8,12 +8,25 @@
         <KeyValueEditor v-model="tab.request.headers" />
       </a-tab-pane>
       <a-tab-pane key="body" title="Body">
-        <a-radio-group v-model="tab.request.body_type" type="button" style="margin-bottom: 8px">
-          <a-radio value="none">none</a-radio>
-          <a-radio value="json">JSON</a-radio>
-          <a-radio value="raw">raw</a-radio>
-          <a-radio value="form-data">form-data</a-radio>
-        </a-radio-group>
+        <div class="body-toolbar">
+          <a-dropdown @select="onBodyTypeChange">
+            <a-button size="small" type="text" class="body-type-btn">
+              {{ bodyTypeLabel }} <icon-down />
+            </a-button>
+            <template #content>
+              <a-doption v-for="opt in bodyOptions" :key="opt.value" :value="opt.value">
+                <span v-if="opt.value === tab.request.body_type">✓ </span>{{ opt.label }}
+              </a-doption>
+            </template>
+          </a-dropdown>
+          <a-button
+            size="small"
+            @click="prettify"
+            :disabled="tab.request.body_type === 'none' || tab.request.body_type === 'form-data'"
+          >
+            Prettify
+          </a-button>
+        </div>
         <MonacoEditor
           v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
           v-model="tab.request.body"
@@ -37,9 +50,45 @@ import { computed, ref, watch } from 'vue'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
-import type { KeyValue, OpenTab } from '@/api/types'
+import { toast } from '@/utils/feedback'
+import type { BodyType, KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
+
+const bodyOptions: Array<{ value: BodyType; label: string }> = [
+  { value: 'none', label: 'No Body' },
+  { value: 'json', label: 'JSON' },
+  { value: 'raw', label: 'Raw' },
+  { value: 'form-data', label: 'Form Data' },
+]
+
+const bodyTypeLabel = computed(
+  () => bodyOptions.find((o) => o.value === props.tab.request.body_type)?.label || 'No Body',
+)
+
+function onBodyTypeChange(v: string | number | Record<string, unknown> | undefined) {
+  props.tab.request.body_type = String(v) as BodyType
+}
+
+function prettify() {
+  const r = props.tab.request
+  if (r.body_type === 'json') {
+    try {
+      r.body = JSON.stringify(JSON.parse(r.body || ''), null, 2)
+      toast.success('已格式化 JSON')
+    } catch {
+      toast.error('JSON 语法错误，无法格式化')
+    }
+  } else if (r.body_type === 'raw') {
+    try {
+      r.body = JSON.stringify(JSON.parse(r.body || ''), null, 2)
+      r.body_type = 'json'
+      toast.success('已按 JSON 格式化')
+    } catch {
+      toast.info('Raw 文本暂不支持格式化')
+    }
+  }
+}
 
 /** 是否已有实际 body 内容（用于决定默认打开的 tab）。 */
 const hasBody = computed(() => {
@@ -91,6 +140,17 @@ watch(
   display: flex;
   flex-direction: column;
   height: 100%;
+
+  .body-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 8px;
+  }
+
+  .body-type-btn {
+    font-weight: 600;
+  }
 
   .req-tabs {
     flex: 1;

@@ -286,15 +286,15 @@ async function copyValue() {
   min-width: 0;
   display: flex;
   align-items: center;
-  border: 1px solid var(--arco-color-border-2, #e5e6eb);
+  border: 1px solid var(--el-border-color);
   border-radius: 2px;
-  background: var(--arco-color-bg-2, #fff);
+  background: var(--el-bg-color);
   transition: border-color 0.1s;
   height: 32px;
 
   &:focus-within {
-    border-color: rgb(var(--primary-6, 22, 93, 255));
-    box-shadow: 0 0 0 2px rgb(var(--primary-1, 234, 244, 255));
+    border-color: rgb(var(--primary-6));
+    box-shadow: 0 0 0 2px rgb(var(--primary-1));
   }
 }
 
@@ -315,7 +315,7 @@ async function copyValue() {
   overflow-x: auto;
   overflow-y: hidden;
   pointer-events: none;
-  color: var(--arco-color-text-1, #1d2129);
+  color: var(--el-text-color-primary);
   scrollbar-width: none;
   z-index: 1;
 
@@ -329,7 +329,7 @@ async function copyValue() {
   left: 11px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--arco-color-text-4, #c9cdd4);
+  color: var(--el-text-color-placeholder);
   pointer-events: none;
 }
 
@@ -341,7 +341,7 @@ async function copyValue() {
   border: none;
   outline: none;
   color: transparent;
-  caret-color: var(--arco-color-text-1, #1d2129);
+  caret-color: var(--el-text-color-primary);
   overflow-x: auto;
   overflow-y: hidden;
   margin: 0;
@@ -370,12 +370,12 @@ async function copyValue() {
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  color: var(--arco-color-text-3, #86909c);
+  color: var(--el-text-color-secondary);
   font-size: 14px;
   padding: 0 4px;
   z-index: 2;
 
-  &:hover { color: var(--arco-color-text-1, #1d2129); }
+  &:hover { color: var(--el-text-color-primary); }
 }
 
 .var-tip {
@@ -439,8 +439,8 @@ async function copyValue() {
   min-width: 220px;
   max-height: 240px;
   overflow-y: auto;
-  background: var(--arco-color-bg-2, #fff);
-  border: 1px solid var(--arco-color-border-2, #e5e6eb);
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   z-index: 1100;
@@ -453,7 +453,7 @@ async function copyValue() {
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
 
   &:hover, &.active {
-    background: var(--arco-color-primary-light-1, #e8f3ff);
+    background: var(--el-color-primary-light-9);
   }
 }
 </style>
