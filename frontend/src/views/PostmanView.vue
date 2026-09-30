@@ -30,16 +30,25 @@
     <!-- 右侧：标签页 + 工作区 -->
     <section class="workbench">
       <div class="tab-bar">
-        <div class="tabs-left">
-          <div v-for="t in wb.tabs" :key="t.id" class="tab" :class="{ active: t.id === wb.activeId }"
-            @click="wb.setActive(t.id)">
-            <span class="tab-method"
-              :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
-              {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
-            </span>
-            <span class="tab-title">{{ t.title }}</span>
-            <icon-close class="tab-close" @click.stop="wb.closeTab(t.id)" />
-          </div>
+        <div class="tabs-left custom-arco-design">
+          <a-tabs
+            :active-key="wb.activeId ?? ''"
+            :hide-content="true"
+            type="card-gutter"
+            class="workbench-tabs"
+            @change="(k: string) => wb.setActive(k)"
+            @delete="(k: string) => wb.closeTab(k)"
+          >
+            <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
+              <template #title>
+                <span class="tab-method"
+                  :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
+                  {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
+                </span>
+                <span class="tab-title">{{ t.title }}</span>
+              </template>
+            </a-tab-pane>
+          </a-tabs>
           <a-dropdown @select="(k) => wb.openBlank(String(k) as 'http' | 'websocket' | 'mcp')">
             <a-button shape="circle" size="small"><icon-plus /></a-button>
             <template #content>
@@ -412,7 +421,44 @@ function statusClass(code: number) {
   display: flex;
   align-items: center;
   gap: 2px;
-  overflow-x: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.workbench-tabs {
+  flex: 1;
+  min-width: 0;
+
+  :deep(.arco-tabs-nav) {
+    margin-bottom: 0;
+  }
+
+  :deep(.arco-tabs-tab) {
+    max-width: 220px;
+  }
+
+  .tab-method {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: #fff;
+    margin-right: 4px;
+
+    &.get { background: #49cc90; }
+    &.post { background: #fca130; }
+    &.put { background: #61affe; }
+    &.delete { background: #f93e3e; }
+    &.patch { background: #50e3c2; }
+    &.ws { background: #8e44ad; }
+    &.mcp { background: #e6a23c; }
+  }
+
+  .tab-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .tabs-right {
@@ -424,77 +470,6 @@ function statusClass(code: number) {
   .svg-icon {
     width: 14px;
     height: 14px;
-  }
-}
-
-.tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border: 1px solid var(--el-border-color);
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  font-size: 12px;
-  background: var(--el-bg-color);
-  max-width: 200px;
-  flex-shrink: 0;
-
-  &.active {
-    font-weight: 600;
-    background: var(--el-color-primary-light-9);
-  }
-
-  .tab-method {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: #fff;
-
-    &.get {
-      background: #49cc90;
-    }
-
-    &.post {
-      background: #fca130;
-    }
-
-    &.put {
-      background: #61affe;
-    }
-
-    &.delete {
-      background: #f93e3e;
-    }
-
-    &.patch {
-      background: #50e3c2;
-    }
-
-    &.ws {
-      background: #8e44ad;
-    }
-
-    &.mcp {
-      background: #e6a23c;
-    }
-  }
-
-  .tab-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tab-close {
-    cursor: pointer;
-    border-radius: 50%;
-
-    &:hover {
-      background: var(--el-fill-color-dark);
-    }
   }
 }
 
