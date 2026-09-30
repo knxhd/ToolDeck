@@ -16,6 +16,7 @@
       @click="detectTrigger"
       @keyup="detectTrigger"
       @blur="onBlur"
+      @paste="onPaste"
       spellcheck="false"
       autocomplete="off"
     />
@@ -54,9 +55,17 @@
 import { computed, nextTick, ref } from 'vue'
 
 import { useEnvironmentsStore } from '@/stores/environments'
+import { parseCurl } from '@/utils/parseCurl'
+import type { ParsedCurl } from '@/utils/parseCurl'
+import { toast } from '@/utils/feedback'
 
 const props = defineProps<{ modelValue: string }>()
-const emit = defineEmits<{ 'update:modelValue': [v: string]; enter: []; blur: [] }>()
+const emit = defineEmits<{
+  'update:modelValue': [v: string]
+  enter: []
+  blur: []
+  curl: [parsed: ParsedCurl]
+}>()
 
 const env = useEnvironmentsStore()
 
@@ -202,6 +211,36 @@ function pick(name: string) {
 function onBlur() {
   closePopup()
   emit('blur')
+}
+
+/** 粘贴时若内容是 curl 命令，拦截默认粘贴并自动解析。 */
+function onPaste(e: ClipboardEvent) {
+  const text = e.clipboardData?.getData('text') || ''
+  if (!text) return
+  // 粗判：以 curl 开头，或包含典型 curl 参数
+  const looksLikeCurl = /^\s*curl(\s|$)/i.test(text) || /(--url|--request|--header|-X\s)/.test(text)
+  if (!looksLikeCurl) return
+  e.preventDefault()
+  try {
+    const parsed = parseCurl(text)
+    if (!parsed.url) {
+      toast.warning('粘贴的 curl 未识别到 URL')
+      return
+    }
+    emit('update:modelValue', parsed.url)
+    emit('curl', parsed)
+    toast.success('已从 curl 导入请求')
+    closePopup()
+    nextTick(() => {
+      const input = inputRef.value
+      if (input) {
+        input.focus()
+        input.setSelectionRange(parsed.url.length, parsed.url.length)
+      }
+    })
+  } catch (err) {
+    toast.error('curl 解析失败：' + (err as Error).message)
+  }
 }
 
 // ---- 悬停 tooltip ----
