@@ -130,6 +130,7 @@ import WebSocketPane from '@/components/WebSocketPane.vue'
 import McpPane from '@/components/McpPane.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import EnvironmentsDialog from '@/components/EnvironmentsDialog.vue'
+import SaveRequestDialog from '@/components/SaveRequestDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -179,10 +180,10 @@ function onEnvSelect(value: string | number | Record<string, unknown> | undefine
 onMounted(async () => {
   await Promise.all([collections.load(), http.loadHistory()])
   history.value = http.history
-  window.addEventListener('keydown', onGlobalKeydown)
+  window.addEventListener('keydown', onGlobalKeydown, true)
 })
 
-onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 
 function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
