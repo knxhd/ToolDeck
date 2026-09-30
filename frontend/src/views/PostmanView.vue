@@ -40,6 +40,7 @@
             class="workbench-tabs"
             @change="(k: string) => wb.setActive(k)"
             @delete="(k: string) => wb.closeTab(k)"
+            @add="() => wb.openBlank('http')"
           >
             <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
               <template #title>
@@ -51,14 +52,6 @@
               </template>
             </a-tab-pane>
           </a-tabs>
-          <a-dropdown @select="(k) => wb.openBlank(String(k) as 'http' | 'websocket' | 'mcp')">
-            <a-button shape="circle" size="small"><icon-plus /></a-button>
-            <template #content>
-              <a-doption value="http">HTTP Request</a-doption>
-              <a-doption value="websocket">WebSocket</a-doption>
-              <a-doption value="mcp">MCP Request</a-doption>
-            </template>
-          </a-dropdown>
         </div>
         <div class="tabs-right">
           <!-- 环境切换 -->
@@ -121,11 +114,12 @@
 
     <SettingsDialog v-model="settingsOpen" />
     <EnvironmentsDialog v-model:visible="envDialogOpen" />
+    <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
@@ -162,6 +156,7 @@ const responseLayout = ref<'bottom' | 'right'>('right')
 const responseRatio = ref(50)
 const settingsOpen = ref(false)
 const envDialogOpen = ref(false)
+const saveDialogOpen = ref(false)
 const paneRef = ref<HTMLElement | null>(null)
 
 // 切换标签页时，把当前请求节点 id 同步给环境 store，据此找到所属集合
@@ -169,6 +164,7 @@ watch(
   () => wb.activeTab?.nodeId ?? null,
   (id) => env.setCurrentNode(id),
 )
+
 
 function onEnvSelect(value: string | number | Record<string, unknown> | undefined) {
   const v = String(value)
@@ -183,7 +179,17 @@ function onEnvSelect(value: string | number | Record<string, unknown> | undefine
 onMounted(async () => {
   await Promise.all([collections.load(), http.loadHistory()])
   history.value = http.history
+  window.addEventListener('keydown', onGlobalKeydown)
 })
+
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown))
+
+function onGlobalKeydown(e: KeyboardEvent) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault()
+    if (wb.activeTab) saveDialogOpen.value = true
+  }
+}
 
 function toggleLayout() {
   responseLayout.value = responseLayout.value === 'bottom' ? 'right' : 'bottom'
