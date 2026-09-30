@@ -115,6 +115,7 @@ function onFormChange(pairs: KeyValue[]) {
       min-height: 0;
       display: flex;
       flex-direction: column;
+      overflow: auto; /* 参数/请求头列表超高时在此滚动；Monaco fill 模式占满高度不触发 */
     }
   }
 }

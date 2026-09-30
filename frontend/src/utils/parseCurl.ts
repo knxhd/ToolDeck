@@ -91,6 +91,17 @@ function splitQuery(url: string): { url: string; params: Array<{ key: string; va
   return { url: base, params }
 }
 
+/**
+ * URL → Params 自动解析：把 URL 中的 query string 拆成参数表。
+ * 返回 { baseUrl: 去掉 query 的 URL, params: 解析出的参数列表 }。
+ */
+export function parseUrlQuery(
+  url: string,
+): { baseUrl: string; params: Array<{ key: string; value: string; enabled: boolean }> } {
+  const { url: baseUrl, params } = splitQuery(url)
+  return { baseUrl, params: params.filter((p) => p.key || p.value) }
+}
+
 export function parseCurl(text: string): ParsedCurl {
   const tokens = tokenize(text)
 
