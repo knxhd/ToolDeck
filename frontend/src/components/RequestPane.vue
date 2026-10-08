@@ -15,29 +15,20 @@
             </a-button>
             <template #content>
               <a-doption v-for="opt in bodyOptions" :key="opt.value" :value="opt.value">
-                <span v-if="opt.value === tab.request.body_type">✓ </span>{{ opt.label }}
+                {{ opt.label }}
+                <span class="selected-opt-span" v-if="opt.value === tab.request.body_type">✓ </span>
               </a-doption>
             </template>
           </a-dropdown>
-          <a-button
-            size="small"
-            @click="prettify"
-            :disabled="tab.request.body_type === 'none' || tab.request.body_type === 'form-data'"
-          >
+          <a-button size="small" @click="prettify" type="text"
+            :disabled="tab.request.body_type === 'none' || tab.request.body_type === 'form-data'">
             Prettify
           </a-button>
         </div>
-        <MonacoEditor
-          v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
-          v-model="tab.request.body"
-          :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'"
-          fill
-        />
-        <KeyValueEditor
-          v-else-if="tab.request.body_type === 'form-data'"
-          :model-value="formPairs"
-          @update:model-value="onFormChange"
-        />
+        <MonacoEditor v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
+          v-model="tab.request.body" :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'" fill />
+        <KeyValueEditor v-else-if="tab.request.body_type === 'form-data'" :model-value="formPairs"
+          @update:model-value="onFormChange" />
         <a-empty v-else description="无 Body" style="padding: 12px 0" />
       </a-tab-pane>
     </a-tabs>
@@ -56,7 +47,7 @@ import type { BodyType, KeyValue, OpenTab } from '@/api/types'
 const props = defineProps<{ tab: OpenTab }>()
 
 const bodyOptions: Array<{ value: BodyType; label: string }> = [
-  { value: 'none', label: 'No Body' },
+  { value: 'none', label: 'None' },
   { value: 'json', label: 'JSON' },
   { value: 'raw', label: 'Raw' },
   { value: 'form-data', label: 'Form Data' },
@@ -189,8 +180,13 @@ watch(
       min-height: 0;
       display: flex;
       flex-direction: column;
-      overflow: auto; /* 参数/请求头列表超高时在此滚动；Monaco fill 模式占满高度不触发 */
+      overflow: auto;
+      /* 参数/请求头列表超高时在此滚动；Monaco fill 模式占满高度不触发 */
     }
   }
+}
+
+.selected-opt-span {
+  margin-left: 16px;
 }
 </style>
