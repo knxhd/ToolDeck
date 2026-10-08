@@ -37,7 +37,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-
+import { jsonrepair } from 'jsonrepair'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
@@ -65,7 +65,9 @@ function prettify() {
   const r = props.tab.request
   if (r.body_type === 'json') {
     try {
-      r.body = JSON.stringify(JSON.parse(r.body || ''), null, 2)
+      const fixedJsonStr = jsonrepair(r.body)
+      const obj = JSON.parse(fixedJsonStr)
+      r.body = JSON.stringify(obj, null, 2)
       toast.success('已格式化 JSON')
     } catch {
       toast.error('JSON 语法错误，无法格式化')
