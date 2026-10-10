@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 
@@ -55,8 +56,26 @@ def main() -> None:
         # 自定义数据目录：必须在 create_app（初始化配置目录）之前设置环境变量
         os.environ["APP_CONFIG_DIR"] = args.data_dir
         app = create_app()
-
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    _stream = sys.stderr if sys.stderr is not None else sys.stdout
+    if _stream is not None:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+            stream=_stream,
+        )
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            handlers=[logging.NullHandler()],
+        )
+    uvicorn.run(
+        app,
+        host=args.host,
+        port=args.port,
+        log_level="info",
+        log_config=None,
+        access_log=True,
+    )
 
 
 if __name__ == "__main__":
