@@ -6,7 +6,8 @@
         <CollectionsTree @open="onOpenNode" />
       </div>
       <div class="side-divider"></div>
-      <div class="side-section">
+      <div class="side-section"
+        :style="{ flex: historyOpen ? '1 1 45%' : '', marginBottom: historyOpen ? '0' : '8px', marginTop: historyOpen ? '0' : '8px' }">
         <div class="section-header" @click="historyOpen = !historyOpen">
           <icon-down v-if="historyOpen" />
           <icon-right v-else />
@@ -31,17 +32,9 @@
     <section class="workbench">
       <div class="tab-bar">
         <div class="tabs-left custom-arco-design">
-          <a-tabs
-            :active-key="wb.activeId ?? ''"
-            :hide-content="true"
-            :editable="true"
-            :show-add-button="true"
-            type="card-gutter"
-            class="workbench-tabs"
-            @change="(k: string | number) => wb.setActive(String(k))"
-            @delete="(k: string | number) => wb.closeTab(String(k))"
-            @add="() => wb.openBlank('http')"
-          >
+          <a-tabs :active-key="wb.activeId ?? ''" :hide-content="true" :editable="true" :show-add-button="true"
+            type="card-gutter" class="workbench-tabs" @change="(k: string | number) => wb.setActive(String(k))"
+            @delete="(k: string | number) => wb.closeTab(String(k))" @add="() => wb.openBlank('http')">
             <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
               <template #title>
                 <span class="tab-method"
@@ -387,7 +380,6 @@ function statusClass(code: number) {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 1 1 45%;
 }
 
 .section-header {
@@ -519,13 +511,33 @@ function statusClass(code: number) {
     color: #fff;
     margin-right: 4px;
 
-    &.get { background: #49cc90; }
-    &.post { background: #fca130; }
-    &.put { background: #61affe; }
-    &.delete { background: #f93e3e; }
-    &.patch { background: #50e3c2; }
-    &.ws { background: #8e44ad; }
-    &.mcp { background: #e6a23c; }
+    &.get {
+      background: #49cc90;
+    }
+
+    &.post {
+      background: #fca130;
+    }
+
+    &.put {
+      background: #61affe;
+    }
+
+    &.delete {
+      background: #f93e3e;
+    }
+
+    &.patch {
+      background: #50e3c2;
+    }
+
+    &.ws {
+      background: #8e44ad;
+    }
+
+    &.mcp {
+      background: #e6a23c;
+    }
   }
 
   .tab-title {
