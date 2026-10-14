@@ -27,7 +27,7 @@
         <a-select v-model="store.request.method" style="width: 120px">
           <a-option v-for="m in methods" :key="m" :value="m">{{ m }}</a-option>
         </a-select>
-        <a-input v-model="store.request.url" placeholder="https://api.example.com/path" allow-clear @press-enter="store.send" />
+        <a-input v-model="store.request.url" placeholder="https://api.example.com/path" @press-enter="store.send" />
         <a-button type="primary" :loading="store.loading" @click="store.send">发送</a-button>
       </div>
       <a-tabs class="request-tabs">

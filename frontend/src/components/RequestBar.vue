@@ -5,6 +5,7 @@
     </a-select>
     <UrlInput
       v-model="tab.request.url"
+      :request="tab.request"
       @blur="syncQueryToParams"
       @enter="onSend"
       @curl="applyCurl"

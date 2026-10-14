@@ -141,7 +141,7 @@ export function parseCurl(text: string): ParsedCurl {
       }
       continue
     }
-    if (t === '-d' || t === '--data' || t === '--data-ascii' || t === '--data-binary') {
+    if (t === '-d' || t === '--data' || t === '--data-raw' || t === '--data-ascii' || t === '--data-binary') {
       dataParts.push(nextValue(i))
       i++
       continue

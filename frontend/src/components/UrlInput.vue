@@ -1,37 +1,19 @@
 <template>
   <div class="url-input-wrap" ref="wrapRef">
     <!-- 高亮渲染层：显示带颜色的占位符；真实输入框透明在下层 -->
-    <div class="highlight-layer" ref="layerRef" @mouseover="onHover" @mouseleave="onLeave"
-      @mousedown.prevent>
+    <div class="highlight-layer" ref="layerRef" @mouseover="onHover" @mouseleave="onLeave" @mousedown.prevent>
       <span class="hl-text" v-html="rendered"></span>
       <span v-if="!modelValue" class="hl-placeholder">https://api.example.com/path</span>
     </div>
-    <input
-      ref="inputRef"
-      class="real-input"
-      :value="modelValue"
-      @input="onInput"
-      @scroll="syncScroll"
-      @keydown="onKeydown"
-      @click="detectTrigger"
-      @keyup="detectTrigger"
-      @blur="onBlur"
-      @paste="onPaste"
-      spellcheck="false"
-      autocomplete="off"
-    />
-    <span v-if="modelValue" class="clear-btn" title="清空" @click="onClear">×</span>
+    <input ref="inputRef" class="real-input" :value="modelValue" @input="onInput" @scroll="syncScroll"
+      @keydown="onKeydown" @click="detectTrigger" @keyup="detectTrigger" @blur="onBlur" @paste="onPaste"
+      spellcheck="false" autocomplete="off" />
+    <span v-if="modelValue" class="clear-btn" title="generate code" @click="generateCode"><icon-code /></span>
 
     <!-- 变量自动补全浮层 -->
     <div v-if="ac.visible && ac.candidates.length" class="ac-popup">
-      <div
-        v-for="(c, i) in ac.candidates"
-        :key="c"
-        class="ac-item"
-        :class="{ active: i === ac.activeIdx }"
-        @mousedown.prevent
-        @click="pick(c)"
-      >
+      <div v-for="(c, i) in ac.candidates" :key="c" class="ac-item" :class="{ active: i === ac.activeIdx }"
+        @mousedown.prevent @click="pick(c)">
         {{ c }}
       </div>
     </div>
@@ -48,18 +30,24 @@
       </div>
       <div v-if="tip.missing" class="var-tip-missing">当前环境未定义该变量</div>
     </div>
+
+    <!-- 生成调用代码弹框 -->
+    <GenerateCodeDialog v-model:visible="codeVisible" :request="codeRequest" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue'
 
+import GenerateCodeDialog from '@/components/GenerateCodeDialog.vue'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { parseCurl } from '@/utils/parseCurl'
 import type { ParsedCurl } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
+import type { HttpRequestData } from '@/api/types'
 
-const props = defineProps<{ modelValue: string }>()
+/** request：完整请求数据，用于生成调用代码；未传时仅按 URL 生成 GET 请求。 */
+const props = defineProps<{ modelValue: string; request?: HttpRequestData }>()
 const emit = defineEmits<{
   'update:modelValue': [v: string]
   enter: []
@@ -113,6 +101,28 @@ function syncScroll() {
 function onClear() {
   emit('update:modelValue', '')
   inputRef.value?.focus()
+}
+
+// ---- 生成调用代码 ----
+const codeVisible = ref(false)
+
+const codeRequest = computed<HttpRequestData>(
+  () =>
+    props.request ?? {
+      method: 'GET',
+      url: props.modelValue,
+      headers: [],
+      params: [],
+      body_type: 'none',
+      body: '',
+    },
+)
+
+/** 打开「Generate Code」弹框：按当前请求生成 curl / Java / Python 调用代码。 */
+function generateCode() {
+  closePopup()
+  tip.value.visible = false
+  codeVisible.value = true
 }
 
 // ---- 变量自动补全 ----
@@ -319,10 +329,14 @@ async function copyValue() {
   scrollbar-width: none;
   z-index: 1;
 
-  &::-webkit-scrollbar { display: none; }
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.hl-text { display: inline; }
+.hl-text {
+  display: inline;
+}
 
 .hl-placeholder {
   position: absolute;
@@ -375,7 +389,9 @@ async function copyValue() {
   padding: 0 4px;
   z-index: 2;
 
-  &:hover { color: var(--el-text-color-primary); }
+  &:hover {
+    color: var(--el-text-color-primary);
+  }
 }
 
 .var-tip {
@@ -422,7 +438,10 @@ async function copyValue() {
 .var-tip-copy {
   cursor: pointer;
   opacity: 0.7;
-  &:hover { opacity: 1; }
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .var-tip-missing {
@@ -452,7 +471,8 @@ async function copyValue() {
   cursor: pointer;
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
 
-  &:hover, &.active {
+  &:hover,
+  &.active {
     background: var(--el-color-primary-light-9);
   }
 }
