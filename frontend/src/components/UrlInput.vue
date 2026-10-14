@@ -1,37 +1,19 @@
 <template>
   <div class="url-input-wrap" ref="wrapRef">
     <!-- 高亮渲染层：显示带颜色的占位符；真实输入框透明在下层 -->
-    <div class="highlight-layer" ref="layerRef" @mouseover="onHover" @mouseleave="onLeave"
-      @mousedown.prevent>
+    <div class="highlight-layer" ref="layerRef" @mouseover="onHover" @mouseleave="onLeave" @mousedown.prevent>
       <span class="hl-text" v-html="rendered"></span>
       <span v-if="!modelValue" class="hl-placeholder">https://api.example.com/path</span>
     </div>
-    <input
-      ref="inputRef"
-      class="real-input"
-      :value="modelValue"
-      @input="onInput"
-      @scroll="syncScroll"
-      @keydown="onKeydown"
-      @click="detectTrigger"
-      @keyup="detectTrigger"
-      @blur="onBlur"
-      @paste="onPaste"
-      spellcheck="false"
-      autocomplete="off"
-    />
-    <span v-if="modelValue" class="clear-btn" title="清空" @click="onClear">×</span>
+    <input ref="inputRef" class="real-input" :value="modelValue" @input="onInput" @scroll="syncScroll"
+      @keydown="onKeydown" @click="detectTrigger" @keyup="detectTrigger" @blur="onBlur" @paste="onPaste"
+      spellcheck="false" autocomplete="off" />
+    <span v-if="modelValue" class="clear-btn" title="generate code" @click="generateCode"><icon-code /></span>
 
     <!-- 变量自动补全浮层 -->
     <div v-if="ac.visible && ac.candidates.length" class="ac-popup">
-      <div
-        v-for="(c, i) in ac.candidates"
-        :key="c"
-        class="ac-item"
-        :class="{ active: i === ac.activeIdx }"
-        @mousedown.prevent
-        @click="pick(c)"
-      >
+      <div v-for="(c, i) in ac.candidates" :key="c" class="ac-item" :class="{ active: i === ac.activeIdx }"
+        @mousedown.prevent @click="pick(c)">
         {{ c }}
       </div>
     </div>
@@ -319,10 +301,14 @@ async function copyValue() {
   scrollbar-width: none;
   z-index: 1;
 
-  &::-webkit-scrollbar { display: none; }
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-.hl-text { display: inline; }
+.hl-text {
+  display: inline;
+}
 
 .hl-placeholder {
   position: absolute;
@@ -375,7 +361,9 @@ async function copyValue() {
   padding: 0 4px;
   z-index: 2;
 
-  &:hover { color: var(--el-text-color-primary); }
+  &:hover {
+    color: var(--el-text-color-primary);
+  }
 }
 
 .var-tip {
@@ -422,7 +410,10 @@ async function copyValue() {
 .var-tip-copy {
   cursor: pointer;
   opacity: 0.7;
-  &:hover { opacity: 1; }
+
+  &:hover {
+    opacity: 1;
+  }
 }
 
 .var-tip-missing {
@@ -452,7 +443,8 @@ async function copyValue() {
   cursor: pointer;
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
 
-  &:hover, &.active {
+  &:hover,
+  &.active {
     background: var(--el-color-primary-light-9);
   }
 }
