@@ -12,8 +12,13 @@
           <icon-down v-if="historyOpen" />
           <icon-right v-else />
           <span>History</span>
-          <a-button v-if="history.length" size="mini" status="danger" type="secondary" :disabled="!history.length"
-            @click.stop="onClear">清空</a-button>
+
+          <a-button v-if="history.length" size="mini" status="danger" type="text" :disabled="!history.length"
+            @click.stop="onClear">
+            <template #icon>
+              <icon-delete />
+            </template>
+          </a-button>
         </div>
         <div v-if="historyOpen" class="history-list">
           <div v-for="(item, i) in history" :key="i" class="history-item" @click="onLoadHistory(item)">
