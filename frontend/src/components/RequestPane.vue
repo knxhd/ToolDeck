@@ -2,10 +2,10 @@
   <div class="request-pane">
     <a-tabs v-model:active-key="activeKey" class="req-tabs">
       <a-tab-pane key="params" title="Params">
-        <KeyValueEditor v-model="tab.request.params" />
+        <KeyValueEditor v-model="tab.request.params" bulk />
       </a-tab-pane>
       <a-tab-pane key="headers" title="Headers">
-        <KeyValueEditor v-model="tab.request.headers" />
+        <KeyValueEditor v-model="tab.request.headers" bulk />
       </a-tab-pane>
       <a-tab-pane key="body" title="Body">
         <div class="body-toolbar">
