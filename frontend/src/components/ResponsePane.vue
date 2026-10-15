@@ -16,7 +16,7 @@
     <a-tabs v-else class="resp-tabs">
       <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
-          <div>
+          <div class="merge-toolbar">
             <a-select v-model="mergeType" :style="{ width: '320px' }" placeholder="数据合并" :allow-clear="true">
               <a-option value="OpenAi">OpenAi</a-option>
               <a-option value="Qwen">Qwen协议</a-option>
@@ -24,7 +24,7 @@
             </a-select>
           </div>
           <div class="stream-layout">
-            <div v-if="mergeType">
+            <div v-if="mergeType" class="merge-view">
               <v-md-preview :text="mergeMessage(tab.stream_events)" />
             </div>
             <div class="frame-list custom-arco-design" v-else>
@@ -197,6 +197,18 @@ const mergeMessage = (messages: Array<{ data: string }>) => {
   flex: 1;
   min-height: 0;
   display: flex;
+}
+
+.merge-toolbar {
+  flex-shrink: 0;
+}
+
+/* 合并后的 Markdown 内容：占满剩余高度，超出时纵向滚动 */
+.merge-view {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .frame-list {
