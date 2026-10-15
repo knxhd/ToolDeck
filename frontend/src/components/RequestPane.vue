@@ -1,15 +1,10 @@
 <template>
   <div class="request-pane">
     <a-tabs v-model:active-key="activeKey" class="req-tabs">
-      <a-tab-pane key="params" title="Params">
-        <KeyValueEditor v-model="tab.request.params" bulk />
-      </a-tab-pane>
-      <a-tab-pane key="headers" title="Headers">
-        <KeyValueEditor v-model="tab.request.headers" bulk />
-      </a-tab-pane>
-      <a-tab-pane key="body" title="Body">
-        <div class="body-toolbar">
-          <a-dropdown @select="onBodyTypeChange">
+      <!-- Body 工具栏：仅在 Body tab 下显示在标签栏右侧；Prettify 仅 JSON 时显示 -->
+      <template #extra>
+        <div v-if="activeKey === 'body'" class="body-extra">
+          <a-dropdown @select="onBodyTypeChange" position="br">
             <a-button size="small" type="text" class="body-type-btn">
               {{ bodyTypeLabel }} <icon-down />
             </a-button>
@@ -20,11 +15,18 @@
               </a-doption>
             </template>
           </a-dropdown>
-          <a-button size="small" @click="prettify" type="text"
-            :disabled="tab.request.body_type === 'none' || tab.request.body_type === 'form-data'">
+          <a-button v-if="tab.request.body_type === 'json'" size="small" type="text" @click="prettify">
             Prettify
           </a-button>
         </div>
+      </template>
+      <a-tab-pane key="params" title="Params">
+        <KeyValueEditor v-model="tab.request.params" bulk />
+      </a-tab-pane>
+      <a-tab-pane key="headers" title="Headers">
+        <KeyValueEditor v-model="tab.request.headers" bulk />
+      </a-tab-pane>
+      <a-tab-pane key="body" title="Body">
         <MonacoEditor v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
           v-model="tab.request.body" :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'" fill />
         <KeyValueEditor v-else-if="tab.request.body_type === 'form-data'" :model-value="formPairs"
@@ -151,11 +153,10 @@ watch(
   flex-direction: column;
   height: 100%;
 
-  .body-toolbar {
+  .body-extra {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 4px 0 8px;
+    gap: 4px;
   }
 
   .body-type-btn {
