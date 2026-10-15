@@ -86,7 +86,7 @@ watch([lang, variant, interpolate], () => {
 })
 
 const code = computed(() => {
-  const req = interpolate.value ? resolveRequest(props.request, env.vars) : props.request
+  const req = interpolate.value ? resolveRequest(props.request, env.scopeVars) : props.request
   return generateCode(req, lang.value, variant.value)
 })
 

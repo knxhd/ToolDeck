@@ -8,7 +8,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { useCollectionsStore } from './collections'
-import type { CollectionNode, Environment } from '@/api/types'
+import type { CollectionNode, Environment, KeyValue } from '@/api/types'
 
 let seq = 0
 const envId = () => `env_${Date.now().toString(36)}_${(seq++).toString(36)}`
@@ -63,6 +63,36 @@ export const useEnvironmentsStore = defineStore('environments', () => {
     return out
   })
 
+  /** 当前集合的集合级占位符（含未启用项，供编辑）。 */
+  const collectionPlaceholders = computed<KeyValue[]>(() => collection.value?.placeholders ?? [])
+
+  /** 集合级占位符中启用且有名称的变量表。 */
+  const collectionPlaceholderVars = computed<Record<string, string>>(() => {
+    const out: Record<string, string> = {}
+    for (const p of collectionPlaceholders.value) {
+      const key = (p.key || '').trim()
+      if (p.enabled && key) out[key] = p.value ?? ''
+    }
+    return out
+  })
+
+  /**
+   * 集合作用域变量 = 环境变量 + 集合占位符（同名时集合占位符优先）。
+   * 请求级占位符会在 resolveRequest 中再叠加在其上。
+   */
+  const scopeVars = computed<Record<string, string>>(() => ({
+    ...vars.value,
+    ...collectionPlaceholderVars.value,
+  }))
+
+  /** 覆盖当前集合的集合级占位符（对话框 Save 时调用）。 */
+  async function replacePlaceholders(list: KeyValue[]) {
+    const c = collection.value
+    if (!c) return
+    c.placeholders = list
+    await collections.persist()
+  }
+
   function setCurrentNode(nodeId: string | null) {
     currentNodeId.value = nodeId
   }
@@ -110,6 +140,10 @@ export const useEnvironmentsStore = defineStore('environments', () => {
     activeEnvId,
     activeEnv,
     vars,
+    collectionPlaceholders,
+    collectionPlaceholderVars,
+    scopeVars,
+    replacePlaceholders,
     setCurrentNode,
     setActiveEnv,
     targetCollection,

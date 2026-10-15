@@ -52,6 +52,14 @@
           </a-tabs>
         </div>
         <div class="tabs-right">
+          <!-- 集合级占位符 -->
+          <a-tooltip :content="env.collection ? `编辑集合「${env.collection.name}」的占位符` : '请先从集合打开请求'">
+            <a-button size="small" class="env-btn" :disabled="!env.collection" @click="phDialogOpen = true">
+              <template #icon><icon-code-block /></template>
+              占位符
+              <span v-if="collectionPhCount" class="ph-count">{{ collectionPhCount }}</span>
+            </a-button>
+          </a-tooltip>
           <!-- 环境切换 -->
           <a-dropdown @select="onEnvSelect" :disabled="!env.collection">
             <a-button size="small" class="env-btn">
@@ -112,12 +120,13 @@
 
     <SettingsDialog v-model="settingsOpen" />
     <EnvironmentsDialog v-model:visible="envDialogOpen" />
+    <CollectionPlaceholdersDialog v-model:visible="phDialogOpen" />
     <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" @saved="onRequestSaved" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
@@ -128,6 +137,7 @@ import WebSocketPane from '@/components/WebSocketPane.vue'
 import McpPane from '@/components/McpPane.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import EnvironmentsDialog from '@/components/EnvironmentsDialog.vue'
+import CollectionPlaceholdersDialog from '@/components/CollectionPlaceholdersDialog.vue'
 import SaveRequestDialog from '@/components/SaveRequestDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
@@ -156,6 +166,9 @@ const responseLayout = ref<'bottom' | 'right'>('right')
 const responseRatio = ref(50)
 const settingsOpen = ref(false)
 const envDialogOpen = ref(false)
+const phDialogOpen = ref(false)
+/** 当前集合启用的占位符数量（显示在按钮角标）。 */
+const collectionPhCount = computed(() => Object.keys(env.collectionPlaceholderVars).length)
 const saveDialogOpen = ref(false)
 const paneRef = ref<HTMLElement | null>(null)
 
@@ -557,6 +570,16 @@ function statusClass(code: number) {
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+
+  .ph-count {
+    margin-left: 4px;
+    padding: 0 5px;
+    font-size: 11px;
+    line-height: 16px;
+    border-radius: 8px;
+    background: rgba(255, 176, 32, 0.22);
+    color: #d48806;
+  }
 
   .svg-icon {
     width: 14px;

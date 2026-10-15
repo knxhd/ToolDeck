@@ -73,8 +73,8 @@ const placeholderVars = computed<Record<string, string>>(() => {
   return out
 })
 
-/** 可用变量 = 环境变量 + 占位符（同名时占位符优先）。 */
-const knownVars = computed<Record<string, string>>(() => ({ ...env.vars, ...placeholderVars.value }))
+/** 可用变量（优先级：请求占位符 > 集合占位符 > 环境变量）。 */
+const knownVars = computed<Record<string, string>>(() => ({ ...env.scopeVars, ...placeholderVars.value }))
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -273,7 +273,11 @@ function onHover(e: MouseEvent) {
   const name = target.dataset.var || ''
   const rect = target.getBoundingClientRect()
   const wrapRect = wrapRef.value.getBoundingClientRect()
-  const isPlaceholder = name in placeholderVars.value
+  const source = name in placeholderVars.value
+    ? 'Placeholder'
+    : name in env.collectionPlaceholderVars
+      ? 'Collection'
+      : 'Environment'
   const val = knownVars.value[name] ?? ''
   tip.value = {
     visible: true,
@@ -282,7 +286,7 @@ function onHover(e: MouseEvent) {
     name,
     value: val,
     missing: !(name in knownVars.value),
-    source: isPlaceholder ? 'Placeholder' : 'Environment',
+    source,
   }
 }
 

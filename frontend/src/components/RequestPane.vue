@@ -35,7 +35,7 @@
         <template #title>
           占位符<span v-if="placeholderCount" class="tab-count">{{ placeholderCount }}</span>
         </template>
-        <PlaceholderEditor v-model="placeholders" />
+        <PlaceholderEditor v-model="placeholders" title="请求占位符" />
       </a-tab-pane>
     </a-tabs>
   </div>

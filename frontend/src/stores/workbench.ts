@@ -4,7 +4,7 @@ import { ref } from 'vue'
 
 import { streamPost } from '@/api/client'
 import { useEnvironmentsStore } from './environments'
-import { missingVars, requestVars, resolveRequest } from '@/utils/env'
+import { missingVars, resolveRequest } from '@/utils/env'
 import { parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
 import type { CollectionNode, HttpRequestData, OpenTab } from '@/api/types'
@@ -124,20 +124,18 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     tab.streaming = true
     controller = new AbortController()
     try {
-      // 变量插值：用请求占位符 + 当前集合激活环境里的变量替换 url/headers/params/body 中的 {{var}}
+      // 变量插值（优先级：请求占位符 > 集合占位符 > 环境变量），替换 url/headers/params/body 中的 {{var}}
       const env = useEnvironmentsStore()
-      const resolved = resolveRequest(tab.request, env.vars)
+      const resolved = resolveRequest(tab.request, env.scopeVars)
 
-      // 发送前提醒未定义的占位符（不阻断请求）
-      const allVars = requestVars(tab.request, env.vars)
-      const rawText = [
-        tab.request.url,
-        tab.request.body || '',
-        ...(tab.request.headers || []).map((h) => h.value),
-        ...(tab.request.params || []).map((p) => p.value),
-        ...(tab.request.placeholders || []).filter((p) => p.enabled && p.key).map((p) => p.value),
+      // 发送前提醒未定义的占位符（不阻断请求）：插值后仍残留的 {{var}} 即为未定义
+      const resolvedText = [
+        resolved.url,
+        resolved.body || '',
+        ...(resolved.headers || []).filter((h) => h.enabled).map((h) => h.value),
+        ...(resolved.params || []).filter((p) => p.enabled).map((p) => p.value),
       ].join('\n')
-      const missing = [...new Set(missingVars(rawText, allVars))]
+      const missing = [...new Set(missingVars(resolvedText, {}))]
       if (missing.length) toast.warning(`未定义的变量：${missing.join(', ')}`)
 
       // URL 输入框保留完整 URL（含 query），发送时剥离 query，由后端用 params 重新拼接，避免重复参数

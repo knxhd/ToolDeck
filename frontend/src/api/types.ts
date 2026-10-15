@@ -87,6 +87,8 @@ export interface CollectionNode {
   environments?: Environment[]
   /** 仅 collection 节点：当前激活环境 id，null 表示不启用环境变量 */
   activeEnvId?: string | null
+  /** 仅 collection 节点：集合级占位符，集合内所有请求可用 {{key}} 引用 */
+  placeholders?: KeyValue[]
 }
 
 /** 工作台中一个打开的标签页。 */

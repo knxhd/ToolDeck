@@ -3,7 +3,7 @@
     <!-- 左侧：占位符列表 -->
     <div class="ph-list">
       <div class="ph-list-head">
-        <span class="ph-list-title">占位符</span>
+        <span class="ph-list-title">{{ title || '占位符' }}</span>
         <a-button size="mini" type="text" @click="add">
           <template #icon><icon-plus /></template>
           新增
@@ -54,13 +54,14 @@ import { VAR_NAME_RE } from '@/utils/env'
 import { toast } from '@/utils/feedback'
 import type { KeyValue } from '@/api/types'
 
-const props = defineProps<{ modelValue: KeyValue[] }>()
+/** title：列表标题（如「请求占位符」/「集合占位符」）。 */
+const props = defineProps<{ modelValue: KeyValue[]; title?: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: KeyValue[]] }>()
 
 const HELP_TEXT =
   '在 URL / Params / Headers / Body 中用 {{名称}} 引用占位符。' +
   'JSON Body 的字符串内引用时，换行、制表符、引号等会自动转义；' +
-  '与环境变量同名时占位符优先；占位符文本中也可引用环境变量。'
+  '同名优先级：请求占位符 > 集合占位符 > 环境变量；占位符文本中也可引用其它变量。'
 
 const activeIdx = ref(props.modelValue.length ? 0 : -1)
 
