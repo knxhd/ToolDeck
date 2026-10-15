@@ -111,11 +111,6 @@ function syncScroll() {
   }
 }
 
-function onClear() {
-  emit('update:modelValue', '')
-  inputRef.value?.focus()
-}
-
 // ---- 生成调用代码 ----
 const codeVisible = ref(false)
 
