@@ -1,5 +1,5 @@
 /** Collections 树 Pinia store：整棵树在前端持有，变更后整体回写后端。 */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -129,3 +129,5 @@ export const useCollectionsStore = defineStore('collections', () => {
     saveRequest,
   }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useCollectionsStore, import.meta.hot))

@@ -1,5 +1,5 @@
 /** MCP 客户端 Pinia store。 */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -138,3 +138,5 @@ export const useMcpStore = defineStore('mcp', () => {
     adHocCall,
   }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useMcpStore, import.meta.hot))

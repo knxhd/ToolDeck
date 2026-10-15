@@ -1,5 +1,5 @@
 /** 全局设置：字体、字号、明暗主题，持久化到 localStorage。 */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 const KEY = 'api-tool-settings'
@@ -60,3 +60,5 @@ export const useSettingsStore = defineStore('settings', () => {
 
   return { settings, init, reset, persist }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useSettingsStore, import.meta.hot))

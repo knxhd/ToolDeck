@@ -31,6 +31,12 @@
           @update:model-value="onFormChange" />
         <a-empty v-else description="无 Body" style="padding: 12px 0" />
       </a-tab-pane>
+      <a-tab-pane key="placeholders">
+        <template #title>
+          占位符<span v-if="placeholderCount" class="tab-count">{{ placeholderCount }}</span>
+        </template>
+        <PlaceholderEditor v-model="placeholders" />
+      </a-tab-pane>
     </a-tabs>
   </div>
 </template>
@@ -40,6 +46,7 @@ import { computed, ref, watch } from 'vue'
 import { jsonrepair } from 'jsonrepair'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
+import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
 import type { BodyType, KeyValue, OpenTab } from '@/api/types'
@@ -56,6 +63,16 @@ const bodyOptions: Array<{ value: BodyType; label: string }> = [
 const bodyTypeLabel = computed(
   () => bodyOptions.find((o) => o.value === props.tab.request.body_type)?.label || 'No Body',
 )
+
+/** 请求级占位符（旧数据可能没有该字段）。 */
+const placeholders = computed<KeyValue[]>({
+  get: () => props.tab.request.placeholders ?? [],
+  set: (v) => {
+    props.tab.request.placeholders = v
+  },
+})
+
+const placeholderCount = computed(() => placeholders.value.filter((p) => p.enabled && p.key).length)
 
 function onBodyTypeChange(v: string | number | Record<string, unknown> | undefined) {
   props.tab.request.body_type = String(v) as BodyType
@@ -190,5 +207,15 @@ watch(
 
 .selected-opt-span {
   margin-left: 16px;
+}
+
+.tab-count {
+  margin-left: 4px;
+  padding: 0 5px;
+  font-size: 11px;
+  line-height: 16px;
+  border-radius: 8px;
+  background: rgba(255, 176, 32, 0.22);
+  color: #d48806;
 }
 </style>

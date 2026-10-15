@@ -1,5 +1,5 @@
 /** HTTP 工作台 Pinia store。 */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -66,3 +66,5 @@ export const useHttpStore = defineStore('http', () => {
 
   return { request, response, history, loading, error, send, loadHistory, clearHistory, loadFromHistory, reset }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useHttpStore, import.meta.hot))

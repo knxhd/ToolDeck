@@ -4,7 +4,7 @@
  * - PostmanView 在切换标签页时调用 setCurrentNode(nodeId)，本 store 据此向上找到所属集合。
  * - 发送请求前，workbench 从这里取 vars 做 {{var}} 插值。
  */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 import { useCollectionsStore } from './collections'
@@ -120,3 +120,5 @@ export const useEnvironmentsStore = defineStore('environments', () => {
     envId,
   }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useEnvironmentsStore, import.meta.hot))

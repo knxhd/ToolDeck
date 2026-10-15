@@ -1,5 +1,5 @@
 /** LLM 调用 Pinia store。 */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -194,3 +194,5 @@ export const useLlmStore = defineStore('llm', () => {
     loadHistory,
   }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useLlmStore, import.meta.hot))

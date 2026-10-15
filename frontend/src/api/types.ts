@@ -23,6 +23,11 @@ export interface HttpRequestData {
   params: KeyValue[]
   body_type: BodyType
   body: string
+  /**
+   * 请求级占位符（长文本变量，如系统提示词）：在 url / params / headers / body 中用 {{key}} 引用。
+   * 仅前端使用，发送前已插值，不会提交给后端。
+   */
+  placeholders?: KeyValue[]
 }
 
 export interface HttpResponseData {

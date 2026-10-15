@@ -22,13 +22,13 @@
     <div v-if="tip.visible" class="var-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }">
       <div class="var-tip-head">
         <span class="var-tip-name">{{ tip.name }}</span>
-        <span class="var-tip-badge">Environment</span>
+        <span class="var-tip-badge">{{ tip.source }}</span>
       </div>
       <div class="var-tip-value">
         {{ tip.value === '' ? '(空字符串)' : tip.value }}
         <span class="var-tip-copy" title="复制值" @click="copyValue">⧉</span>
       </div>
-      <div v-if="tip.missing" class="var-tip-missing">当前环境未定义该变量</div>
+      <div v-if="tip.missing" class="var-tip-missing">未定义该变量（环境变量 / 占位符）</div>
     </div>
 
     <!-- 生成调用代码弹框 -->
@@ -63,6 +63,19 @@ const inputRef = ref<HTMLInputElement | null>(null)
 
 const PLACEHOLDER_RE = /\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g
 
+/** 请求级占位符（启用且有名称）。 */
+const placeholderVars = computed<Record<string, string>>(() => {
+  const out: Record<string, string> = {}
+  for (const p of props.request?.placeholders || []) {
+    const key = (p.key || '').trim()
+    if (p.enabled && key) out[key] = p.value ?? ''
+  }
+  return out
+})
+
+/** 可用变量 = 环境变量 + 占位符（同名时占位符优先）。 */
+const knownVars = computed<Record<string, string>>(() => ({ ...env.vars, ...placeholderVars.value }))
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
@@ -76,7 +89,7 @@ const rendered = computed(() => {
     const idx = m.index ?? 0
     out += escapeHtml(text.slice(last, idx))
     const name = m[1]
-    const missing = !(name in env.vars)
+    const missing = !(name in knownVars.value)
     out += `<span class="env-var${missing ? ' missing' : ''}" data-var="${escapeHtml(name)}">${escapeHtml(m[0])}</span>`
     last = idx + m[0].length
   }
@@ -137,7 +150,7 @@ function detectTrigger() {
   const input = inputRef.value
   if (!input) return
   // 没有可用变量时完全不弹
-  const keys = Object.keys(env.vars)
+  const keys = Object.keys(knownVars.value)
   if (!keys.length) {
     closePopup()
     return
@@ -254,7 +267,7 @@ function onPaste(e: ClipboardEvent) {
 }
 
 // ---- 悬停 tooltip ----
-const tip = ref({ visible: false, x: 0, y: 0, name: '', value: '', missing: false })
+const tip = ref({ visible: false, x: 0, y: 0, name: '', value: '', missing: false, source: 'Environment' })
 
 function onHover(e: MouseEvent) {
   const target = (e.target as HTMLElement).closest('.env-var') as HTMLElement | null
@@ -265,14 +278,16 @@ function onHover(e: MouseEvent) {
   const name = target.dataset.var || ''
   const rect = target.getBoundingClientRect()
   const wrapRect = wrapRef.value.getBoundingClientRect()
-  const val = env.vars[name] ?? ''
+  const isPlaceholder = name in placeholderVars.value
+  const val = knownVars.value[name] ?? ''
   tip.value = {
     visible: true,
     x: rect.left - wrapRect.left,
     y: rect.bottom - wrapRect.top + 8,
     name,
     value: val,
-    missing: !(name in env.vars),
+    missing: !(name in knownVars.value),
+    source: isPlaceholder ? 'Placeholder' : 'Environment',
   }
 }
 
@@ -430,8 +445,12 @@ async function copyValue() {
 .var-tip-value {
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
   word-break: break-all;
+  white-space: pre-wrap;
+  max-width: 480px;
+  max-height: 200px;
+  overflow: auto;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
 }
 
