@@ -245,10 +245,8 @@ async function loadUserData() {
 /** 切换用户：清空当前 tabs，重新加载新用户的数据。 */
 async function onUserSelected() {
   userDialogOpen.value = false
-  // 清空现有 tabs 和 localStorage 里的旧 tabs
-  wb.tabs = []
-  wb.activeId = null
-  localStorage.removeItem('api-tool.tabs.v1')
+  // 清空现有 tabs、activeTab 和 localStorage 里的旧 tabs
+  wb.reset()
   dataReady.value = false
   await loadUserData()
 }

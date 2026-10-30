@@ -298,6 +298,18 @@ export const useWorkbenchStore = defineStore('workbench', () => {
   const persistKey = computed(() => JSON.stringify(serializeTabs(tabs.value, activeId.value)))
   watch(persistKey, () => saveToStorage(tabs.value, activeId.value))
 
+  /** 切换用户时调用：清空所有 tabs、activeTab、localStorage。 */
+  function reset() {
+    tabs.value = []
+    activeId.value = null
+    activeTab.value = null
+    if (controller) {
+      try { controller.abort() } catch {}
+      controller = null
+    }
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
   return {
     tabs,
     activeId,
@@ -311,6 +323,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     renameTab,
     syncTitleByNodeId,
     restore,
+    reset,
   }
 })
 
