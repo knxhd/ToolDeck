@@ -19,14 +19,17 @@
     </div>
 
     <!-- 悬停浮层：显示变量当前值 -->
-    <div v-if="tip.visible" class="var-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }">
+    <div v-if="tip.visible" class="var-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }"
+      @mouseenter="cancelHide" @mouseleave="hideTip">
       <div class="var-tip-head">
         <span class="var-tip-name">{{ tip.name }}</span>
         <span class="var-tip-badge">{{ tip.source }}</span>
       </div>
       <div class="var-tip-value">
-        {{ tip.value === '' ? '(空字符串)' : tip.value }}
-        <span class="var-tip-copy" title="复制值" @click="copyValue">⧉</span>
+        <span class="var-tip-value-text">{{ tip.value === '' ? '(空字符串)' : tip.value }}</span>
+        <button class="var-tip-copy" title="复制值" @click="copyValue">
+          <icon-copy />
+        </button>
       </div>
       <div v-if="tip.missing" class="var-tip-missing">未定义该变量（环境变量 / 占位符）</div>
     </div>
@@ -263,13 +266,32 @@ function onPaste(e: ClipboardEvent) {
 
 // ---- 悬停 tooltip ----
 const tip = ref({ visible: false, x: 0, y: 0, name: '', value: '', missing: false, source: 'Environment' })
+let hideTimer: number | null = null
+
+function scheduleHide() {
+  cancelHide()
+  hideTimer = window.setTimeout(() => {
+    tip.value.visible = false
+    hideTimer = null
+  }, 120)
+}
+function cancelHide() {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
+function hideTip() {
+  tip.value.visible = false
+}
 
 function onHover(e: MouseEvent) {
   const target = (e.target as HTMLElement).closest('.env-var') as HTMLElement | null
   if (!target || !wrapRef.value) {
-    tip.value.visible = false
+    scheduleHide()
     return
   }
+  cancelHide()
   const name = target.dataset.var || ''
   const rect = target.getBoundingClientRect()
   const wrapRect = wrapRef.value.getBoundingClientRect()
@@ -291,7 +313,7 @@ function onHover(e: MouseEvent) {
 }
 
 function onLeave() {
-  tip.value.visible = false
+  scheduleHide()
 }
 
 async function copyValue() {
@@ -411,13 +433,14 @@ async function copyValue() {
 .var-tip {
   position: absolute;
   z-index: 1000;
-  background: rgba(30, 30, 32, 0.96);
-  color: #fff;
+  background: var(--el-bg-color-overlay, var(--el-bg-color));
+  color: var(--el-text-color-primary);
+  border: 1px solid var(--el-border-color);
   border-radius: 6px;
   padding: 8px 10px;
   font-size: 12px;
-  min-width: 180px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  min-width: 220px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   pointer-events: auto;
 }
 
@@ -431,14 +454,15 @@ async function copyValue() {
 .var-tip-name {
   font-weight: 600;
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  color: #d48806;
 }
 
 .var-tip-badge {
   font-size: 11px;
-  color: #4080ff;
-  border: 1px solid #4080ff;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
   border-radius: 3px;
-  padding: 0 4px;
+  padding: 1px 6px;
 }
 
 .var-tip-value {
@@ -451,20 +475,33 @@ async function copyValue() {
   display: flex;
   align-items: flex-start;
   gap: 6px;
+  background: var(--el-fill-color-light);
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.var-tip-value-text {
+  flex: 1;
+  min-width: 0;
 }
 
 .var-tip-copy {
+  flex-shrink: 0;
   cursor: pointer;
-  opacity: 0.7;
+  border: none;
+  background: transparent;
+  color: var(--el-text-color-secondary);
+  padding: 0;
+  font-size: 13px;
 
   &:hover {
-    opacity: 1;
+    color: var(--el-color-primary);
   }
 }
 
 .var-tip-missing {
-  margin-top: 4px;
-  color: #f53f3f;
+  margin-top: 6px;
+  color: var(--el-color-danger);
   font-size: 11px;
 }
 

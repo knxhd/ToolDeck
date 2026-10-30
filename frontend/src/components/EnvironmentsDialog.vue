@@ -18,7 +18,7 @@
       <div class="env-list">
         <div class="env-list-header">
           <span class="env-list-title">ENVIRONMENTS</span>
-          <a-button size="mini" @click="onAddEnv" title="新建环境">
+          <a-button size="mini" type="text" @click="onAddEnv" title="新建环境">
             <template #icon><icon-plus /></template>
           </a-button>
         </div>
@@ -41,7 +41,7 @@
         <template v-if="currentEnv">
           <div class="detail-header">
             <span class="detail-title">{{ currentEnv.name }}</span>
-            <a-button size="mini" @click="onAddVar">添加变量</a-button>
+            <a-button size="mini"  @click="onAddVar">添加变量</a-button>
           </div>
           <table class="var-table">
             <thead>

@@ -98,13 +98,13 @@
           <RequestBar :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
           <div class="http-body" ref="paneRef"
             :style="{ flexDirection: responseLayout === 'bottom' ? 'column' : 'row' }">
-            <div class="half"
+            <div class="half" ref="reqPaneRef"
               :style="responseLayout === 'bottom' ? { height: (100 - responseRatio) + '%' } : { width: (100 - responseRatio) + '%' }">
               <RequestPane :tab="wb.activeTab" />
             </div>
             <div class="splitter" :class="responseLayout === 'bottom' ? 'h-splitter' : 'v-splitter'"
               @mousedown="startRespDrag" />
-            <div class="half"
+            <div class="half" ref="respPaneRef"
               :style="responseLayout === 'bottom' ? { height: responseRatio + '%' } : { width: responseRatio + '%' }">
               <ResponsePane :tab="wb.activeTab" />
             </div>
@@ -171,6 +171,8 @@ const phDialogOpen = ref(false)
 const collectionPhCount = computed(() => Object.keys(env.collectionPlaceholderVars).length)
 const saveDialogOpen = ref(false)
 const paneRef = ref<HTMLElement | null>(null)
+const reqPaneRef = ref<HTMLElement | null>(null)
+const respPaneRef = ref<HTMLElement | null>(null)
 
 // 切换标签页时，把当前请求节点 id 同步给环境 store，据此找到所属集合
 watch(
@@ -297,14 +299,71 @@ function startSidebarDrag(e: MouseEvent) {
 }
 
 function startRespDrag(e: MouseEvent) {
-  const rect = paneRef.value?.getBoundingClientRect()
-  const total = responseLayout.value === 'bottom' ? rect?.height || 1 : rect?.width || 1
-  const startRatio = responseRatio.value
-  startDrag(e, (dx, dy) => {
-    const delta = responseLayout.value === 'bottom' ? dy : dx
-    // 向反方向：分隔条向左/上拖时，右侧/底部响应区变大，比例应增加
-    responseRatio.value = Math.min(80, Math.max(20, startRatio - (delta / total) * 100))
-  })
+  const container = paneRef.value
+  const reqEl = reqPaneRef.value
+  const respEl = respPaneRef.value
+  if (!container || !reqEl || !respEl) return
+  const isBottom = responseLayout.value === 'bottom'
+  const rect = container.getBoundingClientRect()
+  const containerSize = isBottom ? rect.height : rect.width
+  const splitterSize = 4
+  // mousedown 时分隔条应在的位置（req 区域像素宽度）
+  const startReqSize = (responseRatio.value / 100) * (containerSize - splitterSize)
+  // 鼠标在容器内的起始位置
+  const startMouse = isBottom ? e.clientY - rect.top : e.clientX - rect.left
+  // 鼠标相对分隔条中心的偏移（抓住时不跳变）
+  const grabOffset = startMouse - startReqSize
+
+  e.preventDefault()
+  let rafId = 0
+  let pendingMouse = 0
+
+  function apply(mouseInContainer: number) {
+    // 分隔条 = 鼠标位置 - 抓取偏移
+    let reqSize = mouseInContainer - grabOffset
+    reqSize = Math.min(containerSize - splitterSize - 20, Math.max(20, reqSize))
+    const respSize = containerSize - splitterSize - reqSize
+    if (isBottom) {
+      reqEl.style.height = `${reqSize}px`
+      reqEl.style.width = ''
+      respEl.style.height = `${respSize}px`
+      respEl.style.width = ''
+    } else {
+      reqEl.style.width = `${reqSize}px`
+      reqEl.style.height = ''
+      respEl.style.width = `${respSize}px`
+      respEl.style.height = ''
+    }
+  }
+  function flush() {
+    rafId = 0
+    apply(pendingMouse)
+  }
+  function move(ev: MouseEvent) {
+    const newRect = container.getBoundingClientRect()
+    pendingMouse = isBottom ? ev.clientY - newRect.top : ev.clientX - newRect.left
+    if (!rafId) rafId = requestAnimationFrame(flush)
+  }
+  function up() {
+    if (rafId) cancelAnimationFrame(rafId)
+    document.removeEventListener('mousemove', move)
+    document.removeEventListener('mouseup', up)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+    // 用最终像素换算回百分比
+    const finalReq = isBottom ? reqEl.getBoundingClientRect().height : reqEl.getBoundingClientRect().width
+    const ratio = Math.min(80, Math.max(20, ((containerSize - splitterSize - finalReq) / (containerSize - splitterSize)) * 100))
+    responseRatio.value = ratio
+    // 清掉内联 style，回到 Vue 绑定
+    reqEl.style.height = ''
+    reqEl.style.width = ''
+    respEl.style.height = ''
+    respEl.style.width = ''
+  }
+  document.addEventListener('mousemove', move)
+  document.addEventListener('mouseup', up)
+  document.body.style.cursor = isBottom ? 'row-resize' : 'col-resize'
+  document.body.style.userSelect = 'none'
 }
 
 function onOpenNode(node: CollectionNode) {
