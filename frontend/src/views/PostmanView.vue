@@ -90,12 +90,15 @@
           <a-button size="small" @click="settingsOpen = true">
             <template #icon><icon-settings /></template>
           </a-button>
-          <a-tooltip content="切换用户">
-            <a-button size="small" class="user-chip" @click="userDialogOpen = true">
+          <a-dropdown @select="onUserMenu">
+            <a-button size="small" class="user-chip">
               <template #icon><icon-user /></template>
-              {{ user.name || '未登录' }}
+              {{ user.user?.display_name || user.user?.username || '未登录' }}
             </a-button>
-          </a-tooltip>
+            <template #content>
+              <a-doption value="logout">退出登录</a-doption>
+            </template>
+          </a-dropdown>
         </div>
       </div>
 
@@ -225,8 +228,8 @@ function onEnvSelect(value: string | number | Record<string, unknown> | undefine
 }
 
 onMounted(async () => {
-  // 首次打开没有用户名，先弹框让用户选；选完后再加载数据
-  if (user.needsName) {
+  // 未登录先弹登录框；登录成功后再加载数据
+  if (user.needsLogin) {
     userDialogOpen.value = true
   } else {
     await loadUserData()
@@ -242,13 +245,21 @@ async function loadUserData() {
   dataReady.value = true
 }
 
-/** 切换用户：清空当前 tabs，重新加载新用户的数据。 */
+/** 登录/注册成功后：加载当前用户数据。 */
 async function onUserSelected() {
   userDialogOpen.value = false
-  // 清空现有 tabs、activeTab 和 localStorage 里的旧 tabs
   wb.reset()
   dataReady.value = false
   await loadUserData()
+}
+
+async function onUserMenu(key: string | number | Record<string, any> | undefined) {
+  if (key === 'logout') {
+    await user.logout()
+    wb.reset()
+    dataReady.value = false
+    userDialogOpen.value = true
+  }
 }
 
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))

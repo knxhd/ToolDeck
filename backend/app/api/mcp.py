@@ -1,9 +1,10 @@
 """MCP Streamable HTTP 客户端路由。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from backend.app.api.auth import current_user
 from backend.app.schemas.mcp import (
     McpCallResult,
     McpServer,
@@ -13,16 +14,8 @@ from backend.app.schemas.mcp import (
 from backend.app.services import history_store
 from backend.app.services import mcp_client
 from backend.app.services import mcp_store
-from backend.app.services import users
 
 router = APIRouter()
-
-
-def _user(x_user: str | None) -> str:
-    try:
-        return users.sanitize_username(x_user)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
 
 
 def _get_server_or_404(name: str) -> dict:
@@ -80,8 +73,7 @@ async def list_tools(name: str) -> list[McpTool]:
 
 
 @router.post("/servers/{name}/tools/{tool}/call", response_model=McpCallResult)
-async def call_tool(name: str, tool: str, args: dict, x_user: str | None = Header(default=None)) -> McpCallResult:
-    user = _user(x_user)
+async def call_tool(name: str, tool: str, args: dict, user: dict = Depends(current_user)) -> McpCallResult:
     s = _get_server_or_404(name)
     server = McpServer(**s)
     try:
@@ -91,7 +83,7 @@ async def call_tool(name: str, tool: str, args: dict, x_user: str | None = Heade
             server=name, tool=tool, is_error=True, error=str(exc)
         )
     history_store.append_mcp_call(
-        user,
+        user["id"],
         {
             "server": name,
             "tool": tool,
@@ -105,14 +97,14 @@ async def call_tool(name: str, tool: str, args: dict, x_user: str | None = Heade
 
 
 @router.get("/history")
-async def get_mcp_history(x_user: str | None = Header(default=None)) -> list[dict]:
-    calls = history_store.get_mcp_calls(_user(x_user))
+async def get_mcp_history(user: dict = Depends(current_user)) -> list[dict]:
+    calls = history_store.get_mcp_calls(user["id"])
     return list(reversed(calls))
 
 
 @router.delete("/history")
-async def clear_mcp_history(x_user: str | None = Header(default=None)) -> dict:
-    history_store.clear_mcp_calls(_user(x_user))
+async def clear_mcp_history(user: dict = Depends(current_user)) -> dict:
+    history_store.clear_mcp_calls(user["id"])
     return {"cleared": True}
 
 

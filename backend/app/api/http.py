@@ -11,11 +11,12 @@ import json
 import time
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from backend.app.api.auth import current_user
 from backend.app.schemas.http import BodyType, HttpRequest, KeyValue
-from backend.app.services import history_store, users
+from backend.app.services import history_store
 from backend.app.services.form_data import FormDataError, build_form_data, drop_content_type
 from backend.app.services.http_client import send_request
 
@@ -26,20 +27,12 @@ def _kv_to_dict(items: list[KeyValue]) -> dict[str, str]:
     return {item.key: item.value for item in items if item.enabled and item.key}
 
 
-def _user(x_user: str | None) -> str:
-    try:
-        return users.sanitize_username(x_user)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
-
-
 @router.post("/send")
-async def send(req: HttpRequest, x_user: str | None = Header(default=None)) -> dict:
+async def send(req: HttpRequest, user: dict = Depends(current_user)) -> dict:
     """转发 HTTP 请求并返回完整响应；成功后追加历史记录。"""
-    user = _user(x_user)
     response = await send_request(req)
     history_store.append_http_call(
-        user,
+        user["id"],
         {
             "method": req.method.value,
             "url": req.url,
@@ -54,12 +47,8 @@ async def send(req: HttpRequest, x_user: str | None = Header(default=None)) -> d
 
 
 @router.post("/stream")
-async def stream(req: HttpRequest, x_user: str | None = Header(default=None)) -> StreamingResponse:
-    """流式转发请求：先发响应头 meta，再逐块下发 body，最后 done。
-
-    普通接口会在一次或少数几块内收齐；SSE/分块接口则逐块实时推送。
-    """
-    user = _user(x_user)
+async def stream(req: HttpRequest, user: dict = Depends(current_user)) -> StreamingResponse:
+    """流式转发请求：先发响应头 meta，再逐块下发 body，最后 done。"""
     headers = _kv_to_dict(req.headers)
     params = _kv_to_dict(req.params)
     content = None
@@ -80,7 +69,6 @@ async def stream(req: HttpRequest, x_user: str | None = Header(default=None)) ->
         else:
             form_data = fields or None
             if files:
-                # 含文件：multipart/form-data，Content-Type（含 boundary）交给 httpx 生成
                 form_files = files
                 headers = drop_content_type(headers)
 
@@ -118,7 +106,7 @@ async def stream(req: HttpRequest, x_user: str | None = Header(default=None)) ->
                     elapsed_ms = int((time.perf_counter() - start) * 1000)
                     yield json.dumps({"type": "done", "elapsed_ms": elapsed_ms, "size_bytes": size}, ensure_ascii=False) + "\n"
                     history_store.append_http_call(
-                        user,
+                        user["id"],
                         {
                             "method": req.method.value,
                             "url": req.url,
@@ -142,12 +130,12 @@ async def stream(req: HttpRequest, x_user: str | None = Header(default=None)) ->
 
 
 @router.get("/history")
-async def get_history(x_user: str | None = Header(default=None)) -> list[dict]:
-    calls = history_store.get_http_calls(_user(x_user))
+async def get_history(user: dict = Depends(current_user)) -> list[dict]:
+    calls = history_store.get_http_calls(user["id"])
     return list(reversed(calls))
 
 
 @router.delete("/history")
-async def clear_history(x_user: str | None = Header(default=None)) -> dict:
-    history_store.clear_http_calls(_user(x_user))
+async def clear_history(user: dict = Depends(current_user)) -> dict:
+    history_store.clear_http_calls(user["id"])
     return {"cleared": True}

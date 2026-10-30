@@ -13,23 +13,16 @@ import json
 from typing import AsyncGenerator
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from backend.app.api.auth import current_user
 from backend.app.schemas.llm import ChatRequest, ChatResponse, LlmProvider
 from backend.app.services import history_store
 from backend.app.services import llm_store
-from backend.app.services import users
 from backend.app.services.llm import get_adapter
 
 router = APIRouter()
-
-
-def _user(x_user: str | None) -> str:
-    try:
-        return users.sanitize_username(x_user)
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
 
 
 def _resolve_provider(name: str) -> tuple[LlmProvider, object]:
@@ -85,9 +78,8 @@ def _sse(delta: str = "", finish_reason: str | None = None, error: str | None = 
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest, x_user: str | None = Header(default=None)) -> ChatResponse:
+async def chat(req: ChatRequest, user: dict = Depends(current_user)) -> ChatResponse:
     """同步调用 LLM。"""
-    user = _user(x_user)
     provider, adapter = _resolve_provider(req.provider_name)
     options = {"temperature": req.temperature, **provider.options}
     request = adapter.build_request(
@@ -109,7 +101,7 @@ async def chat(req: ChatRequest, x_user: str | None = Header(default=None)) -> C
         raise HTTPException(status_code=502, detail=f"调用失败：{exc}")
 
     history_store.append_llm_call(
-        user,
+        user["id"],
         {
             "provider": provider.name,
             "model": provider.model,
@@ -123,9 +115,8 @@ async def chat(req: ChatRequest, x_user: str | None = Header(default=None)) -> C
 
 
 @router.post("/chat/stream")
-async def chat_stream(req: ChatRequest, x_user: str | None = Header(default=None)) -> StreamingResponse:
+async def chat_stream(req: ChatRequest, user: dict = Depends(current_user)) -> StreamingResponse:
     """流式调用 LLM，SSE 推送。"""
-    user = _user(x_user)
     provider, adapter = _resolve_provider(req.provider_name)
     options = {"temperature": req.temperature, **provider.options}
     request = adapter.build_request(
@@ -164,7 +155,7 @@ async def chat_stream(req: ChatRequest, x_user: str | None = Header(default=None
             yield _sse(error=f"已中断：{exc}")
         finally:
             history_store.append_llm_call(
-                user,
+                user["id"],
                 {
                     "provider": provider.name,
                     "model": provider.model,
@@ -184,13 +175,13 @@ async def chat_stream(req: ChatRequest, x_user: str | None = Header(default=None
 
 
 @router.get("/history")
-async def get_llm_history(x_user: str | None = Header(default=None)) -> list[dict]:
+async def get_llm_history(user: dict = Depends(current_user)) -> list[dict]:
     """返回 LLM 调用历史（按时间倒序）。"""
-    calls = history_store.get_llm_calls(_user(x_user))
+    calls = history_store.get_llm_calls(user["id"])
     return list(reversed(calls))
 
 
 @router.delete("/history")
-async def clear_llm_history(x_user: str | None = Header(default=None)) -> dict:
-    history_store.clear_llm_calls(_user(x_user))
+async def clear_llm_history(user: dict = Depends(current_user)) -> dict:
+    history_store.clear_llm_calls(user["id"])
     return {"cleared": True}

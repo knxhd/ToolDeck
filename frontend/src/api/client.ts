@@ -4,9 +4,36 @@ export interface ApiError {
   detail: string
 }
 
+const TOKEN_KEY = 'api-tool.token'
+const USER_KEY = 'api-tool.user'
+
+export function getToken(): string {
+  return localStorage.getItem(TOKEN_KEY) || ''
+}
+
+export function setSession(token: string, user: { id: number; username: string; display_name: string }) {
+  localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
+}
+
+export function clearSession() {
+  localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(USER_KEY)
+}
+
+export function getStoredUser(): { id: number; username: string; display_name: string } | null {
+  const raw = localStorage.getItem(USER_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
 function authHeaders(): Record<string, string> {
-  const name = localStorage.getItem('api-tool.username') || ''
-  return name ? { 'X-User': name } : {}
+  const t = getToken()
+  return t ? { Authorization: `Bearer ${t}` } : {}
 }
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
@@ -18,6 +45,12 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     },
     ...options,
   })
+  if (res.status === 401) {
+    clearSession()
+    // 让页面刷新回到登录页
+    location.reload()
+    throw new Error('登录已过期')
+  }
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`
     try {
@@ -43,7 +76,6 @@ export const api = {
 
 /**
  * 流式 POST：按 NDJSON 逐行解析，每行回调一个事件。
- * 用于 /api/http/stream 的 meta/chunk/done/error 推送。
  */
 export async function streamPost(
   url: string,
@@ -57,6 +89,11 @@ export async function streamPost(
     body: JSON.stringify(body),
     signal,
   })
+  if (res.status === 401) {
+    clearSession()
+    location.reload()
+    throw new Error('登录已过期')
+  }
   if (!res.ok || !res.body) {
     let detail = `${res.status} ${res.statusText}`
     try {

@@ -23,7 +23,12 @@ def is_dev() -> bool:
 def create_app() -> FastAPI:
     """构造 FastAPI 实例：CORS（仅 dev）、API 路由、静态资源托管（仅 prod）。"""
     init_config_dir()
-    app = FastAPI(title="API Tool", version="0.1.0")
+
+    # 初始化 SQLite
+    from backend.app.services.db import init_db
+    init_db()
+
+    app = FastAPI(title="API Tool", version="0.2.0")
 
     if is_dev():
         app.add_middleware(
@@ -39,19 +44,19 @@ def create_app() -> FastAPI:
         return JSONResponse({"status": "ok", "env": get_env("APP_ENV", "production")})
 
     # 注册各业务路由
+    from backend.app.api import auth as auth_api
     from backend.app.api import collections as collections_api
     from backend.app.api import files as files_api
     from backend.app.api import http as http_api
     from backend.app.api import llm as llm_api
     from backend.app.api import mcp as mcp_api
-    from backend.app.api import users as users_api
 
+    app.include_router(auth_api.router, prefix="/api/auth")
     app.include_router(collections_api.router, prefix="/api/collections")
     app.include_router(files_api.router, prefix="/api/files")
     app.include_router(http_api.router, prefix="/api/http")
     app.include_router(mcp_api.router, prefix="/api/mcp")
     app.include_router(llm_api.router, prefix="/api/llm")
-    app.include_router(users_api.router, prefix="/api/user")
 
     # 生产模式托管前端静态资源 + SPA fallback
     if not is_dev():
