@@ -294,6 +294,10 @@ async function onTeamSelected(team: { id: number }) {
 async function onUserSelected() {
   userDialogOpen.value = false
   wb.reset()
+  collections.clear()
+  http.clearAll()
+  teams.clear()
+  scopeMode.value = 'personal'
   dataReady.value = false
   await loadUserData()
 }
@@ -302,6 +306,10 @@ async function onUserMenu(key: string | number | Record<string, any> | undefined
   if (key === 'logout') {
     await user.logout()
     wb.reset()
+    collections.clear()
+    http.clearAll()
+    teams.clear()
+    scopeMode.value = 'personal'
     dataReady.value = false
     userDialogOpen.value = true
   }

@@ -64,7 +64,12 @@ export const useHttpStore = defineStore('http', () => {
     error.value = ''
   }
 
-  return { request, response, history, loading, error, send, loadHistory, clearHistory, loadFromHistory, reset }
+  function clearAll() {
+    reset()
+    history.value = []
+  }
+
+  return { request, response, history, loading, error, send, loadHistory, clearHistory, loadFromHistory, reset, clearAll }
 })
 
 if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useHttpStore, import.meta.hot))

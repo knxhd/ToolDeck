@@ -53,6 +53,13 @@ export const useCollectionsStore = defineStore('collections', () => {
     await load()
   }
 
+  /** 清空本地状态（切换用户时调用）。 */
+  function clear() {
+    tree.value = []
+    scope.value = 'personal'
+    teamId.value = null
+  }
+
   function findNode(id: string, nodes: CollectionNode[] = tree.value): CollectionNode | null {
     for (const n of nodes) {
       if (n.id === id) return n
@@ -148,6 +155,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     loadPersonal,
     loadTeam,
     persist,
+    clear,
     findNode,
     findParent,
     addCollection,

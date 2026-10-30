@@ -47,5 +47,10 @@ export const useTeamsStore = defineStore('teams', () => {
     members.value = members.value.filter((m) => m.id !== userId)
   }
 
-  return { myTeams, members, loadMyTeams, createTeam, loadMembers, invite, removeMember }
+  function clear() {
+    myTeams.value = []
+    members.value = []
+  }
+
+  return { myTeams, members, loadMyTeams, createTeam, loadMembers, invite, removeMember, clear }
 })
