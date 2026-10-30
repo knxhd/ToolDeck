@@ -1,63 +1,70 @@
-export const parseMessages = (message: string, type: string) => {
-    try {
-        if (message == '\n') {
-            return '\n'
-        }
-        if (type === 'Qwen3') {
-            // Qwen3 SSE：一个 chunk 可能包含 0 个、1 个或多个完整帧，
-            // 每帧形如：
-            //   id:40\n
-            //   event:result\n
-            //   :HTTP_STATUS/200\n
-            //   {...json...}\n\n
-            // 取所有以 { 开头的行，逐行 JSON.parse，拼接其中的文本增量。
-            let out = ''
-            for (const line of message.split(/\r?\n/)) {
-                const trimmed = line.trim()
-                if (!trimmed.startsWith('{')) continue
-                try {
-                    const body = JSON.parse(trimmed)
-                    const choice = body?.output?.choices?.[0]
-                    const content = choice?.message?.content
-                    if (Array.isArray(content)) {
-                        for (const c of content) {
-                            if (c && typeof c.text === 'string') out += c.text
-                        }
-                    } else if (typeof content === 'string') {
-                        out += content
-                    }
-                } catch {
-                    // 半截 JSON：忽略，等下一帧补齐
-                }
-            }
-            return out
-        }
+/**
+ * 解析 SSE 流式数据。传入的 message 是**所有 chunk 拼接后的完整字符串**，
+ * 因为 TCP 分片可能把一帧 JSON 拆到多个 chunk 里，必须拼接后再按行解析。
+ *
+ * 一个 chunk 里可能有 0 / 1 / 多帧完整数据，也可能末尾带半截 JSON（流式尚未结束）。
+ */
+export const parseMessages = (message: string, type: string): string => {
+    if (!message) return ''
+    if (message === '\n') return '\n'
 
-        const parts = message.split('HTTP_STATUS/200')
-        if (parts.length > 1) {
-            message = parts[1]
+    // 把所有行里能识别出的 JSON 行收集起来，逐个尝试 parse。
+    // 不完整的 JSON 行直接跳过（等下一帧补齐后重新拼接解析）。
+    let out = ''
+    for (const rawLine of message.split(/\r?\n/)) {
+        const line = stripSsePrefix(rawLine)
+        if (!line.startsWith('{')) continue
+        let body: any
+        try {
+            body = JSON.parse(line)
+        } catch {
+            continue
         }
-        const messageBody = JSON.parse(message);
+        if (!body) {
+            continue
+        }
         if (type === 'OpenAi') {
-            if (!messageBody.choices || messageBody.choices.length === 0) {
-                return ''
-            }
-            if (!messageBody.choices[0].delta || !messageBody.choices[0].delta.content) {
-                return ''
-            }
-            return messageBody.choices[0].delta.content
+            out += openAiParser(body)
         } else if (type === 'Qwen') {
-            if (!messageBody.output) {
-                return ''
-            }
-            if (!messageBody.output.choices || messageBody.output.choices.length === 0) {
-                return ''
-            }
-            return messageBody.output.choices[0].message.content
+            out += qwenParser(body)
         }
-        return ''
-    } catch (error) {
-        console.error(error)
-        return ''
     }
+    return out
+}
+
+const openAiParser = (body) => {
+    const delta = body?.choices?.[0]?.delta
+    if (delta && typeof delta.content === 'string') {
+        return delta.content
+    }
+    return ""
+}
+
+const qwenParser = (body) => {
+    // Qwen / Qwen3: {"output":{"choices":[{"message":{"content": [...] 或 "..."}}]}}
+    const content = body?.output?.choices?.[0]?.message?.content
+    if (Array.isArray(content)) {
+        for (const c of content) {
+            if (c && typeof c.text === 'string') {
+                return c.text
+            }
+        }
+    } else if (typeof content === 'string') {
+        return content;
+    }
+    return ""
+}
+
+/**
+ * 去掉 SSE 行前缀，取出可能的 JSON 部分：
+ *   data: {...}      -> {...}
+ *   :HTTP_STATUS/200 -> ''
+ *   id:40            -> ''
+ *   event:result     -> ''
+ */
+function stripSsePrefix(line: string): string {
+    const t = line.trim()
+    if (t.startsWith('data:')) return t.slice(5).trim()
+    if (t.startsWith('{')) return t
+    return ''
 }
