@@ -66,6 +66,15 @@ def create_app() -> FastAPI:
         if static_dir.exists():
             app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
 
+            # favicon / 根目录静态文件
+            @app.get("/favicon.svg", include_in_schema=False)
+            async def favicon() -> HTMLResponse:
+                f = static_dir / "favicon.svg"
+                return HTMLResponse(
+                    content=f.read_bytes(),
+                    media_type="image/svg+xml",
+                ) if f.exists() else HTMLResponse(status_code=404)
+
             index_file = static_dir / "index.html"
 
             @app.get("/{full_path:path}", response_model=None)
