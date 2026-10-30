@@ -104,15 +104,14 @@ function formatSize(bytes: number) {
 const mergeType = ref('')
 const mergeMessage = (messages: Array<{ data: string }>) => {
   try {
-    let fullMessage = ''
-    for (const item of messages) {
-      const message = parseMessages(item.data, mergeType.value)
-      fullMessage += message
-    }
-    return fullMessage
+    // 把所有 chunk 拼成完整字节流，再逐行解析：
+    // 单个 chunk 可能是半截 JSON，独立 parse 会丢帧；拼接后能还原完整 JSON 行。
+    const all = messages.map((m) => m.data).join('')
+    return parseMessages(all, mergeType.value)
   } catch (error) {
     console.error(error)
     mergeType.value = ''
+    return ''
   }
 }
 </script>
