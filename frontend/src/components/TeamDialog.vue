@@ -18,7 +18,8 @@
         <a-input-search
           v-model="newTeamName"
           placeholder="新团队名称"
-          search-button="创建团队"
+          search-button
+          button-text="创建团队"
           @search="onCreateTeam"
         />
       </a-tab-pane>
@@ -28,7 +29,8 @@
           <a-input-search
             v-model="inviteName"
             placeholder="输入用户名邀请加入"
-            search-button="邀请"
+            search-button
+            button-text="邀请"
             @search="onInvite"
           />
         </div>
