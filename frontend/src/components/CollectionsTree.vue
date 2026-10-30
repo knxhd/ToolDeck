@@ -9,7 +9,7 @@
         <a-button size="small" type="text" title="导入集合" @click="onImportClick">
           <template #icon><icon-import /></template>
         </a-button>
-        <a-button size="small" shape="circle" title="新建集合" @click="onNewCollection">
+        <a-button size="small" type="text" shape="circle" title="新建集合" @click="onNewCollection">
           <template #icon><icon-plus /></template>
         </a-button>
         <input ref="fileInput" type="file" accept="application/json,.json" style="display:none" @change="onImportFile" />
