@@ -258,10 +258,26 @@ function startDrag(e: MouseEvent, onMove: (dx: number, dy: number) => void) {
   e.preventDefault()
   const startX = e.clientX
   const startY = e.clientY
+  let rafId = 0
+  let pendingDx = 0
+  let pendingDy = 0
+
+  function flush() {
+    rafId = 0
+    const dx = pendingDx
+    const dy = pendingDy
+    pendingDx = 0
+    pendingDy = 0
+    onMove(dx, dy)
+  }
   function move(ev: MouseEvent) {
-    onMove(ev.clientX - startX, ev.clientY - startY)
+    pendingDx = ev.clientX - startX
+    pendingDy = ev.clientY - startY
+    // 用 rAF 合并高频 mousemove，避免每帧触发多次 Vue 响应式更新导致卡顿
+    if (!rafId) rafId = requestAnimationFrame(flush)
   }
   function up() {
+    if (rafId) cancelAnimationFrame(rafId)
     document.removeEventListener('mousemove', move)
     document.removeEventListener('mouseup', up)
     document.body.style.cursor = ''
@@ -286,7 +302,8 @@ function startRespDrag(e: MouseEvent) {
   const startRatio = responseRatio.value
   startDrag(e, (dx, dy) => {
     const delta = responseLayout.value === 'bottom' ? dy : dx
-    responseRatio.value = Math.min(80, Math.max(20, startRatio + (delta / total) * 100))
+    // 向反方向：分隔条向左/上拖时，右侧/底部响应区变大，比例应增加
+    responseRatio.value = Math.min(80, Math.max(20, startRatio - (delta / total) * 100))
   })
 }
 
