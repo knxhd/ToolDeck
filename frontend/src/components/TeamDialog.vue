@@ -23,7 +23,7 @@
         />
       </a-tab-pane>
 
-      <a-tab-pane v-if="currentTeam" :key="currentTeam.id" :title="currentTeam.name">
+      <a-tab-pane v-for="t in teams.myTeams" :key="String(t.id)" :title="t.name">
         <div style="margin-bottom: 12px">
           <a-input-search
             v-model="inviteName"
@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Message } from '@arco-design/web-vue'
 
 import { useTeamsStore, type Team } from '@/stores/teams'
@@ -60,6 +60,20 @@ const activeTab = ref('list')
 const newTeamName = ref('')
 const inviteName = ref('')
 const currentTeam = ref<Team | null>(null)
+
+// 直接点击团队 tab 时，加载成员列表
+watch(activeTab, async (key) => {
+  if (key === 'list') {
+    currentTeam.value = null
+    return
+  }
+  const tid = Number(key)
+  const t = teams.myTeams.find((x) => x.id === tid)
+  if (t && currentTeam.value?.id !== tid) {
+    currentTeam.value = t
+    await teams.loadMembers(tid)
+  }
+})
 
 async function onCreateTeam(name: string) {
   const n = name.trim()
