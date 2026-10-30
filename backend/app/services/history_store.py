@@ -1,4 +1,4 @@
-"""历史持久化：读写 ~/.api-tool/history.json 的三个调用数组。
+"""历史持久化：按用户读写 ~/.api-tool/users/<user>/history.json。
 
 - http_calls: 最多 200 条
 - mcp_calls: 最多 100 条
@@ -8,81 +8,100 @@
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from typing import Any
 
-from backend.app.config import load_history, save_history
+from backend.app.services.users import sanitize_username, user_history_path
 
 MAX_HTTP_CALLS = 200
 MAX_MCP_CALLS = 100
 MAX_LLM_CALLS = 100
+
+DEFAULT_HISTORY = {"http_calls": [], "mcp_calls": [], "llm_calls": []}
 
 
 def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
-def append_http_call(record: dict[str, Any]) -> None:
-    """追加一条 HTTP 调用历史，自动加时间戳，超过上限淘汰最旧。"""
-    data = load_history()
+def _load(username: str) -> dict:
+    u = sanitize_username(username)
+    path = user_history_path(u)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text(json.dumps(DEFAULT_HISTORY, ensure_ascii=False), encoding="utf-8")
+        return dict(DEFAULT_HISTORY)
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return dict(DEFAULT_HISTORY)
+
+
+def _save(username: str, data: dict) -> None:
+    u = sanitize_username(username)
+    path = user_history_path(u)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+
+def append_http_call(username: str, record: dict[str, Any]) -> None:
+    data = _load(username)
     record.setdefault("timestamp", _now())
     calls = data.setdefault("http_calls", [])
     calls.append(record)
     if len(calls) > MAX_HTTP_CALLS:
         data["http_calls"] = calls[-MAX_HTTP_CALLS:]
-    save_history(data)
+    _save(username, data)
 
 
-def append_mcp_call(record: dict[str, Any]) -> None:
-    """追加一条 MCP 调用历史。"""
-    data = load_history()
+def append_mcp_call(username: str, record: dict[str, Any]) -> None:
+    data = _load(username)
     record.setdefault("timestamp", _now())
     calls = data.setdefault("mcp_calls", [])
     calls.append(record)
     if len(calls) > MAX_MCP_CALLS:
         data["mcp_calls"] = calls[-MAX_MCP_CALLS:]
-    save_history(data)
+    _save(username, data)
 
 
-def append_llm_call(record: dict[str, Any]) -> None:
-    """追加一条 LLM 调用历史。"""
-    data = load_history()
+def append_llm_call(username: str, record: dict[str, Any]) -> None:
+    data = _load(username)
     record.setdefault("timestamp", _now())
     calls = data.setdefault("llm_calls", [])
     calls.append(record)
     if len(calls) > MAX_LLM_CALLS:
         data["llm_calls"] = calls[-MAX_LLM_CALLS:]
-    save_history(data)
+    _save(username, data)
 
 
-def get_http_calls() -> list[dict[str, Any]]:
-    return load_history().get("http_calls", [])
+def get_http_calls(username: str) -> list[dict[str, Any]]:
+    return _load(username).get("http_calls", [])
 
 
-def get_mcp_calls() -> list[dict[str, Any]]:
-    return load_history().get("mcp_calls", [])
+def get_mcp_calls(username: str) -> list[dict[str, Any]]:
+    return _load(username).get("mcp_calls", [])
 
 
-def get_llm_calls() -> list[dict[str, Any]]:
-    return load_history().get("llm_calls", [])
+def get_llm_calls(username: str) -> list[dict[str, Any]]:
+    return _load(username).get("llm_calls", [])
 
 
-def clear_http_calls() -> None:
-    data = load_history()
+def clear_http_calls(username: str) -> None:
+    data = _load(username)
     data["http_calls"] = []
-    save_history(data)
+    _save(username, data)
 
 
-def clear_mcp_calls() -> None:
-    data = load_history()
+def clear_mcp_calls(username: str) -> None:
+    data = _load(username)
     data["mcp_calls"] = []
-    save_history(data)
+    _save(username, data)
 
 
-def clear_llm_calls() -> None:
-    data = load_history()
+def clear_llm_calls(username: str) -> None:
+    data = _load(username)
     data["llm_calls"] = []
-    save_history(data)
+    _save(username, data)
 
 
 __all__ = [

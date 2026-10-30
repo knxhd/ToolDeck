@@ -90,10 +90,16 @@
           <a-button size="small" @click="settingsOpen = true">
             <template #icon><icon-settings /></template>
           </a-button>
+          <a-tooltip content="切换用户">
+            <a-button size="small" class="user-chip" @click="userDialogOpen = true">
+              <template #icon><icon-user /></template>
+              {{ user.name || '未登录' }}
+            </a-button>
+          </a-tooltip>
         </div>
       </div>
 
-      <div class="pane custom-arco-design" v-if="wb.activeTab" :key="wb.activeTab.id">
+      <div class="pane custom-arco-design" v-if="dataReady && wb.activeTab" :key="wb.activeTab.id">
         <template v-if="wb.activeTab.kind === 'http'">
           <RequestBar :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
           <div class="http-body" ref="paneRef"
@@ -113,7 +119,7 @@
         <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp" />
         <WebSocketPane v-else :tab="wb.activeTab" />
       </div>
-      <div class="empty" v-else>
+      <div class="empty" v-else-if="dataReady">
         <a-empty description="从左侧 Collections 选择请求，或点击 + 新建" />
       </div>
     </section>
@@ -122,6 +128,7 @@
     <EnvironmentsDialog v-model:visible="envDialogOpen" />
     <CollectionPlaceholdersDialog v-model:visible="phDialogOpen" />
     <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" @saved="onRequestSaved" />
+    <UserSelectDialog v-if="userDialogOpen" @done="onUserSelected" />
   </div>
 </template>
 
@@ -139,10 +146,12 @@ import SettingsDialog from '@/components/SettingsDialog.vue'
 import EnvironmentsDialog from '@/components/EnvironmentsDialog.vue'
 import CollectionPlaceholdersDialog from '@/components/CollectionPlaceholdersDialog.vue'
 import SaveRequestDialog from '@/components/SaveRequestDialog.vue'
+import UserSelectDialog from '@/components/UserSelectDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useHttpStore } from '@/stores/http'
+import { useUserStore } from '@/stores/user'
 import { api } from '@/api/client'
 import { toast } from '@/utils/feedback'
 import IconShowLeft from '@/imgs/icon/show_left.svg?component'
@@ -155,6 +164,7 @@ const collections = useCollectionsStore()
 const wb = useWorkbenchStore()
 const http = useHttpStore()
 const env = useEnvironmentsStore()
+const user = useUserStore()
 
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(false)
@@ -167,6 +177,9 @@ const responseRatio = ref(50)
 const settingsOpen = ref(false)
 const envDialogOpen = ref(false)
 const phDialogOpen = ref(false)
+const userDialogOpen = ref(false)
+/** 数据是否已加载（用户已选名后）。 */
+const dataReady = ref(false)
 /** 当前集合启用的占位符数量（显示在按钮角标）。 */
 const collectionPhCount = computed(() => Object.keys(env.collectionPlaceholderVars).length)
 const saveDialogOpen = ref(false)
@@ -212,12 +225,33 @@ function onEnvSelect(value: string | number | Record<string, unknown> | undefine
 }
 
 onMounted(async () => {
+  // 首次打开没有用户名，先弹框让用户选；选完后再加载数据
+  if (user.needsName) {
+    userDialogOpen.value = true
+  } else {
+    await loadUserData()
+  }
+  window.addEventListener('keydown', onGlobalKeydown, true)
+})
+
+async function loadUserData() {
   await Promise.all([collections.load(), http.loadHistory()])
   history.value = http.history
   // 集合树加载完后，恢复上次打开的 tabs（nodeId 类型需要从树里重新取节点数据）
   wb.restore()
-  window.addEventListener('keydown', onGlobalKeydown, true)
-})
+  dataReady.value = true
+}
+
+/** 切换用户：清空当前 tabs，重新加载新用户的数据。 */
+async function onUserSelected() {
+  userDialogOpen.value = false
+  // 清空现有 tabs 和 localStorage 里的旧 tabs
+  wb.tabs = []
+  wb.activeId = null
+  localStorage.removeItem('api-tool.tabs.v1')
+  dataReady.value = false
+  await loadUserData()
+}
 
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 

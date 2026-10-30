@@ -4,9 +4,18 @@ export interface ApiError {
   detail: string
 }
 
+function authHeaders(): Record<string, string> {
+  const name = localStorage.getItem('api-tool.username') || ''
+  return name ? { 'X-User': name } : {}
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json', ...(options?.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...(options?.headers || {}),
+    },
     ...options,
   })
   if (!res.ok) {
@@ -44,7 +53,7 @@ export async function streamPost(
 ): Promise<void> {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
     signal,
   })
