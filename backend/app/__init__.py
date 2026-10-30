@@ -31,10 +31,11 @@ def create_app() -> FastAPI:
     # 迁移历史明文敏感数据为密文（幂等；新建库无影响）
     try:
         from backend.app.config import migrate_config_secrets
-        from backend.app.services import history_store
+        from backend.app.services import collection_store, history_store
 
         migrate_config_secrets()
         history_store.migrate_history_secrets()
+        collection_store.migrate_collections_secrets()
     except Exception:  # noqa: BLE001 —— 迁移失败不应阻断启动，后续写入仍会加密
         import logging
 
