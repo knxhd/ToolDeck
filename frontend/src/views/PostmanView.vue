@@ -214,6 +214,8 @@ function onEnvSelect(value: string | number | Record<string, unknown> | undefine
 onMounted(async () => {
   await Promise.all([collections.load(), http.loadHistory()])
   history.value = http.history
+  // 集合树加载完后，恢复上次打开的 tabs（nodeId 类型需要从树里重新取节点数据）
+  wb.restore()
   window.addEventListener('keydown', onGlobalKeydown, true)
 })
 

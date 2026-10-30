@@ -1,8 +1,9 @@
 /** 工作台 Pinia store：管理打开的请求标签页与流式发送。 */
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { streamPost } from '@/api/client'
+import { useCollectionsStore } from './collections'
 import { useEnvironmentsStore } from './environments'
 import { missingVars, resolveRequest } from '@/utils/env'
 import { parseUrlQuery } from '@/utils/parseCurl'
@@ -11,6 +12,8 @@ import type { CollectionNode, HttpRequestData, OpenTab } from '@/api/types'
 
 let seq = 0
 const uid = () => `t_${Date.now().toString(36)}_${(seq++).toString(36)}`
+
+const STORAGE_KEY = 'api-tool.tabs.v1'
 
 const blankRequest = (): HttpRequestData => ({
   method: 'GET',
@@ -44,6 +47,53 @@ function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
     elapsed_ms: 0,
     size_bytes: 0,
     stream_events: [],
+  }
+}
+
+/** 持久化到 localStorage 的精简结构。 */
+interface PersistedTab {
+  id: string
+  title: string
+  kind: 'http' | 'websocket' | 'mcp'
+  nodeId?: string
+  dirty?: boolean
+  /** 临时 tab（无 nodeId）才存完整请求数据 */
+  request?: HttpRequestData
+  ws_url?: string
+  mcp_url?: string
+  mcp_headers?: Record<string, string>
+  mcp_tool?: string
+  mcp_args?: string
+}
+
+function serializeTabs(tabs: OpenTab[], activeId: string | null): { activeId: string | null; tabs: PersistedTab[] } {
+  return {
+    activeId,
+    tabs: tabs.map((t) => {
+      const out: PersistedTab = { id: t.id, title: t.title, kind: t.kind, dirty: t.dirty }
+      if (t.nodeId) {
+        out.nodeId = t.nodeId
+      } else {
+        // 临时 tab：完整保存
+        out.request = JSON.parse(JSON.stringify(t.request))
+        if (t.kind === 'websocket') out.ws_url = t.ws_url
+        if (t.kind === 'mcp') {
+          out.mcp_url = t.mcp_url
+          out.mcp_headers = { ...t.mcp_headers }
+          out.mcp_tool = t.mcp_tool
+          out.mcp_args = t.mcp_args
+        }
+      }
+      return out
+    }),
+  }
+}
+
+function saveToStorage(tabs: OpenTab[], activeId: string | null) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeTabs(tabs, activeId)))
+  } catch {
+    /* 配额满等情况忽略 */
   }
 }
 
@@ -187,6 +237,67 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     if (t) t.title = title
   }
 
+  /**
+   * 从 localStorage 恢复上次打开的 tabs。需在 collections.load() 之后调用，
+   * 因为 nodeId 类型的 tab 要从集合树重新加载节点数据；节点不存在则丢弃。
+   */
+  function restore() {
+    let saved: { activeId: string | null; tabs: PersistedTab[] } | null = null
+    try {
+      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null')
+    } catch {
+      saved = null
+    }
+    if (!saved || !Array.isArray(saved.tabs) || saved.tabs.length === 0) return
+
+    const collections = useCollectionsStore()
+    const restored: OpenTab[] = []
+    for (const p of saved.tabs) {
+      const tab = blankTab(p.kind || 'http')
+      tab.id = p.id
+      tab.title = p.title
+      tab.dirty = p.dirty
+      if (p.nodeId) {
+        // 节点类型：从集合树重新加载
+        const node = collections.findNode(p.nodeId)
+        if (!node || node.type !== 'request') continue // 节点已删，丢弃
+        tab.nodeId = node.id
+        tab.title = node.name
+        if (node.kind === 'websocket') tab.ws_url = node.ws_url || 'wss://'
+        else if (node.kind === 'mcp') {
+          tab.mcp_url = node.mcp_url || ''
+          tab.mcp_headers = node.mcp_headers || {}
+          tab.mcp_tool = node.mcp_tool || ''
+          tab.mcp_args = node.mcp_args || '{}'
+        } else if (node.request) tab.request = JSON.parse(JSON.stringify(node.request))
+      } else {
+        // 临时 tab：用保存的请求数据
+        if (p.request) tab.request = JSON.parse(JSON.stringify(p.request))
+        if (p.ws_url) tab.ws_url = p.ws_url
+        if (p.mcp_url) tab.mcp_url = p.mcp_url
+        if (p.mcp_headers) tab.mcp_headers = { ...p.mcp_headers }
+        if (p.mcp_tool) tab.mcp_tool = p.mcp_tool
+        if (p.mcp_args) tab.mcp_args = p.mcp_args
+      }
+      restored.push(tab)
+    }
+    tabs.value = restored
+    // 恢复 activeId（如果存在）
+    const active = saved.activeId && restored.find((t) => t.id === saved.activeId)
+    if (active) {
+      activeId.value = active.id
+      activeTab.value = active
+    } else if (restored.length) {
+      activeId.value = restored[restored.length - 1].id
+      activeTab.value = restored[restored.length - 1]
+    }
+  }
+
+  // 自动持久化：tabs 结构变化（增删/重命名/切 active）和临时 tab 的 request 变化都触发
+  // 用 computed 投影避免 deep watch stream_events 这种高频大数组
+  const persistKey = computed(() => JSON.stringify(serializeTabs(tabs.value, activeId.value)))
+  watch(persistKey, () => saveToStorage(tabs.value, activeId.value))
+
   return {
     tabs,
     activeId,
@@ -199,6 +310,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     cancel,
     renameTab,
     syncTitleByNodeId,
+    restore,
   }
 })
 
