@@ -181,6 +181,12 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     if (t) t.title = title
   }
 
+  /** 集合树里节点被重命名后，同步更新已打开该节点的 tab 标题。 */
+  function syncTitleByNodeId(nodeId: string, title: string) {
+    const t = tabs.value.find((x) => x.nodeId === nodeId)
+    if (t) t.title = title
+  }
+
   return {
     tabs,
     activeId,
@@ -192,6 +198,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     send,
     cancel,
     renameTab,
+    syncTitleByNodeId,
   }
 })
 

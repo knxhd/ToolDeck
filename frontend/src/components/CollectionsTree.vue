@@ -47,6 +47,7 @@
 import { ref } from 'vue'
 
 import { useCollectionsStore } from '@/stores/collections'
+import { useWorkbenchStore } from '@/stores/workbench'
 import { exportCollections, exportOneCollection, parseImportFile, mergeIntoTree, type ConflictPolicy } from '@/utils/io'
 import { confirmDialog, promptInput, toast } from '@/utils/feedback'
 import type { CollectionNode } from '@/api/types'
@@ -55,6 +56,7 @@ import NodeRow from './CollectionsNode.vue'
 const emit = defineEmits<{ open: [node: CollectionNode] }>()
 
 const collections = useCollectionsStore()
+const wb = useWorkbenchStore()
 const expanded = ref<Set<string>>(new Set())
 const fileInput = ref<HTMLInputElement | null>(null)
 const conflictDialogOpen = ref(false)
@@ -88,6 +90,8 @@ async function onRename(node: CollectionNode) {
   const value = await promptInput('重命名', node.name)
   if (!value) return
   await collections.renameNode(node.id, value)
+  // 若该节点已在 tab 中打开，同步更新 tab 标题
+  wb.syncTitleByNodeId(node.id, value)
 }
 
 async function onRemove(node: CollectionNode) {
