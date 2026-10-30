@@ -28,6 +28,18 @@ def create_app() -> FastAPI:
     from backend.app.services.db import init_db
     init_db()
 
+    # 迁移历史明文敏感数据为密文（幂等；新建库无影响）
+    try:
+        from backend.app.config import migrate_config_secrets
+        from backend.app.services import history_store
+
+        migrate_config_secrets()
+        history_store.migrate_history_secrets()
+    except Exception:  # noqa: BLE001 —— 迁移失败不应阻断启动，后续写入仍会加密
+        import logging
+
+        logging.getLogger("api-tool").exception("敏感数据迁移失败，忽略（新写入仍会加密）")
+
     app = FastAPI(title="API Tool", version="0.2.0")
 
     if is_dev():

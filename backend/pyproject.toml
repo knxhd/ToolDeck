@@ -16,6 +16,10 @@ dev = [
     "pyinstaller>=6.10.0",
     "ruff>=0.6.0",
 ]
+# 仅非 Windows 平台需要：Windows 字段加密走系统 DPAPI，无需本依赖。
+secure = [
+    "cryptography>=41.0",
+]
 
 [build-system]
 requires = ["setuptools>=68.0"]

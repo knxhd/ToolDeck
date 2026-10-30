@@ -1,0 +1,15 @@
+crypto OK: 'sk-abc123XYZ' -> enc:v1:AQAAANCMnd8BFdERjHoAwE_Cl-sBAAA... len=215
+crypto OK: '{"Authorization":"Bearer abc.def"}' -> enc:v1:AQAAANCMnd8BFdERjHoAwE_Cl-sBAAA... len=247
+crypto OK: '' -> enc:v1:AQAAANCMnd8BFdERjHoAwE_Cl-sBAAA... len=203
+crypto OK: '普通中文值 測試' -> enc:v1:AQAAANCMnd8BFdERjHoAwE_Cl-sBAAA... len=223
+crypto plaintext-compat OK
+config providers/mcp: 0 1
+config encrypt/decrypt + idempotent OK
+migration http_history.headers_json: 1 rows encrypted OK
+migration http_history.body: 1 rows encrypted OK
+migration mcp_history.args_json: 0 rows encrypted OK
+migration mcp_history.content: 0 rows encrypted OK
+migration mcp_history.error: 0 rows encrypted OK
+migration llm_history.messages_json: 1 rows encrypted OK
+migration llm_history.content: 1 rows encrypted OK
+ALL CHECKS PASSED

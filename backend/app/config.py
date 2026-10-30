@@ -9,6 +9,8 @@ import json
 import os
 from pathlib import Path
 
+from backend.app.services import crypto
+
 
 def _resolve_config_dir() -> Path:
     """解析配置目录：优先 APP_CONFIG_DIR，否则 ~/.api-tool/。"""
@@ -39,17 +41,52 @@ def init_config_dir() -> None:
         )
 
 
+def _encrypt_sensitive(data: dict) -> dict:
+    """落盘前加密：llm_providers[].api_key、mcp_servers[].headers 各值。幂等（已加密跳过）。"""
+    for p in data.get("llm_providers", []):
+        if isinstance(p.get("api_key"), str) and p["api_key"] and not crypto.is_encrypted(p["api_key"]):
+            p["api_key"] = crypto.encrypt(p["api_key"])
+    for s in data.get("mcp_servers", []):
+        hdrs = s.get("headers") or {}
+        if isinstance(hdrs, dict):
+            s["headers"] = {
+                k: (v if crypto.is_encrypted(v) else crypto.encrypt(v))
+                for k, v in hdrs.items()
+                if v
+            }
+    return data
+
+
+def _decrypt_sensitive(data: dict) -> dict:
+    """读取后解密：与 _encrypt_sensitive 对称。历史明文（无前缀）原样返回，兼容迁移。"""
+    for p in data.get("llm_providers", []):
+        if isinstance(p.get("api_key"), str) and p["api_key"]:
+            p["api_key"] = crypto.decrypt(p["api_key"])
+    for s in data.get("mcp_servers", []):
+        hdrs = s.get("headers") or {}
+        if isinstance(hdrs, dict):
+            s["headers"] = {k: crypto.decrypt(v) for k, v in hdrs.items()}
+    return data
+
+
 def load_config() -> dict:
-    """读取 config.json，缺失则初始化后返回默认值。"""
+    """读取 config.json（敏感字段自动解密）。"""
     init_config_dir()
-    return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    return _decrypt_sensitive(json.loads(CONFIG_PATH.read_text(encoding="utf-8")))
 
 
 def save_config(data: dict) -> None:
-    """写入 config.json。"""
+    """写入 config.json（敏感字段自动加密）。"""
     CONFIG_PATH.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(_encrypt_sensitive(data), ensure_ascii=False, indent=2),
+        encoding="utf-8",
     )
+
+
+def migrate_config_secrets() -> None:
+    """把历史明文 config.json 迁移为密文（幂等）。"""
+    data = load_config()   # 解密读取（历史明文仍为明文）
+    save_config(data)      # 再落盘时统一加密
 
 
 def load_history() -> dict:
@@ -74,4 +111,5 @@ __all__ = [
     "save_config",
     "load_history",
     "save_history",
+    "migrate_config_secrets",
 ]
