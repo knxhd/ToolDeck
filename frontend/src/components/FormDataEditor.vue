@@ -12,32 +12,30 @@
           <a-checkbox :model-value="item.enabled" :disabled="isBlank(item)" @change="onToggle(i, $event)" />
         </span>
 
-        <!-- Key + 类型（Text / File） -->
+        <!-- Key -->
         <span class="fd-col-key">
-          <a-input :model-value="item.key" placeholder="Key" size="small" class="fd-key-input"
+          <a-input :model-value="item.key" placeholder="Key" size="small"
             @input="update(i, { key: $event })" />
-          <a-select :model-value="item.type" size="small" class="fd-type" :bordered="false"
-            :trigger-props="{ autoFitPopupMinWidth: true }" @change="onType(i, $event)">
-            <a-option value="text">Text</a-option>
-            <a-option value="file">File</a-option>
-          </a-select>
         </span>
 
-        <!-- Value：文本 或 文件路径 -->
+        <!-- Value：文本输入 或 已选文件 chip -->
         <span class="fd-col-value">
-          <template v-if="item.type === 'file'">
-            <a-input :model-value="item.value" size="small" class="fd-path-input" allow-clear
-              placeholder="文件路径，如 D:\data\avatar.png" :title="item.value"
-              @input="update(i, { value: $event })" @clear="update(i, { value: '' })">
-              <template #prefix><icon-file /></template>
-            </a-input>
-            <a-button size="small" :loading="pickingIdx === i" @click="pickFile(i)">选择文件</a-button>
-          </template>
+          <span v-if="item.type === 'file'" class="fd-file-chip" :title="item.value">
+            <icon-file class="fd-file-icon" />
+            <span class="fd-file-name">{{ item.value.split(/[\\/]/).pop() || item.value }}</span>
+            <icon-close class="fd-file-clear" @click="clearFile(i)" />
+          </span>
           <a-input v-else :model-value="item.value" placeholder="Value" size="small"
             @input="update(i, { value: $event })" />
         </span>
 
+        <!-- 操作：上传文件 + 删除 -->
         <span class="fd-col-op">
+          <a-tooltip content="选择文件">
+            <a-button size="small" type="text" :loading="pickingIdx === i" @click="pickFile(i)">
+              <template #icon><icon-upload /></template>
+            </a-button>
+          </a-tooltip>
           <a-button v-if="!isBlank(item)" size="small" status="danger" type="text" @click="remove(i)">
             <template #icon><icon-delete /></template>
           </a-button>
@@ -62,7 +60,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: FormDataItem[]] }>()
 
 const emptyRow = (): FormDataItem => ({ key: '', value: '', enabled: true, type: 'text' })
 
-/** 空行：无 key、无 value 且为 Text 类型（File 类型的空行视为用户正在编辑的数据行）。 */
+/** 空行：无 key、无 value 且为 Text 类型（File 行即使无 key 也视为已编辑数据）。 */
 const isBlank = (r: FormDataItem) => !r.key && !r.value && r.type !== 'file'
 
 const clone = (list: FormDataItem[]): FormDataItem[] => JSON.parse(JSON.stringify(list || []))
@@ -95,11 +93,8 @@ function onToggle(i: number, checked: boolean | (string | number | boolean)[]) {
   update(i, { enabled: !!checked })
 }
 
-function onType(i: number, v: unknown) {
-  const type = v === 'file' ? 'file' : 'text'
-  if (type === rows.value[i].type) return
-  // 切换类型时清空 value：文本值与文件路径语义不同
-  update(i, { type, value: '' })
+function clearFile(i: number) {
+  update(i, { type: 'text', value: '' })
 }
 
 function remove(i: number) {
@@ -119,7 +114,7 @@ async function pickFile(i: number) {
   pickingIdx.value = i
   try {
     const res = await api.post<{ path: string | null }>('/api/files/pick')
-    if (res.path) update(i, { value: res.path })
+    if (res.path) update(i, { type: 'file', value: res.path })
   } catch {
     pendingIdx = i
     fileInputRef.value?.click()
@@ -144,7 +139,7 @@ async function onBrowserFileChosen(e: Event) {
     })
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
     const data = (await res.json()) as { path: string }
-    update(idx, { value: data.path })
+    update(idx, { type: 'file', value: data.path })
     toast.info('已将文件副本保存到数据目录')
   } catch (err) {
     toast.error('文件上传失败：' + (err as Error).message)
@@ -192,40 +187,50 @@ async function onBrowserFileChosen(e: Event) {
 }
 
 .fd-col-key {
-  width: 36%;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-
-  .fd-key-input {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .fd-type {
-    width: 76px;
-    flex-shrink: 0;
-  }
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .fd-col-value {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+}
 
-  .fd-path-input {
-    flex: 1;
-    min-width: 0;
+.fd-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  background: var(--el-fill-color-light);
+  font-size: 13px;
+
+  .fd-file-icon {
+    color: var(--el-text-color-secondary);
+  }
+
+  .fd-file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fd-file-clear {
+    cursor: pointer;
+    color: var(--el-text-color-secondary);
+    &:hover { color: var(--el-color-danger); }
   }
 }
 
 .fd-col-op {
-  width: 32px;
   flex-shrink: 0;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .fd-hidden-input {

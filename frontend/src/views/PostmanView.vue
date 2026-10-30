@@ -157,7 +157,7 @@ const http = useHttpStore()
 const env = useEnvironmentsStore()
 
 const history = ref<HttpCallRecord[]>([])
-const historyOpen = ref(true)
+const historyOpen = ref(false)
 
 // 布局状态
 const sidebarHidden = ref(false)
