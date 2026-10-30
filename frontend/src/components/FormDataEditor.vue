@@ -18,7 +18,7 @@
             @input="update(i, { key: $event })" />
         </span>
 
-        <!-- Value：文本输入 或 已选文件 chip -->
+        <!-- Value：文本输入（内置上传图标） 或 已选文件 chip -->
         <span class="fd-col-value">
           <span v-if="item.type === 'file'" class="fd-file-chip" :title="item.value">
             <icon-file class="fd-file-icon" />
@@ -26,16 +26,18 @@
             <icon-close class="fd-file-clear" @click="clearFile(i)" />
           </span>
           <a-input v-else :model-value="item.value" placeholder="Value" size="small"
-            @input="update(i, { value: $event })" />
+            @input="update(i, { value: $event })">
+            <template #suffix>
+              <a-tooltip content="选择文件">
+                <icon-upload class="fd-suffix-icon" :class="{ loading: pickingIdx === i }"
+                  @click="pickFile(i)" />
+              </a-tooltip>
+            </template>
+          </a-input>
         </span>
 
-        <!-- 操作：上传文件 + 删除 -->
+        <!-- 操作：删除 -->
         <span class="fd-col-op">
-          <a-tooltip content="选择文件">
-            <a-button size="small" type="text" :loading="pickingIdx === i" @click="pickFile(i)">
-              <template #icon><icon-upload /></template>
-            </a-button>
-          </a-tooltip>
           <a-button v-if="!isBlank(item)" size="small" status="danger" type="text" @click="remove(i)">
             <template #icon><icon-delete /></template>
           </a-button>
@@ -227,13 +229,23 @@ async function onBrowserFileChosen(e: Event) {
 }
 
 .fd-col-op {
+  width: 32px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
 }
 
 .fd-hidden-input {
   display: none;
+}
+
+.fd-suffix-icon {
+  cursor: pointer;
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
+
+  &:hover { color: var(--el-color-primary); }
+  &.loading { opacity: 0.6; pointer-events: none; }
 }
 </style>
