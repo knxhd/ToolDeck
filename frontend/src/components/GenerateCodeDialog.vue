@@ -3,7 +3,7 @@
     <template #title>Generate Code</template>
 
     <div class="gc-toolbar">
-      <a-select v-model="lang" class="gc-lang" @change="onLangChange">
+      <a-select v-model="lang" style="width: 180px" @change="onLangChange">
         <a-option v-for="l in CODE_LANGUAGES" :key="l.key" :value="l.key">{{ l.label }}</a-option>
       </a-select>
       <a-radio-group v-model="variant" type="button">
@@ -110,10 +110,6 @@ function onClose() {
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
-
-  .gc-lang {
-    width: 180px;
-  }
 
   .gc-interp {
     margin-left: auto;
