@@ -32,7 +32,7 @@ export const parseMessages = (message: string, type: string): string => {
     return out
 }
 
-const openAiParser = (body) => {
+const openAiParser = (body: any) => {
     const delta = body?.choices?.[0]?.delta
     if (delta && typeof delta.content === 'string') {
         return delta.content
@@ -40,7 +40,7 @@ const openAiParser = (body) => {
     return ""
 }
 
-const qwenParser = (body) => {
+const qwenParser = (body: any) => {
     // Qwen / Qwen3: {"output":{"choices":[{"message":{"content": [...] 或 "..."}}]}}
     const content = body?.output?.choices?.[0]?.message?.content
     if (Array.isArray(content)) {
@@ -62,9 +62,18 @@ const qwenParser = (body) => {
  *   id:40            -> ''
  *   event:result     -> ''
  */
-function stripSsePrefix(line: string): string {
-    const t = line.trim()
-    if (t.startsWith('data:')) return t.slice(5).trim()
-    if (t.startsWith('{')) return t
-    return ''
+const stripSsePrefix = (line: string): string => {
+    const prefix = 'data:';
+    if (line.startsWith(prefix)) {
+        // 切掉 data:，然后只去掉前缀后面单个空格，不要直接全量trim
+        const raw = line.slice(prefix.length);
+        return raw[0] === ' ' ? raw.slice(1) : raw;
+    }
+    // 本身就是json行（极少情况）直接返回
+    const t = line.trimStart();
+    if (t.startsWith('{')) {
+        return line;
+    }
+    return '';
 }
+
