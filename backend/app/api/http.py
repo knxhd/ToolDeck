@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 
 from backend.app.schemas.http import BodyType, HttpRequest, KeyValue
 from backend.app.services import history_store
+from backend.app.services.form_data import FormDataError, build_form_data, drop_content_type
 from backend.app.services.http_client import send_request
 
 router = APIRouter()
@@ -23,18 +24,6 @@ router = APIRouter()
 
 def _kv_to_dict(items: list[KeyValue]) -> dict[str, str]:
     return {item.key: item.value for item in items if item.enabled and item.key}
-
-
-def _build_form_data(body: str) -> list[tuple[str, str]]:
-    try:
-        items = json.loads(body) if body else []
-    except json.JSONDecodeError:
-        return []
-    result: list[tuple[str, str]] = []
-    for item in items:
-        if isinstance(item, dict) and item.get("key"):
-            result.append((str(item["key"]), str(item.get("value", ""))))
-    return result
 
 
 @router.post("/send")
@@ -65,6 +54,8 @@ async def stream(req: HttpRequest) -> StreamingResponse:
     params = _kv_to_dict(req.params)
     content = None
     form_data = None
+    form_files = None
+    form_error = ""
 
     if req.body_type == BodyType.JSON:
         headers.setdefault("Content-Type", "application/json")
@@ -72,11 +63,23 @@ async def stream(req: HttpRequest) -> StreamingResponse:
     elif req.body_type == BodyType.RAW:
         content = req.body
     elif req.body_type == BodyType.FORM_DATA:
-        form_data = _build_form_data(req.body)
+        try:
+            fields, files = build_form_data(req.body)
+        except FormDataError as exc:
+            form_error = str(exc)
+        else:
+            form_data = fields or None
+            if files:
+                # 含文件：multipart/form-data，Content-Type（含 boundary）交给 httpx 生成
+                form_files = files
+                headers = drop_content_type(headers)
 
     async def gen():
         start = time.perf_counter()
         size = 0
+        if form_error:
+            yield json.dumps({"type": "error", "message": form_error}, ensure_ascii=False) + "\n"
+            return
         try:
             timeout = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
             async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
@@ -87,6 +90,7 @@ async def stream(req: HttpRequest) -> StreamingResponse:
                     params=params,
                     content=content,
                     data=form_data,
+                    files=form_files,
                 ) as resp:
                     meta = {
                         "type": "meta",

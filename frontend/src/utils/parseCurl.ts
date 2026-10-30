@@ -18,6 +18,13 @@ function tokenize(text: string): string[] {
   let esc = false
   while (i < text.length) {
     const ch = text[i]
+    // 单引号内按 POSIX 规则原样保留（反斜杠不转义），避免 Windows 路径 D:\a.png 丢失反斜杠
+    if (quote === "'") {
+      if (ch === "'") quote = null
+      else cur += ch
+      i++
+      continue
+    }
     if (esc) {
       // 反斜杠 + 换行 = 续行，直接丢弃
       if (ch === '\n' || ch === '\r') {
@@ -110,6 +117,23 @@ export function buildQueryString(params: Array<{ key: string; value: string; ena
     .join('&')
 }
 
+/**
+ * 解析 curl -F 字段：`name=value` 为文本；`name=@path`（可带引号与 ;type= 等属性）为文件。
+ * --form-string 的值始终视为文本。
+ */
+function parseFormPart(part: { raw: string; literal: boolean }) {
+  const eq = part.raw.indexOf('=')
+  const key = eq < 0 ? part.raw : part.raw.slice(0, eq)
+  const value = eq < 0 ? '' : part.raw.slice(eq + 1)
+  if (!part.literal && value.startsWith('@')) {
+    let path = value.slice(1)
+    const quoted = /^"([^"]*)"/.exec(path)
+    path = quoted ? quoted[1] : path.split(';')[0]
+    return { key, value: path, type: 'file', enabled: true }
+  }
+  return { key, value, type: 'text', enabled: true }
+}
+
 export function parseCurl(text: string): ParsedCurl {
   const tokens = tokenize(text)
 
@@ -117,7 +141,7 @@ export function parseCurl(text: string): ParsedCurl {
   let url = ''
   const headers: Array<{ key: string; value: string; enabled: boolean }> = []
   const dataParts: string[] = []
-  const formParts: string[] = []
+  const formParts: Array<{ raw: string; literal: boolean }> = []
   let getMode = false
   let cookie = ''
   const bareTokens: string[] = []
@@ -152,7 +176,12 @@ export function parseCurl(text: string): ParsedCurl {
       continue
     }
     if (t === '-F' || t === '--form') {
-      formParts.push(nextValue(i))
+      formParts.push({ raw: nextValue(i), literal: false })
+      i++
+      continue
+    }
+    if (t === '--form-string') {
+      formParts.push({ raw: nextValue(i), literal: true })
       i++
       continue
     }
@@ -209,7 +238,7 @@ export function parseCurl(text: string): ParsedCurl {
   let body = ''
   let bodyType: ParsedCurl['bodyType'] = 'none'
   if (formParts.length) {
-    body = JSON.stringify(formParts.map((p) => kvFromPair(p)))
+    body = JSON.stringify(formParts.map(parseFormPart))
     bodyType = 'form-data'
   } else if (dataParts.length) {
     body = dataParts.join('&')

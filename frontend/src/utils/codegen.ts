@@ -41,16 +41,25 @@ export const CODE_LANGUAGES: CodeLanguage[] = [
 
 type Pair = [string, string]
 
+/** multipart 表单项：file = true 时 value 为本机文件路径。 */
+interface Part {
+  key: string
+  value: string
+  file: boolean
+}
+
 /** 归一化后的请求：与后端实际发送行为保持一致。 */
 interface PreparedRequest {
   method: string
   url: string
   headers: Pair[]
-  bodyKind: 'none' | 'text' | 'form'
+  bodyKind: 'none' | 'text' | 'form' | 'multipart'
   /** bodyKind = text 时的原始 body。 */
   body: string
   /** bodyKind = form 时的表单项（后端以 application/x-www-form-urlencoded 发送）。 */
   form: Pair[]
+  /** bodyKind = multipart 时的表单项（含文件，后端以 multipart/form-data 发送）。 */
+  parts: Part[]
 }
 
 /** 按 {{var}} 占位符切分（捕获组保留占位符本身）。 */
@@ -93,6 +102,7 @@ function prepare(req: HttpRequestData): PreparedRequest {
   let bodyKind: PreparedRequest['bodyKind'] = 'none'
   let body = ''
   let form: Pair[] = []
+  let parts: Part[] = []
 
   if (req.body_type === 'json' || req.body_type === 'raw') {
     if (req.body) {
@@ -106,22 +116,35 @@ function prepare(req: HttpRequestData): PreparedRequest {
     try {
       const arr = JSON.parse(req.body || '[]')
       if (Array.isArray(arr)) {
-        form = arr
-          .filter((i) => i && i.key)
-          .map((i): Pair => [String(i.key), String(i.value ?? '')])
+        parts = arr
+          .filter((i) => i && i.key && i.enabled !== false)
+          .map((i): Part => ({ key: String(i.key), value: String(i.value ?? ''), file: i.type === 'file' }))
       }
     } catch {
-      form = []
+      parts = []
     }
-    if (form.length) {
+    if (parts.some((p) => p.file)) {
+      // 含文件：multipart/form-data，Content-Type（含 boundary）由客户端库自动生成
+      bodyKind = 'multipart'
+      for (let i = headers.length - 1; i >= 0; i--) {
+        if (headers[i][0].toLowerCase() === 'content-type') headers.splice(i, 1)
+      }
+    } else if (parts.length) {
       bodyKind = 'form'
+      form = parts.map((p): Pair => [p.key, p.value])
+      parts = []
       if (!findHeader(headers, 'content-type')) {
         headers.push(['Content-Type', 'application/x-www-form-urlencoded'])
       }
     }
   }
 
-  return { method, url, headers, bodyKind, body, form }
+  return { method, url, headers, bodyKind, body, form, parts }
+}
+
+/** 取路径中的文件名（兼容 / 与 \ 分隔符）。 */
+function baseName(path: string): string {
+  return path.split(/[\\/]/).pop() || 'file'
 }
 
 /** 按行切分并保留每行末尾的换行符。 */
@@ -144,6 +167,14 @@ function genCurl(p: PreparedRequest): string {
     lines.push(`  -d ${shQuote(p.body)}`)
   } else if (p.bodyKind === 'form') {
     for (const [k, v] of p.form) lines.push(`  --data-urlencode ${shQuote(`${encodeKeepVars(k)}=${v}`)}`)
+  } else if (p.bodyKind === 'multipart') {
+    for (const part of p.parts) {
+      lines.push(
+        part.file
+          ? `  --form ${shQuote(`${part.key}=@"${part.value}"`)}`
+          : `  --form-string ${shQuote(`${part.key}=${part.value}`)}`,
+      )
+    }
   }
   return lines.join(' \\\n')
 }
@@ -193,6 +224,8 @@ function genJavaHttpClient(p: PreparedRequest): string {
   } else if (p.bodyKind === 'form') {
     out.push(`${I2}String body = ${javaStr(urlEncodePairs(p.form))};`)
     publisher = 'HttpRequest.BodyPublishers.ofString(body)'
+  } else if (p.bodyKind === 'multipart') {
+    out.push(`${I2}// 注意：HttpClient 没有内置 multipart/form-data 支持，含文件上传的请求请切换到 OkHttp 示例`)
   }
 
   const skipped = p.headers.filter(([k]) => JDK_RESTRICTED_HEADERS.has(k.toLowerCase())).map(([k]) => k)
@@ -224,6 +257,7 @@ function genJavaOkHttp(p: PreparedRequest): string {
   const I2 = ' '.repeat(8)
   const I4 = ' '.repeat(16)
   const out: string[] = [
+    ...(p.bodyKind === 'multipart' ? ['import java.io.File;'] : []),
     'import okhttp3.*;',
     '',
     'public class Main {',
@@ -243,6 +277,20 @@ function genJavaOkHttp(p: PreparedRequest): string {
   } else if (p.bodyKind === 'form') {
     out.push(`${I2}RequestBody body = new FormBody.Builder()`)
     for (const [k, v] of p.form) out.push(`${I4}.add(${javaStr(k)}, ${javaStr(v)})`)
+    out.push(`${I4}.build();`)
+    bodyArg = 'body'
+  } else if (p.bodyKind === 'multipart') {
+    out.push(`${I2}RequestBody body = new MultipartBody.Builder().setType(MultipartBody.FORM)`)
+    for (const part of p.parts) {
+      if (part.file) {
+        out.push(
+          `${I4}.addFormDataPart(${javaStr(part.key)}, ${javaStr(baseName(part.value))}, ` +
+          `RequestBody.create(MediaType.parse("application/octet-stream"), new File(${javaStr(part.value)})))`,
+        )
+      } else {
+        out.push(`${I4}.addFormDataPart(${javaStr(part.key)}, ${javaStr(part.value)})`)
+      }
+    }
     out.push(`${I4}.build();`)
     bodyArg = 'body'
   } else if (OKHTTP_REQUIRES_BODY.has(p.method)) {
@@ -303,6 +351,15 @@ function genPythonRequests(p: PreparedRequest): string {
     out.push(`payload = ${pyMultiline(p.body)}`)
   } else if (p.bodyKind === 'form') {
     out.push(`payload = ${pyFormData(p.form)}`)
+  } else if (p.bodyKind === 'multipart') {
+    const texts = p.parts.filter((x) => !x.file).map((x): Pair => [x.key, x.value])
+    const files = p.parts.filter((x) => x.file)
+    if (texts.length) out.push(`payload = ${pyFormData(texts)}`)
+    out.push(
+      `files = [\n${files
+        .map((f) => `    (${pyStr(f.key)}, (${pyStr(baseName(f.value))}, open(${pyStr(f.value)}, "rb")))`)
+        .join(',\n')}\n]`,
+    )
   }
   if (p.headers.length) {
     out.push(`headers = ${pyDict(p.headers)}`)
@@ -310,6 +367,10 @@ function genPythonRequests(p: PreparedRequest): string {
   }
   if (p.bodyKind === 'text') args.push('data=payload.encode("utf-8")')
   else if (p.bodyKind === 'form') args.push('data=payload')
+  else if (p.bodyKind === 'multipart') {
+    if (p.parts.some((x) => !x.file)) args.push('data=payload')
+    args.push('files=files')
+  }
   if (p.bodyKind !== 'none' || p.headers.length) out.push('')
 
   out.push(`response = requests.request(${args.join(', ')})`)
@@ -340,6 +401,8 @@ function genPythonHttpClient(p: PreparedRequest): string {
   } else if (p.bodyKind === 'form') {
     out.push(`payload = ${pyStr(urlEncodePairs(p.form))}`)
     args.push('body=payload')
+  } else if (p.bodyKind === 'multipart') {
+    out.push('# 注意：http.client 没有内置 multipart/form-data 支持，含文件上传的请求请切换到 requests 示例')
   }
   if (p.headers.length) {
     out.push(`headers = ${pyDict(p.headers)}`)

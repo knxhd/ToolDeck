@@ -29,7 +29,7 @@
       <a-tab-pane key="body" title="Body">
         <MonacoEditor v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
           v-model="tab.request.body" :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'" fill />
-        <KeyValueEditor v-else-if="tab.request.body_type === 'form-data'" :model-value="formPairs"
+        <FormDataEditor v-else-if="tab.request.body_type === 'form-data'" :model-value="formItems"
           @update:model-value="onFormChange" />
         <a-empty v-else description="无 Body" style="padding: 12px 0" />
       </a-tab-pane>
@@ -49,9 +49,10 @@ import { jsonrepair } from 'jsonrepair'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
+import FormDataEditor from '@/components/FormDataEditor.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
-import type { BodyType, KeyValue, OpenTab } from '@/api/types'
+import type { BodyType, FormDataItem, KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -120,17 +121,29 @@ const hasBody = computed(() => {
 /** 打开请求时按实际情况选默认 tab：有 body 进 Body，否则进 Params。 */
 const activeKey = ref(hasBody.value ? 'body' : 'params')
 
-const formPairs = computed<KeyValue[]>(() => {
+/** Form Data 字段：body 中的 JSON 数组（兼容旧数据：缺 type 视为 text，缺 enabled 视为启用）。 */
+const formItems = computed<FormDataItem[]>(() => {
   try {
     const arr = JSON.parse(props.tab.request.body || '[]')
-    return arr.map((i: { key: string; value: string }) => ({ key: i.key, value: i.value, enabled: true }))
+    if (!Array.isArray(arr)) return []
+    return arr
+      .filter((i) => i && typeof i === 'object')
+      .map((i): FormDataItem => ({
+        key: String(i.key ?? ''),
+        value: String(i.value ?? ''),
+        enabled: i.enabled !== false,
+        type: i.type === 'file' ? 'file' : 'text',
+      }))
   } catch {
     return []
   }
 })
 
-function onFormChange(pairs: KeyValue[]) {
-  props.tab.request.body = JSON.stringify(pairs.map((p) => ({ key: p.key, value: p.value })))
+/** 写回 body：file 字段只保存文件路径。 */
+function onFormChange(items: FormDataItem[]) {
+  props.tab.request.body = JSON.stringify(
+    items.map((p) => ({ key: p.key, value: p.value, type: p.type, enabled: p.enabled })),
+  )
 }
 
 /** Params 表编辑 → 反向同步 URL 的 query 部分（Postman 式；URL 程序性更新不会触发输入框 blur，无循环）。 */

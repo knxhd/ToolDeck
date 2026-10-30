@@ -62,6 +62,9 @@ hiddenimports = [
     "hyperframe",
     # webbrowser（stdlib，但确保被收集）
     "webbrowser",
+    # Form Data 文件字段：本机原生文件选择对话框（函数内延迟导入）
+    "tkinter",
+    "tkinter.filedialog",
     # SSE / StreamingResponse 路径
     "sse_starlette.sse",
 ]

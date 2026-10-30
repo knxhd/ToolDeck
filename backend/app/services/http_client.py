@@ -13,6 +13,7 @@ from backend.app.schemas.http import (
     KeyValue,
     HttpMethod,
 )
+from backend.app.services.form_data import FormDataError, build_form_data, drop_content_type
 
 
 def _kv_to_dict(items: list[KeyValue]) -> dict[str, str]:
@@ -20,34 +21,28 @@ def _kv_to_dict(items: list[KeyValue]) -> dict[str, str]:
     return {item.key: item.value for item in items if item.enabled and item.key}
 
 
-def _build_form_data(body: str) -> list[tuple[str, str]]:
-    """把 JSON 字符串 [{"key":..,"value":..}] 解析为 form-data 元组列表。"""
-    import json
-
-    try:
-        items = json.loads(body) if body else []
-    except json.JSONDecodeError:
-        return []
-    result: list[tuple[str, str]] = []
-    for item in items:
-        if isinstance(item, dict) and item.get("key"):
-            result.append((str(item["key"]), str(item.get("value", ""))))
-    return result
-
-
 async def send_request(req: HttpRequest) -> HttpResponse:
     """转发 HTTP 请求，返回完整响应（含耗时与字节数）。"""
     headers = _kv_to_dict(req.headers)
     params = _kv_to_dict(req.params)
-    body_content: Any = None
+    content: Any = None
+    form_data: Any = None
+    form_files: Any = None
 
     if req.body_type == BodyType.JSON:
         headers.setdefault("Content-Type", "application/json")
-        body_content = req.body
+        content = req.body
     elif req.body_type == BodyType.RAW:
-        body_content = req.body
+        content = req.body
     elif req.body_type == BodyType.FORM_DATA:
-        body_content = _build_form_data(req.body)
+        try:
+            fields, files = build_form_data(req.body)
+        except FormDataError as exc:
+            return HttpResponse(status_code=0, status_text="Error", error=str(exc))
+        form_data = fields or None
+        if files:
+            form_files = files
+            headers = drop_content_type(headers)
 
     start = time.perf_counter()
     try:
@@ -57,8 +52,9 @@ async def send_request(req: HttpRequest) -> HttpResponse:
                 url=req.url,
                 headers=headers,
                 params=params,
-                content=body_content if req.body_type != BodyType.FORM_DATA else None,
-                data=body_content if req.body_type == BodyType.FORM_DATA else None,
+                content=content,
+                data=form_data,
+                files=form_files,
             )
         elapsed_ms = int((time.perf_counter() - start) * 1000)
         body_bytes = response.content

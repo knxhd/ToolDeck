@@ -16,6 +16,14 @@ export type HttpMethod =
 
 export type BodyType = 'none' | 'json' | 'raw' | 'form-data'
 
+/**
+ * Form Data 字段（以 JSON 数组形式存在 body 中）。
+ * type = file 时 value 为本机文件路径，发送时由后端读取文件并以 multipart 上传。
+ */
+export interface FormDataItem extends KeyValue {
+  type: 'text' | 'file'
+}
+
 export interface HttpRequestData {
   method: HttpMethod
   url: string
