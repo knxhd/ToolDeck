@@ -337,8 +337,11 @@ function startRespDrag(e: MouseEvent) {
   const reqEl = reqPaneRef.value
   const respEl = respPaneRef.value
   if (!container || !reqEl || !respEl) return
+  const cont: HTMLElement = container
+  const req: HTMLElement = reqEl
+  const resp: HTMLElement = respEl
   const isBottom = responseLayout.value === 'bottom'
-  const rect = container.getBoundingClientRect()
+  const rect = cont.getBoundingClientRect()
   const containerSize = isBottom ? rect.height : rect.width
   const splitterSize = 4
   // mousedown 时分隔条应在的位置（req 区域像素宽度）
@@ -358,15 +361,15 @@ function startRespDrag(e: MouseEvent) {
     reqSize = Math.min(containerSize - splitterSize - 20, Math.max(20, reqSize))
     const respSize = containerSize - splitterSize - reqSize
     if (isBottom) {
-      reqEl.style.height = `${reqSize}px`
-      reqEl.style.width = ''
-      respEl.style.height = `${respSize}px`
-      respEl.style.width = ''
+      req.style.height = `${reqSize}px`
+      req.style.width = ''
+      resp.style.height = `${respSize}px`
+      resp.style.width = ''
     } else {
-      reqEl.style.width = `${reqSize}px`
-      reqEl.style.height = ''
-      respEl.style.width = `${respSize}px`
-      respEl.style.height = ''
+      req.style.width = `${reqSize}px`
+      req.style.height = ''
+      resp.style.width = `${respSize}px`
+      resp.style.height = ''
     }
   }
   function flush() {
@@ -374,7 +377,7 @@ function startRespDrag(e: MouseEvent) {
     apply(pendingMouse)
   }
   function move(ev: MouseEvent) {
-    const newRect = container.getBoundingClientRect()
+    const newRect = cont.getBoundingClientRect()
     pendingMouse = isBottom ? ev.clientY - newRect.top : ev.clientX - newRect.left
     if (!rafId) rafId = requestAnimationFrame(flush)
   }
@@ -385,14 +388,14 @@ function startRespDrag(e: MouseEvent) {
     document.body.style.cursor = ''
     document.body.style.userSelect = ''
     // 用最终像素换算回百分比
-    const finalReq = isBottom ? reqEl.getBoundingClientRect().height : reqEl.getBoundingClientRect().width
+    const finalReq = isBottom ? req.getBoundingClientRect().height : req.getBoundingClientRect().width
     const ratio = Math.min(80, Math.max(20, ((containerSize - splitterSize - finalReq) / (containerSize - splitterSize)) * 100))
     responseRatio.value = ratio
     // 清掉内联 style，回到 Vue 绑定
-    reqEl.style.height = ''
-    reqEl.style.width = ''
-    respEl.style.height = ''
-    respEl.style.width = ''
+    req.style.height = ''
+    req.style.width = ''
+    resp.style.height = ''
+    resp.style.width = ''
   }
   document.addEventListener('mousemove', move)
   document.addEventListener('mouseup', up)
