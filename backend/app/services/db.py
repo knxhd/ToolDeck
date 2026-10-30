@@ -38,6 +38,11 @@ def get_db():
 
 def init_db() -> None:
     with get_db() as conn:
+        # 迁移：旧版 collections 表没有 team_id 列，直接重建（开发阶段数据可丢）
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(collections)").fetchall()]
+        if cols and "team_id" not in cols:
+            conn.execute("DROP TABLE collections")
+
         conn.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -56,12 +61,40 @@ def init_db() -> None:
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
-            CREATE TABLE IF NOT EXISTS collections (
-                user_id INTEGER PRIMARY KEY,
-                tree_json TEXT NOT NULL DEFAULT '[]',
-                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+            CREATE TABLE IF NOT EXISTS teams (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL,
+                owner_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS team_members (
+                team_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL DEFAULT 'member',
+                joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (team_id, user_id),
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
+
+            CREATE TABLE IF NOT EXISTS collections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                team_id INTEGER,
+                tree_json TEXT NOT NULL DEFAULT '[]',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                CHECK ((user_id IS NOT NULL AND team_id IS NULL) OR (user_id IS NULL AND team_id IS NOT NULL)),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_collections_user ON collections(user_id);
+            CREATE INDEX IF NOT EXISTS idx_collections_team ON collections(team_id);
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_collections_user ON collections(user_id) WHERE user_id IS NOT NULL;
+            CREATE UNIQUE INDEX IF NOT EXISTS uq_collections_team ON collections(team_id) WHERE team_id IS NOT NULL;
+            CREATE INDEX IF NOT EXISTS idx_team_members_user ON team_members(user_id);
 
             CREATE TABLE IF NOT EXISTS http_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,6 +141,12 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_mcp_history_user ON mcp_history(user_id, id DESC);
             CREATE INDEX IF NOT EXISTS idx_llm_history_user ON llm_history(user_id, id DESC);
             """
+        )
+        # 为已存在但没有集合行的用户补一条空的个人空间
+        conn.execute(
+            """INSERT INTO collections (user_id, team_id, tree_json)
+               SELECT u.id, NULL, '[]' FROM users u
+               WHERE NOT EXISTS (SELECT 1 FROM collections c WHERE c.user_id = u.id)"""
         )
 
 

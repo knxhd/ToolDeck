@@ -1,4 +1,4 @@
-"""Collections 持久化：按 user_id 存 SQLite。"""
+"""Collections 持久化：个人空间按 user_id，团队空间按 team_id。"""
 from __future__ import annotations
 
 import json
@@ -7,10 +7,12 @@ from typing import Any, Optional
 from backend.app.services.db import get_db
 
 
-def load_collections(user_id: int) -> list[dict[str, Any]]:
+def load_collections(scope: str, scope_id: int) -> list[dict[str, Any]]:
+    """scope: 'user' 或 'team'。"""
+    col = "user_id" if scope == "user" else "team_id"
     with get_db() as conn:
         row = conn.execute(
-            "SELECT tree_json FROM collections WHERE user_id = ?", (user_id,)
+            f"SELECT tree_json FROM collections WHERE {col} = ?", (scope_id,)
         ).fetchone()
     if not row:
         return []
@@ -21,15 +23,20 @@ def load_collections(user_id: int) -> list[dict[str, Any]]:
     return data if isinstance(data, list) else []
 
 
-def save_collections(user_id: int, tree: list[dict[str, Any]]) -> None:
+def save_collections(scope: str, scope_id: int, tree: list[dict[str, Any]]) -> None:
     payload = json.dumps(tree, ensure_ascii=False)
+    col = "user_id" if scope == "user" else "team_id"
     with get_db() as conn:
-        conn.execute(
-            """INSERT INTO collections (user_id, tree_json, updated_at)
-               VALUES (?, ?, datetime('now'))
-               ON CONFLICT(user_id) DO UPDATE SET tree_json = excluded.tree_json, updated_at = excluded.updated_at""",
-            (user_id, payload),
+        cur = conn.execute(
+            f"UPDATE collections SET tree_json = ?, updated_at = datetime('now') WHERE {col} = ?",
+            (payload, scope_id),
         )
+        if cur.rowcount == 0:
+            other = "team_id" if scope == "user" else "user_id"
+            conn.execute(
+                f"INSERT INTO collections ({col}, {other}, tree_json) VALUES (?, NULL, ?)",
+                (scope_id, payload),
+            )
 
 
 def find_node(tree: list[dict[str, Any]], node_id: str) -> Optional[dict[str, Any]]:

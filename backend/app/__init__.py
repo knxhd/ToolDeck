@@ -50,6 +50,7 @@ def create_app() -> FastAPI:
     from backend.app.api import http as http_api
     from backend.app.api import llm as llm_api
     from backend.app.api import mcp as mcp_api
+    from backend.app.api import teams as teams_api
 
     app.include_router(auth_api.router, prefix="/api/auth")
     app.include_router(collections_api.router, prefix="/api/collections")
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(http_api.router, prefix="/api/http")
     app.include_router(mcp_api.router, prefix="/api/mcp")
     app.include_router(llm_api.router, prefix="/api/llm")
+    app.include_router(teams_api.router, prefix="/api/teams")
 
     # 生产模式托管前端静态资源 + SPA fallback
     if not is_dev():

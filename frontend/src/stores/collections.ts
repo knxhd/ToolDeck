@@ -19,13 +19,38 @@ const emptyRequest = (): HttpRequestData => ({
 
 export const useCollectionsStore = defineStore('collections', () => {
   const tree = ref<CollectionNode[]>([])
+  /** 当前作用域：personal 或 team。 */
+  const scope = ref<'personal' | 'team'>('personal')
+  /** 当前 team_id（scope=team 时有效）。 */
+  const teamId = ref<number | null>(null)
+
+  function scopeQuery(): string {
+    if (scope.value === 'team' && teamId.value != null) {
+      return `?scope=team&team_id=${teamId.value}`
+    }
+    return '?scope=personal'
+  }
 
   async function load() {
-    tree.value = await api.get<CollectionNode[]>('/api/collections')
+    tree.value = await api.get<CollectionNode[]>(`/api/collections${scopeQuery()}`)
   }
 
   async function persist() {
-    await api.put('/api/collections', tree.value)
+    await api.put(`/api/collections${scopeQuery()}`, tree.value)
+  }
+
+  /** 切换到个人空间。 */
+  async function loadPersonal() {
+    scope.value = 'personal'
+    teamId.value = null
+    await load()
+  }
+
+  /** 切换到团队空间。 */
+  async function loadTeam(id: number) {
+    scope.value = 'team'
+    teamId.value = id
+    await load()
   }
 
   function findNode(id: string, nodes: CollectionNode[] = tree.value): CollectionNode | null {
@@ -117,7 +142,11 @@ export const useCollectionsStore = defineStore('collections', () => {
 
   return {
     tree,
+    scope,
+    teamId,
     load,
+    loadPersonal,
+    loadTeam,
     persist,
     findNode,
     findParent,

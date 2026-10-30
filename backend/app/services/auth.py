@@ -60,8 +60,8 @@ def create_user(username: str, password: str, display_name: str) -> int:
                 raise ValueError("用户名已被注册")
             raise
         uid = cur.lastrowid
-        # 初始化空集合行
-        conn.execute("INSERT INTO collections (user_id, tree_json) VALUES (?, '[]')", (uid,))
+        # 初始化空集合行（个人空间）
+        conn.execute("INSERT INTO collections (user_id, team_id, tree_json) VALUES (?, NULL, '[]')", (uid,))
         return uid
 
 

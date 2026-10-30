@@ -2,6 +2,22 @@
   <div class="postman-view">
     <!-- 左侧：Collections + History -->
     <aside class="sidebar" v-show="!sidebarHidden" :style="{ width: sidebarWidth + 'px' }">
+      <div class="scope-bar">
+        <a-radio-group
+          v-model="scopeMode"
+          size="mini"
+          type="button"
+          @change="onScopeChange"
+        >
+          <a-radio value="personal">我的</a-radio>
+          <a-radio v-for="t in teams.myTeams" :key="t.id" :value="String(t.id)" :style="{ maxWidth: '120px' }">
+            {{ t.name }}
+          </a-radio>
+        </a-radio-group>
+        <a-button size="mini" type="text" @click="teamDialogOpen = true" title="团队管理">
+          <template #icon><icon-team /></template>
+        </a-button>
+      </div>
       <div class="side-collections">
         <CollectionsTree @open="onOpenNode" />
       </div>
@@ -132,6 +148,7 @@
     <CollectionPlaceholdersDialog v-model:visible="phDialogOpen" />
     <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" @saved="onRequestSaved" />
     <UserSelectDialog v-if="userDialogOpen" @done="onUserSelected" />
+    <TeamDialog v-if="teamDialogOpen" @close="teamDialogOpen = false" @select-team="onTeamSelected" />
   </div>
 </template>
 
@@ -150,17 +167,20 @@ import EnvironmentsDialog from '@/components/EnvironmentsDialog.vue'
 import CollectionPlaceholdersDialog from '@/components/CollectionPlaceholdersDialog.vue'
 import SaveRequestDialog from '@/components/SaveRequestDialog.vue'
 import UserSelectDialog from '@/components/UserSelectDialog.vue'
+import TeamDialog from '@/components/TeamDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { useHttpStore } from '@/stores/http'
 import { useUserStore } from '@/stores/user'
+import { useTeamsStore } from '@/stores/teams'
 import { api } from '@/api/client'
 import { toast } from '@/utils/feedback'
 import IconShowLeft from '@/imgs/icon/show_left.svg?component'
 import IconHiddenLeft from '@/imgs/icon/hidden_left.svg?component'
 import IconRightLeft from '@/imgs/icon/right_left.svg?component'
 import IconTopBottom from '@/imgs/icon/top_bottom.svg?component'
+import IconTeam from '@/imgs/icon/add_team.svg?component'
 import type { CollectionNode, HttpCallRecord } from '@/api/types'
 
 const collections = useCollectionsStore()
@@ -168,6 +188,7 @@ const wb = useWorkbenchStore()
 const http = useHttpStore()
 const env = useEnvironmentsStore()
 const user = useUserStore()
+const teams = useTeamsStore()
 
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(false)
@@ -181,8 +202,11 @@ const settingsOpen = ref(false)
 const envDialogOpen = ref(false)
 const phDialogOpen = ref(false)
 const userDialogOpen = ref(false)
+const teamDialogOpen = ref(false)
 /** 数据是否已加载（用户已选名后）。 */
 const dataReady = ref(false)
+/** 左侧空间切换：'personal' 或 team_id 字符串。 */
+const scopeMode = ref<string>('personal')
 /** 当前集合启用的占位符数量（显示在按钮角标）。 */
 const collectionPhCount = computed(() => Object.keys(env.collectionPlaceholderVars).length)
 const saveDialogOpen = ref(false)
@@ -238,11 +262,32 @@ onMounted(async () => {
 })
 
 async function loadUserData() {
-  await Promise.all([collections.load(), http.loadHistory()])
+  await Promise.all([collections.load(), http.loadHistory(), teams.loadMyTeams()])
   history.value = http.history
   // 集合树加载完后，恢复上次打开的 tabs（nodeId 类型需要从树里重新取节点数据）
   wb.restore()
   dataReady.value = true
+}
+
+/** 切换个人/团队空间：清空 tabs，重新加载对应集合。 */
+async function onScopeChange(v: string | number | boolean) {
+  const val = String(v)
+  wb.reset()
+  dataReady.value = false
+  if (val === 'personal') {
+    await collections.loadPersonal()
+  } else {
+    await collections.loadTeam(Number(val))
+  }
+  wb.restore()
+  dataReady.value = true
+}
+
+/** 团队对话框里选中某个团队后切过去。 */
+async function onTeamSelected(team: { id: number }) {
+  teamDialogOpen.value = false
+  scopeMode.value = String(team.id)
+  await onScopeChange(scopeMode.value)
 }
 
 /** 登录/注册成功后：加载当前用户数据。 */
@@ -503,6 +548,18 @@ function statusClass(code: number) {
   flex-direction: column;
   background: var(--el-bg-color);
   overflow: hidden;
+}
+
+.scope-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--el-border-color);
+}
+.scope-bar :deep(.arco-radio-group) {
+  flex: 1;
+  overflow-x: auto;
 }
 
 .side-collections {
