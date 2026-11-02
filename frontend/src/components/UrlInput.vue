@@ -19,8 +19,8 @@
     </div>
 
     <!-- 悬停浮层：显示变量当前值 -->
-    <div v-if="tip.visible" class="var-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }"
-      @mouseenter="cancelHide" @mouseleave="hideTip">
+    <div v-if="tip.visible" class="var-tip" :style="{ left: tip.x + 'px', top: tip.y + 'px' }" @mouseenter="cancelHide"
+      @mouseleave="hideTip">
       <div class="var-tip-head">
         <span class="var-tip-name">{{ tip.name }}</span>
         <span class="var-tip-badge">{{ tip.source }}</span>
@@ -320,8 +320,10 @@ function onLeave() {
 async function copyValue() {
   try {
     await copyText(tip.value.value)
-  } catch {
-    /* 忽略剪贴板权限错误 */
+    toast.success('复制成功')
+  } catch (err:any) {
+    console.error(err)
+    toast.error('复制失败')
   }
 }
 </script>
