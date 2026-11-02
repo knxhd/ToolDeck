@@ -17,8 +17,10 @@ export const parseMessages = (message: string, type: string): string => {
     let out = ''
     console.log(message);
     for (const rawLine of message.split(/\r?\n/)) {
-        const line = stripSsePrefix(rawLine)
-        if (!line.startsWith('{')) continue
+        const line = stripSsePrefix(rawLine).trimStart()
+        if (!line.startsWith('{')) {
+            continue
+        }
         let body: any
         try {
             body = JSON.parse(line)
@@ -68,7 +70,7 @@ const qwenParser = (body: any) => {
  *   event:result     -> ''
  */
 const stripSsePrefix = (line: string): string => {
-    const prefixSet = ['data:', "200"];
+    const prefixSet = ['data:'];
     for (const prefix of prefixSet) {
         if (line.startsWith(prefix)) {
             // 切掉 data:，然后只去掉前缀后面单个空格，不要直接全量trim
@@ -81,6 +83,9 @@ const stripSsePrefix = (line: string): string => {
     const t = line.trimStart();
     if (t.startsWith('{')) {
         return line;
+    } else {
+        // 去除第一个{前的字符
+        return line.slice(line.indexOf('{'));
     }
     return '';
 }
