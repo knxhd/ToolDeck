@@ -24,7 +24,20 @@
           </div>
           <div class="stream-layout">
             <div v-if="mergeType" class="merge-view">
-              <v-md-preview :text="mergeMessage(tab.stream_events)" />
+              <div v-if="merged.reasoning" class="reasoning-block">
+                <div class="reasoning-header" @click="reasoningOpen = !reasoningOpen">
+                  <span class="reasoning-title">
+                    <span class="reasoning-icon"></span>
+                  </span>
+                  <span class="reasoning-toggle">{{ reasoningOpen ? '收起' : '展开' }}</span>
+                </div>
+                <div v-show="reasoningOpen" class="reasoning-body">
+                  <v-md-preview :text="merged.reasoning" />
+                </div>
+              </div>
+              <div class="content-block">
+                <v-md-preview :text="merged.content" />
+              </div>
             </div>
             <div class="frame-list custom-arco-design" v-else>
               <a-collapse :show-expand-icon="false" :bordered="false">
@@ -101,18 +114,24 @@ function formatSize(bytes: number) {
 }
 
 const mergeType = ref('')
-const mergeMessage = (messages: Array<{ data: string }>) => {
+const reasoningOpen = ref(true)
+
+// 合并结果：正文 + 思考过程（reasoning_content），两者分别渲染
+const merged = computed(() => {
+  if (!mergeType.value) {
+    return { content: '', reasoning: '' }
+  }
   try {
     // 把所有 chunk 拼成完整字节流，再逐行解析：
     // 单个 chunk 可能是半截 JSON，独立 parse 会丢帧；拼接后能还原完整 JSON 行。
-    const all = messages.map((m) => m.data).join('')
+    const all = props.tab.stream_events.map((m) => m.data).join('')
     return parseMessages(all, mergeType.value)
   } catch (error) {
     console.error(error)
     mergeType.value = ''
-    return ''
+    return { content: '', reasoning: '' }
   }
-}
+})
 </script>
 
 <style scoped lang="less">
@@ -207,6 +226,66 @@ const mergeMessage = (messages: Array<{ data: string }>) => {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 思考过程（reasoning_content）：弱化样式，与正文区分 */
+.reasoning-block {
+  margin: 10px 0;
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  background: var(--el-fill-color-lighter);
+  overflow: hidden;
+}
+
+.reasoning-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  user-select: none;
+
+  &:hover {
+    background: var(--el-fill-color-light);
+  }
+
+  .reasoning-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+
+  .reasoning-icon {
+    color: var(--el-color-warning);
+  }
+
+  .reasoning-toggle {
+    color: var(--el-color-primary);
+  }
+}
+
+.reasoning-body {
+  padding: 0 12px 4px;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+  border-left: 3px solid var(--el-color-warning-light-5);
+  margin-left: 10px;
+
+  :deep(.github-markdown-body) {
+    background: transparent;
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
+    padding: 0;
+  }
+}
+
+/* 正文区域：保持默认 Markdown 样式 */
+.content-block {
+  min-width: 0;
 }
 
 .frame-list {
