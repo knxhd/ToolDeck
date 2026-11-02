@@ -33,6 +33,8 @@ import type { CodeLang, CodeLanguage } from '@/utils/codegen'
 import { resolveRequest } from '@/utils/env'
 import { toast } from '@/utils/feedback'
 import type { HttpRequestData } from '@/api/types'
+import { copyText } from '@/utils/commonUtil'
+
 
 const props = defineProps<{ visible: boolean; request: HttpRequestData }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
@@ -92,9 +94,10 @@ const code = computed(() => {
 
 async function onCopy() {
   try {
-    await navigator.clipboard.writeText(code.value)
+    await copyText(code.value)
     toast.success('已复制到剪贴板')
-  } catch {
+  } catch (error: any) {
+    console.error(error)
     toast.error('复制失败，请手动选择复制')
   }
 }
