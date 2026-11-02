@@ -53,6 +53,7 @@ import MonacoEditor from '@/components/MonacoEditor.vue'
 import { VAR_NAME_RE } from '@/utils/env'
 import { toast } from '@/utils/feedback'
 import type { KeyValue } from '@/api/types'
+import { copyText } from '@/utils/commonUtil'
 
 /** title：列表标题（如「请求占位符」/「集合占位符」）。 */
 const props = defineProps<{ modelValue: KeyValue[]; title?: string }>()
@@ -133,7 +134,7 @@ function onValue(value: string) {
 async function copyRef() {
   if (!current.value?.key) return
   try {
-    await navigator.clipboard.writeText(refText.value)
+    await copyText(refText.value)
     toast.success(`已复制 ${refText.value}`)
   } catch {
     toast.error('复制失败')

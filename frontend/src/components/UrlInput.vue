@@ -48,6 +48,7 @@ import { parseCurl } from '@/utils/parseCurl'
 import type { ParsedCurl } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
 import type { HttpRequestData } from '@/api/types'
+import { copyText } from '@/utils/commonUtil'
 
 /** request：完整请求数据，用于生成调用代码；未传时仅按 URL 生成 GET 请求。 */
 const props = defineProps<{ modelValue: string; request?: HttpRequestData }>()
@@ -318,7 +319,7 @@ function onLeave() {
 
 async function copyValue() {
   try {
-    await navigator.clipboard.writeText(tip.value.value)
+    await copyText(tip.value.value)
   } catch {
     /* 忽略剪贴板权限错误 */
   }
