@@ -5,12 +5,17 @@
  * 一个 chunk 里可能有 0 / 1 / 多帧完整数据，也可能末尾带半截 JSON（流式尚未结束）。
  */
 export const parseMessages = (message: string, type: string): string => {
-    if (!message) return ''
-    if (message === '\n') return '\n'
+    if (!message) {
+        return ''
+    }
+    if (message === '\n') {
+        return '\n'
+    }
 
     // 把所有行里能识别出的 JSON 行收集起来，逐个尝试 parse。
     // 不完整的 JSON 行直接跳过（等下一帧补齐后重新拼接解析）。
     let out = ''
+    console.log(message);
     for (const rawLine of message.split(/\r?\n/)) {
         const line = stripSsePrefix(rawLine)
         if (!line.startsWith('{')) continue
@@ -63,12 +68,15 @@ const qwenParser = (body: any) => {
  *   event:result     -> ''
  */
 const stripSsePrefix = (line: string): string => {
-    const prefix = 'data:';
-    if (line.startsWith(prefix)) {
-        // 切掉 data:，然后只去掉前缀后面单个空格，不要直接全量trim
-        const raw = line.slice(prefix.length);
-        return raw[0] === ' ' ? raw.slice(1) : raw;
+    const prefixSet = ['data:', "200"];
+    for (const prefix of prefixSet) {
+        if (line.startsWith(prefix)) {
+            // 切掉 data:，然后只去掉前缀后面单个空格，不要直接全量trim
+            const raw = line.slice(prefix.length);
+            return raw[0] === ' ' ? raw.slice(1) : raw;
+        }
     }
+
     // 本身就是json行（极少情况）直接返回
     const t = line.trimStart();
     if (t.startsWith('{')) {
