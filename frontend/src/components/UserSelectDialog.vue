@@ -6,7 +6,7 @@
           <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </div>
-      <h2 class="auth-title">API Tool</h2>
+      <h2 class="auth-title">ToolDeck</h2>
       <p class="auth-sub">{{ mode === 'login' ? '登录你的账号' : '创建新账号' }}</p>
 
       <div class="field">

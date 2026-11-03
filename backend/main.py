@@ -28,7 +28,7 @@ app = create_app()
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="API Tool headless server")
+    parser = argparse.ArgumentParser(description="ToolDeck headless server")
     parser.add_argument(
         "--host",
         default=os.environ.get("APP_HOST", "127.0.0.1"),

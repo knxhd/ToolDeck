@@ -41,7 +41,7 @@ def create_app() -> FastAPI:
 
         logging.getLogger("api-tool").exception("敏感数据迁移失败，忽略（新写入仍会加密）")
 
-    app = FastAPI(title="API Tool", version="0.2.0")
+    app = FastAPI(title="ToolDeck", version="0.2.0")
 
     if is_dev():
         app.add_middleware(
