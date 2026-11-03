@@ -140,6 +140,31 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     setActive(tab.id)
   }
 
+  /**
+   * 克隆请求标签：复制请求/连接配置为新标签（不带 nodeId，视为未保存），
+   * 插入到原标签右侧并激活。数量上限由调用方（ensureRoom）负责。
+   */
+  function cloneTab(id: string) {
+    const src = tabs.value.find((t) => t.id === id)
+    if (!src) return
+    const tab = blankTab(src.kind)
+    tab.title = `${src.title.replace(/ 副本$/, '')} 副本`
+    tab.dirty = true
+    if (src.kind === 'http') {
+      tab.request = JSON.parse(JSON.stringify(src.request))
+    } else if (src.kind === 'websocket') {
+      tab.ws_url = src.ws_url
+    } else {
+      tab.mcp_url = src.mcp_url
+      tab.mcp_headers = JSON.parse(JSON.stringify(src.mcp_headers))
+      tab.mcp_tool = src.mcp_tool
+      tab.mcp_args = src.mcp_args
+    }
+    const idx = tabs.value.findIndex((t) => t.id === id)
+    tabs.value.splice(idx + 1, 0, tab)
+    setActive(tab.id)
+  }
+
   function closeTab(id: string) {
     const idx = tabs.value.findIndex((t) => t.id === id)
     if (idx < 0) return
@@ -318,6 +343,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     openBlank,
     openFromNode,
     closeTab,
+    cloneTab,
     send,
     cancel,
     renameTab,

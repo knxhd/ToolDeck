@@ -55,14 +55,16 @@
         <div class="tabs-left custom-arco-design">
           <a-tabs :active-key="wb.activeId ?? ''" :hide-content="true" :editable="true" :show-add-button="true"
             type="card-gutter" class="workbench-tabs" @change="(k: string | number) => wb.setActive(String(k))"
-            @delete="(k: string | number) => wb.closeTab(String(k))" @add="() => wb.openBlank('http')">
+            @delete="(k: string | number) => closeMany([String(k)])" @add="onAddTab">
             <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
               <template #title>
-                <span class="tab-method"
-                  :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
-                  {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
+                <span class="tab-title-wrap" @contextmenu.prevent="onTabContextMenu($event, t)">
+                  <span class="tab-method"
+                    :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
+                    {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
+                  </span>
+                  <span class="tab-title">{{ t.dirty ? '* ' : '' }}{{ t.title }}</span>
                 </span>
-                <span class="tab-title">{{ t.dirty ? '* ' : '' }}{{ t.title }}</span>
               </template>
             </a-tab-pane>
           </a-tabs>
@@ -146,14 +148,29 @@
     <SettingsDialog v-model="settingsOpen" />
     <EnvironmentsDialog v-model:visible="envDialogOpen" />
     <CollectionPlaceholdersDialog v-model:visible="phDialogOpen" />
-    <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="wb.activeTab" @saved="onRequestSaved" />
+    <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="saveDialogTab" @saved="onRequestSaved" />
     <UserSelectDialog v-if="userDialogOpen" @done="onUserSelected" />
     <TeamDialog v-if="teamDialogOpen" @close="teamDialogOpen = false" @select-team="onTeamSelected" />
+
+    <!-- 标签页右键菜单 -->
+    <Teleport to="body">
+      <div v-if="ctxMenu.visible" class="ctx-overlay" @click="closeCtxMenu" @contextmenu.prevent="closeCtxMenu" />
+      <div v-if="ctxMenu.visible" class="tab-ctx-menu" :style="{ left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }">
+        <div class="ctx-item" @click="onCtxClose">关闭</div>
+        <div class="ctx-item" :class="{ disabled: ctxIndex <= 0 }" @click="onCtxCloseLeft">关闭左侧</div>
+        <div class="ctx-item" :class="{ disabled: ctxIndex < 0 || ctxIndex >= wb.tabs.length - 1 }"
+          @click="onCtxCloseRight">关闭右侧</div>
+        <div class="ctx-item" :class="{ disabled: wb.tabs.length <= 1 }" @click="onCtxCloseOthers">关闭其他</div>
+        <div class="ctx-item" :class="{ disabled: !wb.tabs.length }" @click="onCtxCloseAll">关闭所有</div>
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" @click="onCtxClone">克隆请求</div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 
 import CollectionsTree from '@/components/CollectionsTree.vue'
@@ -174,14 +191,15 @@ import { useEnvironmentsStore } from '@/stores/environments'
 import { useHttpStore } from '@/stores/http'
 import { useUserStore } from '@/stores/user'
 import { useTeamsStore } from '@/stores/teams'
+import { useSettingsStore } from '@/stores/settings'
 import { api } from '@/api/client'
-import { toast } from '@/utils/feedback'
+import { closeUnsavedDialog, toast } from '@/utils/feedback'
 import IconShowLeft from '@/imgs/icon/show_left.svg?component'
 import IconHiddenLeft from '@/imgs/icon/hidden_left.svg?component'
 import IconRightLeft from '@/imgs/icon/right_left.svg?component'
 import IconTopBottom from '@/imgs/icon/top_bottom.svg?component'
 import IconTeam from '@/imgs/icon/add_team.svg?component'
-import type { CollectionNode, HttpCallRecord } from '@/api/types'
+import type { CollectionNode, HttpCallRecord, OpenTab } from '@/api/types'
 
 const collections = useCollectionsStore()
 const wb = useWorkbenchStore()
@@ -189,6 +207,7 @@ const http = useHttpStore()
 const env = useEnvironmentsStore()
 const user = useUserStore()
 const teams = useTeamsStore()
+const settingsStore = useSettingsStore()
 
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(false)
@@ -320,33 +339,73 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 function onGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
     e.preventDefault()
+    if (saveDialogOpen.value) return // 保存对话框已打开，避免覆盖等待中的流程
     const tab = wb.activeTab
     if (!tab || tab.kind !== 'http') return
     if (!tab.dirty) return
-    if (tab.nodeId) silentSave(tab)
-    else saveDialogOpen.value = true
+    void saveTabFlow(tab)
   }
 }
 
-/** 已绑定节点的请求：直接写回集合树，不弹框。 */
-async function silentSave(tab: NonNullable<typeof wb.activeTab>) {
-  if (!tab.nodeId) return
-  const node = collections.findNode(tab.nodeId)
-  if (!node) return
-  node.request = JSON.parse(JSON.stringify(tab.request))
-  node.name = tab.title
-  await collections.persist()
-  tab.dirty = false
-  requestSnapshot = JSON.stringify(tab.request)
-  toast.success('已保存')
+const saveDialogTab = ref<OpenTab | null>(null)
+let saveResolver: ((v: boolean) => void) | null = null
+
+/** 弹出 Save Request 对话框为指定标签选择保存位置；resolve 是否真的保存了。 */
+function openSaveDialogFor(t: OpenTab): Promise<boolean> {
+  saveDialogTab.value = t
+  saveDialogOpen.value = true
+  return new Promise((resolve) => {
+    saveResolver = resolve
+  })
 }
 
+// 对话框被取消（未保存）时放行等待中的 Promise
+watch(saveDialogOpen, (v) => {
+  if (!v && saveResolver) {
+    saveResolver(false)
+    saveResolver = null
+  }
+})
+
+/**
+ * 保存标签：已绑定集合的静默写回；未绑定的弹出 Save Request 选择名称与位置。
+ * resolve 是否保存成功（用户取消保存对话框时为 false）。
+ */
+async function saveTabFlow(t: OpenTab): Promise<boolean> {
+  if (t.nodeId) {
+    const node = collections.findNode(t.nodeId)
+    if (node) {
+      if (t.kind === 'websocket') node.ws_url = t.ws_url
+      else if (t.kind === 'mcp') {
+        node.mcp_url = t.mcp_url
+        node.mcp_headers = t.mcp_headers
+        node.mcp_tool = t.mcp_tool
+        node.mcp_args = t.mcp_args
+      } else {
+        node.request = JSON.parse(JSON.stringify(t.request))
+      }
+      node.name = t.title
+      await collections.persist()
+      t.dirty = false
+      if (wb.activeTab?.id === t.id && t.kind === 'http') requestSnapshot = JSON.stringify(t.request)
+      toast.success('已保存')
+      return true
+    }
+  }
+  // 未绑定节点（或节点已被删除）：走保存对话框
+  return openSaveDialogFor(t)
+}
+
+/** Save Request 对话框保存成功后的回调（对任意标签生效）。 */
 function onRequestSaved() {
-  const t = wb.activeTab
-  if (t && t.kind === 'http') {
+  const t = saveDialogTab.value
+  if (t) {
     t.dirty = false
-    requestSnapshot = JSON.stringify(t.request)
+    if (wb.activeTab?.id === t.id && t.kind === 'http') requestSnapshot = JSON.stringify(t.request)
   }
+  saveDialogOpen.value = false
+  saveResolver?.(true)
+  saveResolver = null
 }
 
 function toggleLayout() {
@@ -467,8 +526,64 @@ function startRespDrag(e: MouseEvent) {
   document.body.style.userSelect = 'none'
 }
 
-function onOpenNode(node: CollectionNode) {
+async function onOpenNode(node: CollectionNode) {
+  // 已打开的请求只激活，不占新标签名额
+  if (node.type === 'request' && !wb.tabs.some((t) => t.nodeId === node.id)) {
+    if (!(await ensureRoom())) return
+  }
   wb.openFromNode(node)
+}
+
+/** 点击「+」新建标签。 */
+async function onAddTab() {
+  if (!(await ensureRoom())) return
+  wb.openBlank('http')
+}
+
+/**
+ * 打开新标签前确保未达上限；超限时自动关闭最早的标签，
+ * 若最早的标签有未保存修改则先弹框询问，取消则放弃打开。
+ */
+async function ensureRoom(): Promise<boolean> {
+  const max = Math.max(settingsStore.maxTabsMin, settingsStore.settings.maxTabs)
+  while (wb.tabs.length >= max) {
+    const victim = wb.tabs[0]
+    if (!victim) break
+    if (victim.streaming) {
+      toast.warning('已达到标签页上限，最早的标签正在发送请求，请稍后再试')
+      return false
+    }
+    if (victim.dirty) {
+      const choice = await closeUnsavedDialog(victim.title)
+      if (choice === null) {
+        toast.warning('已达到标签页上限，请先手动关闭部分标签页')
+        return false
+      }
+      if (choice === 'save') {
+        const saved = await saveTabFlow(victim)
+        if (!saved) return false // 保存被取消，放弃打开新标签
+      }
+    }
+    wb.closeTab(victim.id)
+  }
+  return true
+}
+
+/** 批量关闭标签：含未保存修改的逐个弹框询问；中途取消则中止剩余关闭。 */
+async function closeMany(ids: string[]) {
+  for (const id of ids) {
+    const t = wb.tabs.find((x) => x.id === id)
+    if (!t) continue
+    if (t.dirty) {
+      const choice = await closeUnsavedDialog(t.title)
+      if (choice === null) return // 用户取消，中止本次批量关闭
+      if (choice === 'save') {
+        const saved = await saveTabFlow(t)
+        if (!saved) continue // 保存位置对话框被取消 → 保留该标签，继续处理其余
+      }
+    }
+    wb.closeTab(id)
+  }
 }
 
 function onSend() {
@@ -501,7 +616,8 @@ function onSaveRequest() {
   collections.persist()
 }
 
-function onLoadHistory(item: HttpCallRecord) {
+async function onLoadHistory(item: HttpCallRecord) {
+  if (!(await ensureRoom())) return
   wb.openBlank('http')
   const tab = wb.activeTab
   if (!tab) return
@@ -511,6 +627,61 @@ function onLoadHistory(item: HttpCallRecord) {
   tab.request.body_type = (item.body_type as typeof tab.request.body_type) || 'none'
   tab.request.body = item.body || ''
   tab.title = `${item.method} ${item.url}`
+}
+
+// ── 标签页右键菜单 ──────────────────────────────────────────────
+const ctxMenu = reactive({ visible: false, x: 0, y: 0, tabId: '' })
+/** 右键目标标签当前的下标（-1 表示已不存在）。 */
+const ctxIndex = computed(() => wb.tabs.findIndex((t) => t.id === ctxMenu.tabId))
+
+function onTabContextMenu(e: MouseEvent, t: OpenTab) {
+  ctxMenu.tabId = t.id
+  // 避免菜单溢出视口
+  ctxMenu.x = Math.min(e.clientX, window.innerWidth - 150)
+  ctxMenu.y = Math.min(e.clientY, window.innerHeight - 230)
+  ctxMenu.visible = true
+}
+
+function closeCtxMenu() {
+  ctxMenu.visible = false
+}
+
+function onCtxClose() {
+  closeCtxMenu()
+  void closeMany([ctxMenu.tabId])
+}
+
+function onCtxCloseLeft() {
+  const i = ctxIndex.value
+  closeCtxMenu()
+  if (i > 0) void closeMany(wb.tabs.slice(0, i).map((t) => t.id))
+}
+
+function onCtxCloseRight() {
+  const i = ctxIndex.value
+  closeCtxMenu()
+  if (i >= 0 && i < wb.tabs.length - 1) void closeMany(wb.tabs.slice(i + 1).map((t) => t.id))
+}
+
+function onCtxCloseOthers() {
+  const i = ctxIndex.value
+  closeCtxMenu()
+  if (i >= 0 && wb.tabs.length > 1) {
+    void closeMany(wb.tabs.filter((_, idx) => idx !== i).map((t) => t.id))
+  }
+}
+
+function onCtxCloseAll() {
+  closeCtxMenu()
+  void closeMany(wb.tabs.map((t) => t.id))
+}
+
+async function onCtxClone() {
+  closeCtxMenu()
+  const t = wb.tabs.find((x) => x.id === ctxMenu.tabId)
+  if (!t) return
+  if (!(await ensureRoom())) return
+  wb.cloneTab(t.id)
 }
 
 async function onClear() {
@@ -747,6 +918,12 @@ function statusClass(code: number) {
     }
   }
 
+  .tab-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+  }
+
   .tab-title {
     white-space: nowrap;
     overflow: hidden;
@@ -826,6 +1003,53 @@ function statusClass(code: number) {
 
   &:hover {
     background: var(--el-color-primary-light-5);
+  }
+}
+
+/* 标签页右键菜单 */
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.tab-ctx-menu {
+  position: fixed;
+  z-index: 1001;
+  min-width: 136px;
+  padding: 4px;
+  background: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+
+  .ctx-item {
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--el-text-color-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+
+    &:hover {
+      background: var(--el-fill-color-light);
+    }
+
+    &.disabled {
+      color: var(--el-text-color-placeholder);
+      cursor: not-allowed;
+
+      &:hover {
+        background: transparent;
+      }
+    }
+  }
+
+  .ctx-divider {
+    height: 1px;
+    margin: 4px 6px;
+    background: var(--el-border-color-lighter);
   }
 }
 </style>

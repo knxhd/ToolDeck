@@ -21,6 +21,18 @@
           <a-radio :value="true">深色</a-radio>
         </a-radio-group>
       </div>
+      <div class="form-row form-row-top">
+        <span class="form-label">标签页上限</span>
+        <a-input-number
+          v-model="settings.maxTabs"
+          :min="store.maxTabsMin"
+          :max="store.maxTabsMax"
+          :precision="0"
+          mode="button"
+          style="width: 132px"
+        />
+        <span class="form-tip">最多同时打开 {{ store.maxTabsMin }}~{{ store.maxTabsMax }} 个；达到上限后再打开会自动关闭最早的标签</span>
+      </div>
       <div class="form-row">
         <span class="form-label">预览</span>
         <div class="preview">The quick brown fox 敏捷的棕色狐狸 123</div>
@@ -63,6 +75,22 @@ function onReset() {
       flex-shrink: 0;
       color: var(--el-text-color-primary);
       font-size: 13px;
+    }
+
+    .form-tip {
+      flex: 1;
+      min-width: 0;
+      color: var(--el-text-color-secondary);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+  }
+
+  .form-row-top {
+    align-items: flex-start;
+
+    .form-label {
+      line-height: 32px;
     }
   }
 }
