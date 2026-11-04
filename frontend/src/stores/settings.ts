@@ -8,7 +8,7 @@ const KEY = 'api-tool-settings'
 
 export const FONT_OPTIONS = [
   { label: '系统默认', value: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif' },
-  { label: '等宽（代码）', value: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace' },
+  { label: '等宽', value: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace' },
   { label: '微软雅黑', value: '"Microsoft YaHei", sans-serif' },
   { label: '宋体', value: 'SimSun, serif' },
 ]

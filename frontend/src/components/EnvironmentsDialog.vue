@@ -62,10 +62,10 @@
                   <a-input v-model="v.key" placeholder="例如 knowledge_agent" size="small" />
                 </td>
                 <td class="col-value">
-                  <a-input v-model="v.value" placeholder="例如 10.18.217.60:32706" size="small" />
+                  <a-input v-model="v.value" placeholder="例如 127.0.0.1:8080" size="small" />
                 </td>
                 <td class="col-desc">
-                  <a-input v-model="v.description" placeholder="备注（可选）" size="small" />
+                  <a-input v-model="v.description" placeholder="备注" size="small" />
                 </td>
                 <td class="col-op">
                   <a-button size="mini" type="text" status="danger" @click="currentEnv.variables.splice(i, 1)">
