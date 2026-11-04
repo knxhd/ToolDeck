@@ -31,7 +31,8 @@
               <template #icon><icon-fullscreen /></template>
             </a-button>
           </div>
-          <a-button size="small" class="bench-trigger" type="outline" @click="benchOpen = true">
+          <span class="bench-divider" />
+          <a-button size="small" class="bench-trigger" type="text" @click="benchOpen = true">
             <template #icon><icon-thunderbolt /></template>
             批量测试
           </a-button>
@@ -355,8 +356,15 @@ watch(
   gap: 8px;
 }
 
+.bench-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--el-border-color, rgba(0, 0, 0, 0.12));
+}
 .bench-trigger {
-  margin-left: 8px;
-  font-weight: 600;
+  margin-left: 4px;
+  color: var(--el-text-color-secondary);
+  &:hover { color: var(--el-color-primary); }
 }
 </style>
