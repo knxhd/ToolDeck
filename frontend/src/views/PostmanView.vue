@@ -931,7 +931,6 @@ function statusClass(code: number) {
     background: var(--ui-bg-active);
     color: rgb(var(--primary-6));
     font-weight: 600;
-    box-shadow: inset 3px 0 0 rgb(var(--primary-6));
   }
 
   :deep(.arco-tabs-close-icon) {
