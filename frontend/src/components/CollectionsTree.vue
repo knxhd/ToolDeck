@@ -27,6 +27,7 @@
           @rename="onRename"
           @remove="onRemove"
           @export="onExportNode"
+          @expand="onExpand"
         />
       </template>
       <a-empty v-if="!collections.tree.length" description="暂无集合，点击 + 新建" style="padding: 16px 0" />
@@ -65,6 +66,11 @@ const pendingImport = ref<CollectionNode[] | null>(null)
 function toggle(id: string) {
   if (expanded.value.has(id)) expanded.value.delete(id)
   else expanded.value.add(id)
+}
+
+/** 拖拽放入后仅展开目标容器（不收起）。 */
+function onExpand(id: string) {
+  expanded.value.add(id)
 }
 
 async function onNewCollection() {

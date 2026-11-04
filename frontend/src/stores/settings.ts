@@ -1,4 +1,4 @@
-/** 全局设置：字体、字号、明暗主题、标签页上限，持久化到 localStorage。 */
+/** 全局设置：字体、字号、明暗主题、Tab数量，持久化到 localStorage。 */
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
@@ -15,7 +15,7 @@ export const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 18]
 
 /** 标签页数量上限的可选范围。 */
 export const MAX_TABS_MIN = 1
-export const MAX_TABS_MAX = 30
+export const MAX_TABS_MAX = 100
 
 interface Settings {
   fontFamily: string

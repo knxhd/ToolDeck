@@ -1,6 +1,8 @@
 <template>
   <div class="node-row" :style="{ paddingLeft: depth * 8 + 'px' }">
-    <div class="node-line" :class="{ active: isRequest }" @click="onLineClick">
+    <div class="node-line" :class="{ active: isRequest, 'drop-target': dropHover }" :draggable="draggable"
+      @click="onLineClick" @dragstart="onDragStart" @dragend="onDragEnd" @dragover="onDragOver"
+      @dragleave="onDragLeave" @drop.prevent="onDrop">
       <icon-right v-if="node.type !== 'request' && !expanded.has(node.id)" class="twisty" @click.stop="onToggle" />
       <icon-down v-else-if="node.type !== 'request'" class="twisty" @click.stop="onToggle" />
       <span v-else class="method-badge" :class="methodClass">
@@ -31,14 +33,17 @@
     <div v-if="expanded.has(node.id)" class="node-children">
       <CollectionsNode v-for="child in node.children" :key="child.id" :node="child" :depth="depth + 1"
         :expanded="expanded" @toggle="onChildToggle" @open="onChildOpen" @add-child="onChildAdd" @rename="onChildRename"
-        @remove="onChildRemove" @export="onChildExport" />
+        @remove="onChildRemove" @export="onChildExport" @expand="onChildExpand" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
+import { useCollectionsStore } from '@/stores/collections'
+import { treeDrag } from '@/utils/treeDrag'
+import { toast } from '@/utils/feedback'
 import type { CollectionNode } from '@/api/types'
 
 const props = defineProps<{
@@ -54,10 +59,17 @@ const emit = defineEmits<{
   rename: [node: CollectionNode]
   remove: [node: CollectionNode]
   export: [node: CollectionNode]
+  expand: [id: string]
 }>()
+
+const collections = useCollectionsStore()
 
 const hasChildren = computed(() => !!props.node.children && props.node.children.length > 0)
 const isRequest = computed(() => props.node.type === 'request')
+/** 请求和文件夹可拖拽；根级集合不支持移动。 */
+const draggable = computed(() => props.node.type !== 'collection')
+/** 拖拽悬停高亮（仅合法目标时点亮）。 */
+const dropHover = ref(false)
 
 const methodClass = computed(() => {
   if (props.node.kind === 'websocket') return 'ws'
@@ -65,6 +77,76 @@ const methodClass = computed(() => {
   const m = (props.node.request?.method || 'GET').toLowerCase()
   return m
 })
+
+// ── 拖拽移动 ────────────────────────────────────────────────────
+function onDragStart(e: DragEvent) {
+  treeDrag.id = props.node.id
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    // Firefox 需要 setData 才会触发拖拽
+    e.dataTransfer.setData('text/plain', props.node.id)
+  }
+}
+
+function onDragEnd() {
+  treeDrag.id = null
+  dropHover.value = false
+}
+
+/** 作为放置目标时实际接收的容器 id：request 落到其父级，collection/folder 为自身。 */
+function dropContainerId(): string | null {
+  if (props.node.type !== 'request') return props.node.id
+  return collections.findParent(props.node.id)?.id ?? null
+}
+
+function containsId(n: CollectionNode, id: string): boolean {
+  if (n.id === id) return true
+  if (n.children) return n.children.some((c) => containsId(c, id))
+  return false
+}
+
+function canDrop(): boolean {
+  const dragId = treeDrag.id
+  if (!dragId || dragId === props.node.id) return false
+  const dragged = collections.findNode(dragId)
+  const containerId = dropContainerId()
+  if (!dragged || !containerId) return false
+  // 不能放入自身或自己的子孙节点（防环）
+  if (containsId(dragged, containerId)) return false
+  return true
+}
+
+function onDragOver(e: DragEvent) {
+  if (!treeDrag.id) return // 忽略外部来源的拖拽（如文件）
+  if (canDrop()) {
+    e.preventDefault()
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    dropHover.value = true
+  } else {
+    dropHover.value = false
+  }
+}
+
+function onDragLeave() {
+  dropHover.value = false
+}
+
+async function onDrop(e: DragEvent) {
+  const dragId = treeDrag.id || e.dataTransfer?.getData('text/plain') || null
+  dropHover.value = false
+  treeDrag.id = null
+  const containerId = dropContainerId()
+  if (!dragId || !containerId) return
+  const result = await collections.moveNode(dragId, containerId)
+  if (result === 'moved') {
+    emit('expand', containerId) // 展开目标，让用户看到移动结果
+    toast.success('已移动')
+  } else if (result === 'unchanged') {
+    toast.info('位置未变化')
+  } else {
+    toast.warning('无法移动到该位置')
+  }
+}
 
 function onCommand(kind: string | number | Record<string, unknown> | undefined) {
   const k = String(kind)
@@ -92,6 +174,7 @@ function onChildAdd(p: { parentId: string; kind: string }) { emit('addChild', p)
 function onChildRename(n: CollectionNode) { emit('rename', n) }
 function onChildRemove(n: CollectionNode) { emit('remove', n) }
 function onChildExport(n: CollectionNode) { emit('export', n) }
+function onChildExpand(id: string) { emit('expand', id) }
 </script>
 
 <style lang="less" scoped>
@@ -113,6 +196,12 @@ function onChildExport(n: CollectionNode) { emit('export', n) }
 
     &.active .node-name {
       font-weight: 600;
+    }
+
+    // 拖拽悬停的合法放置目标
+    &.drop-target {
+      background: var(--el-color-primary-light-8);
+      box-shadow: inset 0 0 0 1.5px var(--el-color-primary);
     }
 
     &:hover .node-actions {

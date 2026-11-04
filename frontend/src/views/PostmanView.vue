@@ -550,13 +550,13 @@ async function ensureRoom(): Promise<boolean> {
     const victim = wb.tabs[0]
     if (!victim) break
     if (victim.streaming) {
-      toast.warning('已达到标签页上限，最早的标签正在发送请求，请稍后再试')
+      toast.warning('已达到Tab数量，最早的标签正在发送请求，请稍后再试')
       return false
     }
     if (victim.dirty) {
       const choice = await closeUnsavedDialog(victim.title)
       if (choice === null) {
-        toast.warning('已达到标签页上限，请先手动关闭部分标签页')
+        toast.warning('已达到Tab数量，请先手动关闭部分标签页')
         return false
       }
       if (choice === 'save') {

@@ -147,6 +147,40 @@ export const useCollectionsStore = defineStore('collections', () => {
     await persist()
   }
 
+  /** 节点子树中是否包含 id（含自身）。 */
+  function containsId(node: CollectionNode, id: string): boolean {
+    if (node.id === id) return true
+    if (node.children) return node.children.some((c) => containsId(c, id))
+    return false
+  }
+
+  /**
+   * 拖拽移动节点：把 dragId 移动到 targetId 容器的 children 末尾。
+   * target 为 request 时视为落到其父级；根级集合不可移动；禁止移入自身/子孙（防环）。
+   */
+  async function moveNode(dragId: string, targetId: string): Promise<'moved' | 'unchanged' | 'invalid'> {
+    const dragged = findNode(dragId)
+    const target = findNode(targetId)
+    if (!dragged || !target || dragId === targetId) return 'invalid'
+    // 根级节点（集合）不支持移动
+    const oldParent = findParent(dragId)
+    if (!oldParent) return 'invalid'
+    let container = target
+    if (container.type === 'request') {
+      const p = findParent(container.id)
+      if (!p) return 'invalid'
+      container = p
+    }
+    if (containsId(dragged, container.id)) return 'invalid'
+    if (container.id === oldParent.id) return 'unchanged'
+    // 从旧父级摘除，追加到目标容器末尾
+    oldParent.children = (oldParent.children || []).filter((c) => c.id !== dragId)
+    container.children = container.children || []
+    container.children.push(dragged)
+    await persist()
+    return 'moved'
+  }
+
   return {
     tree,
     scope,
@@ -164,6 +198,7 @@ export const useCollectionsStore = defineStore('collections', () => {
     renameNode,
     removeNode,
     saveRequest,
+    moveNode,
   }
 })
 

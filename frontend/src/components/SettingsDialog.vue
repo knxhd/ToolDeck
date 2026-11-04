@@ -22,7 +22,7 @@
         </a-radio-group>
       </div>
       <div class="form-row form-row-top">
-        <span class="form-label">标签页上限</span>
+        <span class="form-label">Tab数量</span>
         <a-input-number
           v-model="settings.maxTabs"
           :min="store.maxTabsMin"
@@ -31,7 +31,7 @@
           mode="button"
           style="width: 132px"
         />
-        <span class="form-tip">最多同时打开 {{ store.maxTabsMin }}~{{ store.maxTabsMax }} 个；达到上限后再打开会自动关闭最早的标签</span>
+        <span class="form-tip">最多同时打开 {{ store.maxTabsMin }}~{{ store.maxTabsMax }} 个</span>
       </div>
       <div class="form-row">
         <span class="form-label">预览</span>
