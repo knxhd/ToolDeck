@@ -6,27 +6,36 @@
         @update:model-value="onBulkInput" />
     </template>
 
-    <!-- 表格模式 -->
+    <!-- 表格模式：与 Form Data 保持一致的表头 + 固定列宽，保证各行垂直对齐 -->
     <div v-else class="kv-rows">
-      <div v-for="(item, i) in rows" :key="i" class="kv-row">
-        <a-checkbox
-          :model-value="item.enabled"
-          :disabled="!item.key && !item.value"
-          @change="onToggle(i, $event)"
-        />
-        <a-input :model-value="item.key" placeholder="key" size="small" @input="onKey(i, $event)" />
-        <span class="kv-sep">:</span>
-        <a-input :model-value="item.value" placeholder="value" size="small" @input="onValue(i, $event)" />
-        <a-button
-          v-if="item.key || item.value"
-          size="small"
-          status="danger"
-          type="secondary"
-          shape="circle"
-          @click="remove(i)"
-        >
-          <template #icon><icon-delete /></template>
-        </a-button>
+      <div class="kv-table">
+        <div class="kv-row kv-head">
+          <span class="kv-col-check"></span>
+          <span class="kv-col-key">Key</span>
+          <span class="kv-col-value">Value</span>
+          <span class="kv-col-op"></span>
+        </div>
+        <div v-for="(item, i) in rows" :key="i" class="kv-row">
+          <span class="kv-col-check">
+            <a-checkbox
+              :model-value="item.enabled"
+              :disabled="!item.key && !item.value"
+              @change="onToggle(i, $event)"
+            />
+          </span>
+          <span class="kv-col-key">
+            <a-input :model-value="item.key" placeholder="Key" size="small" @input="onKey(i, $event)" />
+          </span>
+          <span class="kv-col-value">
+            <a-input :model-value="item.value" placeholder="Value" size="small" @input="onValue(i, $event)" />
+          </span>
+          <!-- 操作列恒定占位，空尾行不显示按钮但保留宽度，避免列错位 -->
+          <span class="kv-col-op">
+            <a-button v-if="item.key || item.value" size="small" status="danger" type="text" @click="remove(i)">
+              <template #icon><icon-delete /></template>
+            </a-button>
+          </span>
+        </div>
       </div>
     </div>
 
@@ -188,19 +197,50 @@ function remove(i: number) {
     overflow-y: auto;
   }
 
+  .kv-table {
+    border: 1px solid var(--el-border-color);
+    border-radius: 4px;
+  }
+
   .kv-row {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--el-border-color);
 
-    :deep(.arco-input) {
-      flex: 1;
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.kv-head {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--el-text-color-secondary);
+      padding-top: 6px;
+      padding-bottom: 6px;
     }
   }
 
-  .kv-sep {
-    color: var(--el-text-color-secondary);
+  .kv-col-check {
+    width: 20px;
     flex-shrink: 0;
+  }
+
+  .kv-col-key,
+  .kv-col-value {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .kv-col-op {
+    width: 32px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .kv-footer {
