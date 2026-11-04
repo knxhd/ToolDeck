@@ -19,12 +19,17 @@
             Prettify
           </a-button>
         </div>
-        <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 -->
-        <a-radio-group v-else-if="activeKey === 'docs'" v-model="docMode" type="button" size="small">
-          <a-radio value="edit">编辑</a-radio>
-          <a-radio value="split">分屏</a-radio>
-          <a-radio value="preview">预览</a-radio>
-        </a-radio-group>
+        <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 + 全屏 -->
+        <div v-else-if="activeKey === 'docs'" class="body-extra">
+          <a-radio-group v-model="docMode" type="button" size="small">
+            <a-radio value="edit">编辑</a-radio>
+            <a-radio value="split">分屏</a-radio>
+            <a-radio value="preview">预览</a-radio>
+          </a-radio-group>
+          <a-button size="small" type="text" title="全屏编辑" @click="docFullscreen = true">
+            <template #icon><icon-fullscreen /></template>
+          </a-button>
+        </div>
       </template>
       <a-tab-pane key="params" title="Params">
         <KeyValueEditor v-model="tab.request.params" bulk />
@@ -49,7 +54,8 @@
         <template #title>
           文档<span v-if="docs.trim()" class="tab-dot"></span>
         </template>
-        <DocumentEditor v-model="docs" :mode="docMode" />
+        <DocumentEditor v-model="docs" v-model:mode="docMode" v-model:fullscreen="docFullscreen"
+          :title="`${tab.title} · 接口文档`" />
       </a-tab-pane>
     </a-tabs>
   </div>
@@ -101,6 +107,8 @@ const docs = computed<string>({
 
 /** 文档显示模式：已有文档默认预览，否则默认分屏便于边写边看。 */
 const docMode = ref<DocMode>(docs.value.trim() ? 'preview' : 'split')
+/** 文档是否全屏编辑；离开文档标签页时自动恢复。 */
+const docFullscreen = ref(false)
 
 function onBodyTypeChange(v: string | number | Record<string, unknown> | undefined) {
   props.tab.request.body_type = String(v) as BodyType
@@ -145,6 +153,9 @@ const hasBody = computed(() => {
 
 /** 打开请求时按实际情况选默认 tab：有 body 进 Body，否则进 Params。 */
 const activeKey = ref(hasBody.value ? 'body' : 'params')
+watch(activeKey, (k) => {
+  if (k !== 'docs') docFullscreen.value = false
+})
 
 /** Form Data 字段：body 中的 JSON 数组（兼容旧数据：缺 type 视为 text，缺 enabled 视为启用）。 */
 const formItems = computed<FormDataItem[]>(() => {

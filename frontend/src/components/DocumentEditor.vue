@@ -1,5 +1,21 @@
 <template>
-  <div class="doc-editor">
+  <!-- 全屏时传送到 body，避免受祖先元素 overflow / transform 影响；组件实例与编辑器状态保持不变 -->
+  <Teleport to="body" :disabled="!fullscreen">
+  <div class="doc-editor" :class="{ 'is-fullscreen': fullscreen }">
+    <div v-if="fullscreen" class="doc-fs-header">
+      <span class="doc-fs-title">{{ title || '接口文档' }}</span>
+      <a-radio-group :model-value="mode" type="button" size="small"
+        @change="emit('update:mode', $event as DocMode)">
+        <a-radio value="edit">编辑</a-radio>
+        <a-radio value="split">分屏</a-radio>
+        <a-radio value="preview">预览</a-radio>
+      </a-radio-group>
+      <a-button size="small" type="text" title="退出全屏 (Esc)" @click="emit('update:fullscreen', false)">
+        <template #icon><icon-fullscreen-exit /></template>
+        退出全屏
+      </a-button>
+    </div>
+    <div class="doc-body">
     <!-- 编辑区：Markdown 工具栏 + Monaco 编辑器 -->
     <div v-show="mode !== 'preview'" class="doc-pane doc-edit">
       <div class="md-toolbar">
@@ -42,18 +58,44 @@
       <v-md-preview v-if="modelValue.trim()" :text="modelValue" />
       <div v-else class="doc-empty">暂无文档，切换到「编辑」或「分屏」使用 Markdown 编写此接口的说明</div>
     </div>
+    </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import * as monaco from 'monaco-editor'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import type { DocMode } from '@/api/types'
 
-withDefaults(defineProps<{ modelValue: string; mode?: DocMode }>(), { mode: 'split' })
-const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
+const props = withDefaults(
+  defineProps<{ modelValue: string; mode?: DocMode; fullscreen?: boolean; title?: string }>(),
+  { mode: 'split', fullscreen: false, title: '' },
+)
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  'update:mode': [value: DocMode]
+  'update:fullscreen': [value: boolean]
+}>()
+
+// ---- 全屏：Esc 退出（编辑器已处理的 Esc，如关闭补全弹窗，会 preventDefault，此时不退出）----
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && !e.defaultPrevented) emit('update:fullscreen', false)
+}
+
+watch(
+  () => props.fullscreen,
+  (on) => {
+    if (on) window.addEventListener('keydown', onKeydown)
+    else window.removeEventListener('keydown', onKeydown)
+    // 切换后把焦点还给编辑器，便于继续输入
+    setTimeout(() => editorRef.value?.editor()?.focus(), 0)
+  },
+)
+
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 const editorRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
 
@@ -283,8 +325,43 @@ const toolbarGroups: ToolbarBtn[][] = [
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 8px;
+  flex-direction: column;
   padding-bottom: 4px;
+
+  /* 全屏：铺满视口（z-index 低于 Arco 弹层，表格选择等浮层可正常显示） */
+  &.is-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    padding: 0 12px 12px;
+    background: var(--color-bg-1, #fff);
+  }
+}
+
+.doc-fs-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+
+  .doc-fs-title {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-1, #1d2129);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.doc-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
 }
 
 .doc-pane {
