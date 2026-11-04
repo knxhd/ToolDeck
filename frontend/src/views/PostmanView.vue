@@ -111,11 +111,20 @@
           </a-button>
           <a-dropdown @select="onUserMenu">
             <a-button size="small" class="user-chip">
-              <span class="avatar">{{ userInitial }}</span>
+              <img v-if="user.user?.avatar" class="avatar avatar-img" :src="user.user.avatar" alt="" />
+              <span v-else class="avatar">{{ userInitial }}</span>
               {{ user.user?.display_name || user.user?.username || '未登录' }}
             </a-button>
             <template #content>
-              <a-doption value="logout">退出登录</a-doption>
+              <a-doption value="profile">
+                <span class="ui-menu-item"><icon-user /> 修改个人信息</span>
+              </a-doption>
+              <a-doption value="password">
+                <span class="ui-menu-item"><icon-lock /> 修改密码</span>
+              </a-doption>
+              <a-doption value="logout">
+                <span class="ui-menu-item"><icon-poweroff /> 退出登录</span>
+              </a-doption>
             </template>
           </a-dropdown>
         </div>
@@ -158,6 +167,8 @@
     </section>
 
     <SettingsDialog v-model="settingsOpen" />
+    <ProfileDialog v-model="profileOpen" />
+    <PasswordDialog v-model="passwordOpen" />
     <EnvironmentsDialog v-model:visible="envDialogOpen" />
     <CollectionPlaceholdersDialog v-model:visible="phDialogOpen" />
     <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="saveDialogTab" @saved="onRequestSaved" />
@@ -192,6 +203,8 @@ import ResponsePane from '@/components/ResponsePane.vue'
 import WebSocketPane from '@/components/WebSocketPane.vue'
 import McpPane from '@/components/McpPane.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import ProfileDialog from '@/components/ProfileDialog.vue'
+import PasswordDialog from '@/components/PasswordDialog.vue'
 import EnvironmentsDialog from '@/components/EnvironmentsDialog.vue'
 import CollectionPlaceholdersDialog from '@/components/CollectionPlaceholdersDialog.vue'
 import SaveRequestDialog from '@/components/SaveRequestDialog.vue'
@@ -236,6 +249,8 @@ const sidebarWidth = ref(280)
 const responseLayout = ref<'bottom' | 'right'>('right')
 const responseRatio = ref(50)
 const settingsOpen = ref(false)
+const profileOpen = ref(false)
+const passwordOpen = ref(false)
 const envDialogOpen = ref(false)
 const phDialogOpen = ref(false)
 const userDialogOpen = ref(false)
@@ -304,6 +319,8 @@ onMounted(async () => {
 })
 
 async function loadUserData() {
+  // 先同步服务端最新用户信息（昵称 / 头像）
+  void user.refresh()
   await Promise.all([collections.load(), http.loadHistory(), teams.loadMyTeams()])
   history.value = http.history
   // 集合树加载完后，恢复上次打开的 tabs（nodeId 类型需要从树里重新取节点数据）
@@ -345,7 +362,16 @@ async function onUserSelected() {
 }
 
 async function onUserMenu(key: string | number | Record<string, any> | undefined) {
-  if (key === 'logout') {
+  const k = String(key)
+  if (k === 'profile') {
+    profileOpen.value = true
+    return
+  }
+  if (k === 'password') {
+    passwordOpen.value = true
+    return
+  }
+  if (k === 'logout') {
     await user.logout()
     wb.reset()
     collections.clear()
@@ -1045,15 +1071,20 @@ function statusClass(code: number) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
-    height: 18px;
-    margin-right: 4px;
+    width: 20px;
+    height: 20px;
+    margin-right: 6px;
     border-radius: 50%;
     background: rgb(var(--primary-6));
     color: #fff;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1;
+  }
+
+  .user-chip .avatar-img {
+    object-fit: cover;
+    background: var(--ui-bg-subtle);
   }
 }
 

@@ -7,12 +7,25 @@ export interface ApiError {
 const TOKEN_KEY = 'api-tool.token'
 const USER_KEY = 'api-tool.user'
 
+/** 登录用户信息（头像为 base64 data URL，可为空串）。 */
+export interface SessionUser {
+  id: number
+  username: string
+  display_name: string
+  avatar?: string
+}
+
 export function getToken(): string {
   return localStorage.getItem(TOKEN_KEY) || ''
 }
 
-export function setSession(token: string, user: { id: number; username: string; display_name: string }) {
+export function setSession(token: string, user: SessionUser) {
   localStorage.setItem(TOKEN_KEY, token)
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
+}
+
+/** 仅更新本地缓存的用户信息（token 不变）。 */
+export function updateStoredUser(user: SessionUser) {
   localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
@@ -21,11 +34,11 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY)
 }
 
-export function getStoredUser(): { id: number; username: string; display_name: string } | null {
+export function getStoredUser(): SessionUser | null {
   const raw = localStorage.getItem(USER_KEY)
   if (!raw) return null
   try {
-    return JSON.parse(raw)
+    return JSON.parse(raw) as SessionUser
   } catch {
     return null
   }

@@ -50,6 +50,8 @@ def init_db() -> None:
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 display_name TEXT NOT NULL,
+                -- 头像：data:image/...;base64,... 形式，前端已压缩到 20KB 以内
+                avatar TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
 
@@ -148,6 +150,11 @@ def init_db() -> None:
                SELECT u.id, NULL, '[]' FROM users u
                WHERE NOT EXISTS (SELECT 1 FROM collections c WHERE c.user_id = u.id)"""
         )
+
+        # 迁移：旧版 users 表没有 avatar 列
+        user_cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if user_cols and "avatar" not in user_cols:
+            conn.execute("ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''")
 
 
 __all__ = ["DB_PATH", "get_db", "init_db"]
