@@ -22,6 +22,17 @@
         @curl="applyCurl"
       />
     </div>
+    <a-tooltip content="保存到集合（Ctrl+S）" position="top">
+      <button type="button" class="save-btn" :class="{ 'is-dirty': tab.dirty }" aria-label="保存请求"
+        @click="emit('saveClick')">
+        <svg class="ico-save" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8.7 1.9H4.6c-.7 0-1.2.5-1.2 1.2v9.8c0 .7.5 1.2 1.2 1.2h6.8c.7 0 1.2-.5 1.2-1.2V5.9L8.7 1.9Z" />
+          <path d="M8.5 2v3.6h3.7" />
+          <path d="M8 8v3.3" />
+          <path d="M6.7 10.1 8 11.4l1.3-1.3" />
+        </svg>
+      </button>
+    </a-tooltip>
     <a-button v-if="!tab.streaming" type="primary" class="send-btn" @click="onSend">发送</a-button>
     <a-button v-else status="danger" type="secondary" class="send-btn" @click="$emit('cancel')">停止</a-button>
   </div>
@@ -35,7 +46,7 @@ import { toast } from '@/utils/feedback'
 import type { HttpMethod, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
-const emit = defineEmits<{ send: []; cancel: []; save: [] }>()
+const emit = defineEmits<{ send: []; cancel: []; save: []; saveClick: [] }>()
 
 const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
@@ -175,5 +186,55 @@ function applyCurl(parsed: ParsedCurl) {
   min-width: 84px;
   border-radius: var(--ui-radius-md);
   font-weight: 600;
+}
+
+/* 保存按钮：与 URL 输入组同高，有未保存修改时点亮主色 */
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--color-text-3);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    background: var(--ui-bg-hover);
+    border-color: var(--ui-border-strong);
+    color: var(--color-text-1);
+  }
+
+  &:active {
+    transform: translateY(0.5px);
+  }
+
+  &.is-dirty {
+    color: rgb(var(--primary-6));
+    border-color: rgba(var(--primary-6), 0.42);
+    background: rgba(var(--primary-6), 0.08);
+
+    &:hover {
+      background: rgba(var(--primary-6), 0.14);
+      border-color: rgb(var(--primary-6));
+    }
+  }
+
+  .ico-save {
+    display: block;
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
 }
 </style>

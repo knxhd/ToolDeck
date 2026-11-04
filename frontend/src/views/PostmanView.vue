@@ -123,7 +123,8 @@
 
       <div class="pane custom-arco-design" v-if="dataReady && wb.activeTab" :key="wb.activeTab.id">
         <template v-if="wb.activeTab.kind === 'http'">
-          <RequestBar :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest" />
+          <RequestBar :tab="wb.activeTab" @send="onSend" @cancel="wb.cancel" @save="onSaveRequest"
+            @save-click="manualSave" />
           <div class="http-body" ref="paneRef"
             :style="{ flexDirection: responseLayout === 'bottom' ? 'column' : 'row' }">
             <div class="half" ref="reqPaneRef"
@@ -288,13 +289,18 @@ function onEnvSelect(value: string | number | Record<string, unknown> | undefine
 }
 
 onMounted(async () => {
+  // 先注册快捷键：避免数据加载失败时 Ctrl+S 落到浏览器默认的「保存网页」
+  window.addEventListener('keydown', onGlobalKeydown, true)
   // 未登录先弹登录框；登录成功后再加载数据
   if (user.needsLogin) {
     userDialogOpen.value = true
   } else {
-    await loadUserData()
+    try {
+      await loadUserData()
+    } catch {
+      toast.error('数据加载失败，请检查后端服务后重试')
+    }
   }
-  window.addEventListener('keydown', onGlobalKeydown, true)
 })
 
 async function loadUserData() {
@@ -354,14 +360,27 @@ async function onUserMenu(key: string | number | Record<string, any> | undefined
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKeydown, true))
 
 function onGlobalKeydown(e: KeyboardEvent) {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-    e.preventDefault()
-    if (saveDialogOpen.value) return // 保存对话框已打开，避免覆盖等待中的流程
-    const tab = wb.activeTab
-    if (!tab || tab.kind !== 'http') return
-    if (!tab.dirty) return
-    void saveTabFlow(tab)
-  }
+  // code 兼容中文输入法下 key 异常的情况
+  const isSaveKey =
+    (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey &&
+    (e.code === 'KeyS' || e.key?.toLowerCase() === 's')
+  if (!isSaveKey) return
+  // 必须在捕获阶段拦下，否则浏览器会弹出「另存为网页」
+  e.preventDefault()
+  e.stopPropagation()
+  if (saveDialogOpen.value) return // 保存对话框已打开，避免覆盖等待中的流程
+  const tab = wb.activeTab
+  if (!tab || tab.kind !== 'http') return
+  if (!tab.dirty) return
+  void saveTabFlow(tab)
+}
+
+/** URL 栏右侧保存按钮：手动保存当前请求（无修改时也会写回一次）。 */
+function manualSave() {
+  const tab = wb.activeTab
+  if (!tab || tab.kind !== 'http') return
+  if (saveDialogOpen.value) return
+  void saveTabFlow(tab)
 }
 
 const saveDialogTab = ref<OpenTab | null>(null)
