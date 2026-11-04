@@ -58,6 +58,7 @@ def create_app() -> FastAPI:
 
     # 注册各业务路由
     from backend.app.api import auth as auth_api
+    from backend.app.api import bench as bench_api
     from backend.app.api import collections as collections_api
     from backend.app.api import files as files_api
     from backend.app.api import http as http_api
@@ -66,6 +67,7 @@ def create_app() -> FastAPI:
     from backend.app.api import teams as teams_api
 
     app.include_router(auth_api.router, prefix="/api/auth")
+    app.include_router(bench_api.router, prefix="/api/bench")
     app.include_router(collections_api.router, prefix="/api/collections")
     app.include_router(files_api.router, prefix="/api/files")
     app.include_router(http_api.router, prefix="/api/http")

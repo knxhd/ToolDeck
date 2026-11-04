@@ -142,6 +142,31 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_http_history_user ON http_history(user_id, id DESC);
             CREATE INDEX IF NOT EXISTS idx_mcp_history_user ON mcp_history(user_id, id DESC);
             CREATE INDEX IF NOT EXISTS idx_llm_history_user ON llm_history(user_id, id DESC);
+
+            CREATE TABLE IF NOT EXISTS bench_jobs (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'running',
+                total INTEGER NOT NULL DEFAULT 0,
+                done INTEGER NOT NULL DEFAULT 0,
+                success INTEGER NOT NULL DEFAULT 0,
+                fail INTEGER NOT NULL DEFAULT 0,
+                concurrency INTEGER NOT NULL DEFAULT 10,
+                streaming INTEGER NOT NULL DEFAULT 0,
+                columns_json TEXT NOT NULL DEFAULT '[]',
+                -- 参数文件 / 结果文件的绝对路径
+                params_path TEXT NOT NULL DEFAULT '',
+                result_path TEXT NOT NULL DEFAULT '',
+                error TEXT NOT NULL DEFAULT '',
+                avg_ms REAL NOT NULL DEFAULT 0,
+                p95_ms REAL NOT NULL DEFAULT 0,
+                ttft_avg_ms REAL NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_bench_jobs_user ON bench_jobs(user_id, created_at DESC);
             """
         )
         # 为已存在但没有集合行的用户补一条空的个人空间

@@ -3,31 +3,37 @@
     <a-tabs v-model:active-key="activeKey" class="req-tabs">
       <!-- Body 工具栏：仅在 Body tab 下显示在标签栏右侧；Prettify 仅 JSON 时显示 -->
       <template #extra>
-        <div v-if="activeKey === 'body'" class="body-extra">
-          <a-dropdown @select="onBodyTypeChange" position="br">
-            <a-button size="small" type="text" class="body-type-btn">
-              {{ bodyTypeLabel }} <icon-down />
+        <div class="req-extra">
+          <div v-if="activeKey === 'body'" class="body-extra">
+            <a-dropdown @select="onBodyTypeChange" position="br">
+              <a-button size="small" type="text" class="body-type-btn">
+                {{ bodyTypeLabel }} <icon-down />
+              </a-button>
+              <template #content>
+                <a-doption v-for="opt in bodyOptions" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                  <span class="selected-opt-span" v-if="opt.value === tab.request.body_type">✓ </span>
+                </a-doption>
+              </template>
+            </a-dropdown>
+            <a-button v-if="tab.request.body_type === 'json'" size="small" type="text" @click="prettify">
+              Prettify
             </a-button>
-            <template #content>
-              <a-doption v-for="opt in bodyOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-                <span class="selected-opt-span" v-if="opt.value === tab.request.body_type">✓ </span>
-              </a-doption>
-            </template>
-          </a-dropdown>
-          <a-button v-if="tab.request.body_type === 'json'" size="small" type="text" @click="prettify">
-            Prettify
-          </a-button>
-        </div>
-        <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 + 全屏 -->
-        <div v-else-if="activeKey === 'docs'" class="body-extra">
-          <a-radio-group v-model="docMode" type="button" size="small">
-            <a-radio value="edit">编辑</a-radio>
-            <a-radio value="split">分屏</a-radio>
-            <a-radio value="preview">预览</a-radio>
-          </a-radio-group>
-          <a-button size="small" type="text" title="全屏编辑" @click="docFullscreen = true">
-            <template #icon><icon-fullscreen /></template>
+          </div>
+          <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 + 全屏 -->
+          <div v-else-if="activeKey === 'docs'" class="body-extra">
+            <a-radio-group v-model="docMode" type="button" size="small">
+              <a-radio value="edit">编辑</a-radio>
+              <a-radio value="split">分屏</a-radio>
+              <a-radio value="preview">预览</a-radio>
+            </a-radio-group>
+            <a-button size="small" type="text" title="全屏编辑" @click="docFullscreen = true">
+              <template #icon><icon-fullscreen /></template>
+            </a-button>
+          </div>
+          <a-button size="small" class="bench-trigger" type="outline" @click="benchOpen = true">
+            <template #icon><icon-thunderbolt /></template>
+            批量测试
           </a-button>
         </div>
       </template>
@@ -59,6 +65,7 @@
           :title="`${tab.title} · 接口文档`" />
       </a-tab-pane>
     </a-tabs>
+    <BenchDrawer v-model:visible="benchOpen" :request="tab.request" />
   </div>
 </template>
 
@@ -71,11 +78,14 @@ import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
 import FormDataEditor from '@/components/FormDataEditor.vue'
 import { buildVarResolver } from '@/utils/varInfo'
 import DocumentEditor from '@/components/DocumentEditor.vue'
+import BenchDrawer from '@/components/BenchDrawer.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
 import type { BodyType, DocMode, FormDataItem, KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
+
+const benchOpen = ref(false)
 
 const bodyOptions: Array<{ value: BodyType; label: string }> = [
   { value: 'none', label: 'None' },
@@ -337,5 +347,16 @@ watch(
   line-height: 15px;
   text-align: center;
   vertical-align: middle;
+}
+
+.req-extra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bench-trigger {
+  margin-left: 8px;
+  font-weight: 600;
 }
 </style>
