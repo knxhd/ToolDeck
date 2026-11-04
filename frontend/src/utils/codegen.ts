@@ -1,6 +1,7 @@
 /** 请求代码生成：把当前 HTTP 请求转换为 curl / Java / Python 等调用代码。 */
 import type { HttpRequestData } from '@/api/types'
 import { parseUrlQuery } from '@/utils/parseCurl'
+import { VAR_TOKEN } from '@/utils/env'
 
 export type CodeLang = 'shell' | 'java' | 'python'
 
@@ -62,8 +63,8 @@ interface PreparedRequest {
   parts: Part[]
 }
 
-/** 按 {{var}} 占位符切分（捕获组保留占位符本身）。 */
-const VAR_SPLIT_RE = /(\{\{\s*[A-Za-z0-9_.-]+\s*\}\})/
+/** 按 {{var}} 占位符切分（捕获组保留占位符本身，含 {{$builtin(args)}} 内置占位符）。 */
+const VAR_SPLIT_RE = new RegExp(String.raw`(\{\{\s*${VAR_TOKEN}\s*\}\})`)
 
 /** URL 编码，但保留未插值的 {{var}} 占位符原样，便于阅读。 */
 function encodeKeepVars(s: string): string {

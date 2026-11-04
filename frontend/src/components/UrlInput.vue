@@ -14,7 +14,8 @@
     <div v-if="ac.visible && ac.candidates.length" class="ac-popup">
       <div v-for="(c, i) in ac.candidates" :key="c" class="ac-item" :class="{ active: i === ac.activeIdx }"
         @mousedown.prevent @click="pick(c)">
-        {{ c }}
+        <span>{{ c }}</span>
+        <span v-if="builtinDesc(c)" class="ac-desc">{{ builtinDesc(c) }}</span>
       </div>
     </div>
 
@@ -31,6 +32,7 @@
           <icon-copy />
         </button>
       </div>
+      <div v-if="tip.desc" class="var-tip-desc">{{ tip.desc }}</div>
       <div v-if="tip.missing" class="var-tip-missing">未定义该变量（环境变量 / 占位符）</div>
     </div>
 
@@ -44,6 +46,7 @@ import { computed, nextTick, ref } from 'vue'
 
 import GenerateCodeDialog from '@/components/GenerateCodeDialog.vue'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { BUILTIN_VARS, PLACEHOLDER_SOURCE, isKnownVar, lookupVar, parseBuiltin } from '@/utils/env'
 import { parseCurl } from '@/utils/parseCurl'
 import type { ParsedCurl } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
@@ -65,7 +68,12 @@ const wrapRef = ref<HTMLElement | null>(null)
 const layerRef = ref<HTMLElement | null>(null)
 const inputRef = ref<HTMLInputElement | null>(null)
 
-const PLACEHOLDER_RE = /\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}/g
+const PLACEHOLDER_RE = new RegExp(PLACEHOLDER_SOURCE, 'g')
+
+/** 内置占位符说明（非内置返回空）。 */
+function builtinDesc(name: string): string {
+  return parseBuiltin(name)?.def.desc ?? ''
+}
 
 /** 请求级占位符（启用且有名称）。 */
 const placeholderVars = computed<Record<string, string>>(() => {
@@ -93,7 +101,7 @@ const rendered = computed(() => {
     const idx = m.index ?? 0
     out += escapeHtml(text.slice(last, idx))
     const name = m[1]
-    const missing = !(name in knownVars.value)
+    const missing = !isKnownVar(name, knownVars.value)
     out += `<span class="env-var${missing ? ' missing' : ''}" data-var="${escapeHtml(name)}">${escapeHtml(m[0])}</span>`
     last = idx + m[0].length
   }
@@ -148,12 +156,9 @@ function closePopup() {
 function detectTrigger() {
   const input = inputRef.value
   if (!input) return
-  // 没有可用变量时完全不弹
-  const keys = Object.keys(knownVars.value)
-  if (!keys.length) {
-    closePopup()
-    return
-  }
+  // 可用变量 = 用户变量 + 内置占位符（内置排在后面）
+  const userKeys = Object.keys(knownVars.value)
+  const keys = [...userKeys, ...BUILTIN_VARS.map((b) => b.name).filter((n) => !userKeys.includes(n))]
   const value = input.value
   const caret = input.selectionStart ?? value.length
   const before = value.slice(0, caret)
@@ -168,13 +173,17 @@ function detectTrigger() {
     closePopup()
     return
   }
-  // 只允许变量名字符，否则关闭（避免在中文/空格等场景误弹）
-  if (/[^\w.-]/.test(partial)) {
+  // 只允许变量名字符（含内置占位符的 $ 前缀），否则关闭（避免在中文/空格等场景误弹）
+  if (/[^\w.$-]/.test(partial)) {
     closePopup()
     return
   }
   const q = partial.toLowerCase()
   const candidates = q ? keys.filter((k) => k.toLowerCase().includes(q)) : [...keys]
+  if (!candidates.length) {
+    closePopup()
+    return
+  }
   ac.value = { visible: true, candidates, activeIdx: 0 }
 }
 
@@ -266,7 +275,9 @@ function onPaste(e: ClipboardEvent) {
 }
 
 // ---- 悬停 tooltip ----
-const tip = ref({ visible: false, x: 0, y: 0, name: '', value: '', missing: false, source: 'Environment' })
+const tip = ref({
+  visible: false, x: 0, y: 0, name: '', value: '', missing: false, source: 'Environment', desc: '',
+})
 let hideTimer: number | null = null
 
 function scheduleHide() {
@@ -296,20 +307,26 @@ function onHover(e: MouseEvent) {
   const name = target.dataset.var || ''
   const rect = target.getBoundingClientRect()
   const wrapRect = wrapRef.value.getBoundingClientRect()
+  const isUser = name in knownVars.value
+  const builtin = isUser ? null : parseBuiltin(name)
   const source = name in placeholderVars.value
     ? 'Placeholder'
     : name in env.collectionPlaceholderVars
       ? 'Collection'
-      : 'Environment'
-  const val = knownVars.value[name] ?? ''
+      : builtin
+        ? 'Built-in'
+        : 'Environment'
+  // 内置占位符展示一次示例值（发送时会重新生成）
+  const val = lookupVar(name, knownVars.value) ?? ''
   tip.value = {
     visible: true,
     x: rect.left - wrapRect.left,
     y: rect.bottom - wrapRect.top + 8,
     name,
     value: val,
-    missing: !(name in knownVars.value),
+    missing: !isUser && !builtin,
     source,
+    desc: builtin ? `${builtin.def.desc}（示例值，每次发送重新生成）` : '',
   }
 }
 
@@ -508,6 +525,12 @@ async function copyValue() {
   font-size: 11px;
 }
 
+.var-tip-desc {
+  margin-top: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 11px;
+}
+
 .ac-popup {
   position: absolute;
   top: 100%;
@@ -525,9 +548,20 @@ async function copyValue() {
 }
 
 .ac-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 6px 10px;
   cursor: pointer;
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+
+  .ac-desc {
+    font-family: var(--app-font-family);
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+    white-space: nowrap;
+  }
 
   &:hover,
   &.active {
