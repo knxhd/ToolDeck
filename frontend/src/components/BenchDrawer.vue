@@ -61,8 +61,8 @@
       <a-divider>
         <span class="jobs-head">
           任务记录
-          <a-button size="mini" type="text" @click="loadJobs" title="刷新进度">
-            <template #icon><icon-refresh /></template>
+          <a-button size="mini" type="text" :loading="refreshing" @click="refresh" title="刷新进度">
+            <template #icon><icon-refresh /></template>刷新
           </a-button>
         </span>
       </a-divider>
@@ -76,7 +76,19 @@
             <a-tag :color="statusColor(j.status)">{{ statusText(j.status) }}</a-tag>
           </div>
 
-          <a-progress v-if="j.status === 'running'" :percent="jobPercent(j)" :show-text="false" size="small" />
+          <div
+            v-if="j.status === 'running' || j.status === 'cancelled'"
+            class="bar-wrap"
+          >
+            <div class="bar">
+              <div
+                class="bar-fill"
+                :class="{ warn: j.status === 'cancelled' }"
+                :style="{ width: Math.min(100, Math.round((j.done / j.total) * 100)) + '%' }"
+              ></div>
+            </div>
+            <span class="bar-text">{{ Math.min(100, Math.round((j.done / j.total) * 100)) }}%</span>
+          </div>
 
           <div class="job-meta">
             <span v-if="j.total">进度 {{ j.done }}/{{ j.total }}</span>
@@ -90,6 +102,15 @@
           <div v-if="j.error" class="job-err">{{ j.error }}</div>
 
           <div class="job-actions">
+            <a-button
+              v-if="j.status === 'running'"
+              size="mini"
+              type="text"
+              status="warning"
+              @click="cancel(j)"
+            >
+              <template #icon><icon-stop /></template>取消
+            </a-button>
             <a-button size="mini" type="text" :disabled="j.status === 'running'" @click="download(j, 'csv', 'result')">
               <template #icon><icon-download /></template>下载结果
             </a-button>
@@ -124,6 +145,7 @@ const concurrency = ref(10)
 const streaming = ref(false)
 const upload = ref<{ upload_id: string; filename: string; columns: string[]; rows: number } | null>(null)
 const starting = ref(false)
+const refreshing = ref(false)
 const jobs = ref<any[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 let timer: number | null = null
@@ -211,14 +233,32 @@ async function loadJobs() {
   }
 }
 
-function jobPercent(j: any) {
-  return j.total ? Math.round((j.done / j.total) * 100) : 0
+async function refresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await loadJobs()
+    toast.success('已刷新')
+  } finally {
+    setTimeout(() => (refreshing.value = false), 400)
+  }
 }
+
+async function cancel(j: any) {
+  try {
+    await api.post(`/api/bench/jobs/${j.id}/cancel`, {})
+    toast.success('已发送取消请求')
+    await loadJobs()
+  } catch (err: any) {
+    toast.error(err.message || '取消失败')
+  }
+}
+
 function statusText(s: string) {
-  return { running: '运行中', done: '已完成', failed: '失败' }[s] || s
+  return { running: '运行中', done: '已完成', failed: '失败', cancelled: '已取消' }[s] || s
 }
 function statusColor(s: string) {
-  return { running: 'blue', done: 'green', failed: 'red' }[s] || 'gray'
+  return { running: 'blue', done: 'green', failed: 'red', cancelled: 'orange' }[s] || 'gray'
 }
 
 async function download(j: any, kind: 'csv' | 'params', label: string) {
@@ -326,6 +366,19 @@ onBeforeUnmount(() => {
   .err { color: var(--el-color-danger); }
 }
 .job-err { color: var(--el-color-danger); font-size: 12px; }
-.job-actions { display: flex; gap: 4px; }
+.job-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+.bar-wrap { display: flex; align-items: center; gap: 8px; }
+.bar {
+  flex: 1; height: 6px; border-radius: 3px;
+  background: var(--el-color-fill-1, rgba(0,0,0,0.06));
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%; border-radius: 3px;
+  background: var(--el-color-primary, #165dff);
+  transition: width 0.3s ease;
+  &.warn { background: var(--el-color-warning, #ff7d00); }
+}
+.bar-text { font-size: 12px; color: var(--el-text-color-secondary); min-width: 38px; text-align: right; }
 .empty { text-align: center; padding: 24px 0; }
 </style>

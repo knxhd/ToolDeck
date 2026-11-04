@@ -160,6 +160,22 @@ def delete_job(job_id: str, user_id: int) -> bool:
     return True
 
 
+# ---------- 取消标记（内存态） ----------
+_cancelled: set[str] = set()
+
+
+def request_cancel(job_id: str) -> None:
+    _cancelled.add(job_id)
+
+
+def is_cancelled(job_id: str) -> bool:
+    return job_id in _cancelled
+
+
+def clear_cancel(job_id: str) -> None:
+    _cancelled.discard(job_id)
+
+
 __all__ = [
     "MAX_FILE_BYTES",
     "timestamp",
@@ -176,4 +192,7 @@ __all__ = [
     "get_job",
     "update_job",
     "delete_job",
+    "request_cancel",
+    "is_cancelled",
+    "clear_cancel",
 ]

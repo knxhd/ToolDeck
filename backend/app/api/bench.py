@@ -147,3 +147,13 @@ async def remove_job(job_id: str, user: dict = Depends(current_user)) -> dict:
     if not ok:
         raise HTTPException(status_code=404, detail="任务不存在")
     return {"deleted": True}
+
+
+@router.post("/jobs/{job_id}/cancel")
+async def cancel_job(job_id: str, user: dict = Depends(current_user)) -> dict:
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if job["status"] == "running":
+        bench_store.request_cancel(job_id)
+    return {"cancelled": True}

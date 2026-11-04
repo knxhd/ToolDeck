@@ -250,9 +250,12 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
     async def bounded(idx_row: tuple[int, dict]) -> None:
         nonlocal done, success, fail
         idx, row = idx_row
-        # 合并优先级：CSV 列 > 环境变量；内置占位符在 render 内兜底
-        merged = {**env_vars, **row}
+        # 必须在拿到并发槽位之后再检查取消，否则 gather 启动时一次性全部穿过检查、排队到信号量上，
+        # 之后取消标记置位也不会被这些协程再次看到。
         async with sem:
+            if bench_store.is_cancelled(job_id):
+                return
+            merged = {**env_vars, **row}
             r = await _run_one(client, tpl, merged, streaming)
         writer.writerow([
             idx + 1, r["status"], "成功" if r["ok"] else "失败",
@@ -292,6 +295,16 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
     avg = sum(latencies) / len(latencies) if latencies else 0
     p95 = latencies[int(len(latencies) * 0.95) - 1] if latencies else 0
     ttft_avg = sum(ttfts) / len(ttfts) if ttfts else 0
+
+    if bench_store.is_cancelled(job_id):
+        bench_store.clear_cancel(job_id)
+        bench_store.update_job(
+            job_id, user_id,
+            status="cancelled", done=done, success=success, fail=fail,
+            error=f"用户已取消（完成 {done}/{total}）",
+        )
+        return
+
     bench_store.update_job(
         job_id, user_id,
         status="done", done=done, success=success, fail=fail,
