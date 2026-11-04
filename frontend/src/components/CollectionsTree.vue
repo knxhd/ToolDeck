@@ -4,18 +4,35 @@
       <span class="tree-title">Collections</span>
       <div class="toolbar-actions">
         <a-tooltip content="导出全部集合" position="top">
-          <a-button size="mini" type="text" @click="onExportAll">
-            <template #icon><icon-export /></template>
+          <a-button size="mini" type="text" class="icon-btn" @click="onExportAll">
+            <template #icon>
+              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 10.1V2.7" />
+                <path d="M5.2 5.5 8 2.7l2.8 2.8" />
+                <path d="M2.9 9.8v2.1c0 .8.6 1.4 1.4 1.4h7.4c.8 0 1.4-.6 1.4-1.4V9.8" />
+              </svg>
+            </template>
           </a-button>
         </a-tooltip>
         <a-tooltip content="导入集合" position="top">
-          <a-button size="mini" type="text" @click="onImportClick">
-            <template #icon><icon-import /></template>
+          <a-button size="mini" type="text" class="icon-btn" @click="onImportClick">
+            <template #icon>
+              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 2.7v7.4" />
+                <path d="M5.2 7.3 8 10.1l2.8-2.8" />
+                <path d="M2.9 9.8v2.1c0 .8.6 1.4 1.4 1.4h7.4c.8 0 1.4-.6 1.4-1.4V9.8" />
+              </svg>
+            </template>
           </a-button>
         </a-tooltip>
         <a-tooltip content="新建集合" position="top">
-          <a-button size="mini" type="text" class="add-btn" @click="onNewCollection">
-            <template #icon><icon-plus /></template>
+          <a-button size="mini" type="text" class="icon-btn add-btn" @click="onNewCollection">
+            <template #icon>
+              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8 3.2v9.6" />
+                <path d="M3.2 8h9.6" />
+              </svg>
+            </template>
           </a-button>
         </a-tooltip>
         <input ref="fileInput" type="file" accept="application/json,.json" style="display:none" @change="onImportFile" />
@@ -197,7 +214,13 @@ async function applyImport(policy: ConflictPolicy) {
       padding: 0;
       border-radius: var(--ui-radius-sm);
       color: var(--color-text-3);
-      font-size: 13px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+
+      :deep(.arco-btn-icon) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
       &:hover {
         background: var(--ui-bg-hover);
@@ -207,19 +230,34 @@ async function applyImport(policy: ConflictPolicy) {
 
     :deep(.add-btn) {
       color: rgb(var(--primary-6));
-      background: rgba(var(--primary-6), 0.1);
+      background: rgba(var(--primary-6), 0.09);
 
       &:hover {
-        background: rgba(var(--primary-6), 0.18);
+        background: rgba(var(--primary-6), 0.16);
         color: rgb(var(--primary-6));
       }
     }
   }
 
+  // 线性图标：统一 1.4 描边 + 圆头端点，替换 Arco 默认的实心方框图标
+  .ico {
+    display: block;
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   .tree-body {
     flex: 1;
     overflow-y: auto;
-    padding: 4px 6px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 6px 8px;
   }
 }
 </style>

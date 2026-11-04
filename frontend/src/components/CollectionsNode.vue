@@ -179,7 +179,17 @@ function onChildExpand(id: string) { emit('expand', id) }
 
 <style lang="less" scoped>
 .node-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   user-select: none;
+
+  // 子级列表同样保留行间距，避免选中背景连成一片
+  .node-children {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
   .node-line {
     display: flex;
@@ -199,7 +209,6 @@ function onChildExpand(id: string) { emit('expand', id) }
 
     &.active {
       background: var(--ui-bg-active);
-      box-shadow: inset 3px 0 0 rgb(var(--primary-6));
 
       .node-name {
         font-weight: 600;
