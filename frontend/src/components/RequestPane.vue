@@ -19,6 +19,12 @@
             Prettify
           </a-button>
         </div>
+        <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 -->
+        <a-radio-group v-else-if="activeKey === 'docs'" v-model="docMode" type="button" size="small">
+          <a-radio value="edit">编辑</a-radio>
+          <a-radio value="split">分屏</a-radio>
+          <a-radio value="preview">预览</a-radio>
+        </a-radio-group>
       </template>
       <a-tab-pane key="params" title="Params">
         <KeyValueEditor v-model="tab.request.params" bulk />
@@ -39,6 +45,12 @@
         </template>
         <PlaceholderEditor v-model="placeholders" title="请求占位符" />
       </a-tab-pane>
+      <a-tab-pane key="docs">
+        <template #title>
+          文档<span v-if="docs.trim()" class="tab-dot"></span>
+        </template>
+        <DocumentEditor v-model="docs" :mode="docMode" />
+      </a-tab-pane>
     </a-tabs>
   </div>
 </template>
@@ -50,9 +62,10 @@ import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
 import FormDataEditor from '@/components/FormDataEditor.vue'
+import DocumentEditor from '@/components/DocumentEditor.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
-import type { BodyType, FormDataItem, KeyValue, OpenTab } from '@/api/types'
+import type { BodyType, DocMode, FormDataItem, KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -76,6 +89,18 @@ const placeholders = computed<KeyValue[]>({
 })
 
 const placeholderCount = computed(() => placeholders.value.filter((p) => p.enabled && p.key).length)
+
+/** 接口文档（Markdown）；旧数据没有该字段，内容未变时不写回，避免误标未保存。 */
+const docs = computed<string>({
+  get: () => props.tab.request.docs ?? '',
+  set: (v) => {
+    if (v === (props.tab.request.docs ?? '')) return
+    props.tab.request.docs = v
+  },
+})
+
+/** 文档显示模式：已有文档默认预览，否则默认分屏便于边写边看。 */
+const docMode = ref<DocMode>(docs.value.trim() ? 'preview' : 'split')
 
 function onBodyTypeChange(v: string | number | Record<string, unknown> | undefined) {
   props.tab.request.body_type = String(v) as BodyType
@@ -221,6 +246,16 @@ watch(
 
 .selected-opt-span {
   margin-left: 16px;
+}
+
+.tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: rgb(var(--primary-6));
+  vertical-align: middle;
 }
 
 .tab-count {

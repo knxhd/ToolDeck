@@ -36,7 +36,12 @@ export interface HttpRequestData {
    * 仅前端使用，发送前已插值，不会提交给后端。
    */
   placeholders?: KeyValue[]
+  /** 接口文档（Markdown），仅前端展示与随集合保存，不会提交给后端。 */
+  docs?: string
 }
+
+/** 接口文档显示模式：edit 仅编辑 / split 左右分屏（实时预览）/ preview 仅预览。 */
+export type DocMode = 'edit' | 'split' | 'preview'
 
 export interface HttpResponseData {
   status_code: number
