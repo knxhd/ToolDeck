@@ -15,11 +15,11 @@
             <template #icon><icon-plus /></template>
           </a-button>
           <template #content>
-            <a-doption value="http">HTTP Request</a-doption>
-            <a-doption value="websocket">WebSocket Request</a-doption>
-            <a-doption value="mcp">MCP Request</a-doption>
+            <a-doption value="http">HTTP</a-doption>
+            <a-doption value="websocket">WebSocket</a-doption>
+            <a-doption value="mcp">MCP</a-doption>
             <a-doption value="folder">Folder</a-doption>
-            <a-doption value="__export__">导出</a-doption>
+            <a-doption value="__export__">export</a-doption>
           </template>
         </a-dropdown>
         <a-button size="mini" type="text" shape="circle" title="重命名" @click="emit('rename', node)">
