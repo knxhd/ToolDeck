@@ -110,10 +110,10 @@
             <template #icon><icon-settings /></template>
           </a-button>
           <a-dropdown @select="onUserMenu">
-            <a-button size="small" class="user-chip">
+            <a-button size="small" class="user-chip"
+              :title="user.user?.display_name || user.user?.username || '未登录'">
               <img v-if="user.user?.avatar" class="avatar avatar-img" :src="user.user.avatar" alt="" />
               <span v-else class="avatar">{{ userInitial }}</span>
-              {{ user.user?.display_name || user.user?.username || '未登录' }}
             </a-button>
             <template #content>
               <a-doption value="profile">
@@ -1067,13 +1067,20 @@ function statusClass(code: number) {
     height: 14px;
   }
 
+  // 右上角用户按钮：只显示头像 / 首字，全名走 title 悬浮提示
+  .user-chip.arco-btn {
+    height: 26px;
+    min-width: 28px;
+    padding: 0 5px;
+  }
+
   .user-chip .avatar {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 20px;
     height: 20px;
-    margin-right: 6px;
+    margin-right: 0;
     border-radius: 50%;
     background: rgb(var(--primary-6));
     color: #fff;

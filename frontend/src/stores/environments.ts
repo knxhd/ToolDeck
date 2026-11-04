@@ -48,7 +48,18 @@ export const useEnvironmentsStore = defineStore('environments', () => {
 
   const envs = computed<Environment[]>(() => collection.value?.environments ?? [])
 
-  const activeEnvId = computed<string | null>(() => collection.value?.activeEnvId ?? null)
+  /**
+   * 当前生效的环境 id。
+   * - 从未设置过（undefined / 旧数据为 null）→ 默认落到第一个环境
+   * - 空串 → 用户主动选择了「No Environment」
+   */
+  const activeEnvId = computed<string | null>(() => {
+    const c = collection.value
+    if (!c) return null
+    const id = c.activeEnvId
+    if (id === undefined || id === null) return envs.value[0]?.id ?? null
+    return id || null
+  })
 
   const activeEnv = computed<Environment | null>(
     () => envs.value.find((e) => e.id === activeEnvId.value) ?? null,
@@ -108,7 +119,8 @@ export const useEnvironmentsStore = defineStore('environments', () => {
   async function setActiveEnv(id: string | null) {
     const c = collection.value
     if (!c) return
-    c.activeEnvId = id
+    // 显式选择「No Environment」时写入空串，避免被「默认第一个环境」逻辑覆盖
+    c.activeEnvId = id ?? ''
     await collections.persist()
   }
 

@@ -119,7 +119,9 @@ watch(
 function loadFromStore() {
   const c = envStore.targetCollection()
   localEnvs.value = c ? JSON.parse(JSON.stringify(c.environments ?? [])) : []
-  activeId.value = c?.activeEnvId ?? localEnvs.value[0]?.id ?? null
+  // 优先选中当前生效的环境；没有（或未设置）时默认选中第一个
+  activeId.value =
+    localEnvs.value.find((e) => e.id === c?.activeEnvId)?.id ?? localEnvs.value[0]?.id ?? null
 }
 
 async function onAddEnv() {
@@ -246,7 +248,7 @@ function onClose() {
 
   &.active {
     background: var(--ui-bg-panel);
-    box-shadow: inset 3px 0 0 rgb(var(--primary-6)), var(--ui-shadow-1);
+    box-shadow: var(--ui-shadow-1);
     color: rgb(var(--primary-6));
     font-weight: 600;
   }
