@@ -112,7 +112,7 @@ async def _run_one(
     row: dict[str, str],
     streaming: bool,
 ) -> dict:
-    """跑单行数据，返回一条结果字典。"""
+    """跑单行数据，返回一条结果字典。瞬时连接错误自动重试 1 次。"""
     url = render(tpl.url, row)
     headers = _headers_dict(tpl.headers, row)
     params = _params_dict(tpl.params, row)
@@ -132,11 +132,22 @@ async def _run_one(
         "size_bytes": 0,
         "error": "",
         "text": "",
+        "retried": False,
     }
     start = time.perf_counter()
-    ttft = None
 
-    try:
+    # 值得重试的传输层错误（被测接口在并发下短时掐连接）
+    transient = (
+        httpx.ConnectError,
+        httpx.ConnectTimeout,
+        httpx.ReadError,
+        httpx.RemoteProtocolError,
+        httpx.PoolTimeout,
+    )
+
+    async def attempt() -> None:
+        """单次尝试；网络异常直接抛出，HTTP 状态码不抛。"""
+        ttft = None
         if streaming:
             chunks: list[str] = []
             size = 0
@@ -163,13 +174,29 @@ async def _run_one(
             result["size_bytes"] = len(raw)
             result["text"] = raw.decode("utf-8", errors="replace")
             result["ttft_ms"] = ""
+
+    last_err: Exception | None = None
+    for attempt_idx in range(2):  # 首次 + 最多 1 次重试
+        try:
+            await attempt()
+            last_err = None
+            break
+        except httpx.ReadTimeout:
+            last_err = RuntimeError("超时")
+            break  # 读超时重试意义不大（请求可能已在处理）
+        except transient as exc:
+            last_err = exc
+            result["retried"] = True
+            await asyncio.sleep(0.3)  # 短暂退避
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+            break
+
+    if last_err is not None:
+        result["error"] = str(last_err)[:300]
+    else:
         result["ok"] = 200 <= result["status"] < 400
-    except httpx.TimeoutException:
-        result["error"] = "超时"
-    except Exception as exc:  # noqa: BLE001
-        result["error"] = str(exc)[:300]
-    finally:
-        result["total_ms"] = int((time.perf_counter() - start) * 1000)
+    result["total_ms"] = int((time.perf_counter() - start) * 1000)
     return result
 
 
@@ -215,7 +242,7 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
     # CSV 写出（带 BOM）
     out_f = open(result, "w", encoding="utf-8-sig", newline="")
     writer = csv.writer(out_f)
-    header = ["序号", "状态码", "是否成功", "总耗时ms", "首帧耗时ms", "响应字节数", "错误信息", "响应原文/完整文本"]
+    header = ["序号", "状态码", "是否成功", "总耗时ms", "首帧耗时ms", "响应字节数", "是否重试", "错误信息", "响应原文/完整文本"]
     writer.writerow(header)
 
     streaming = bool(job["streaming"])
@@ -230,6 +257,7 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
         writer.writerow([
             idx + 1, r["status"], "成功" if r["ok"] else "失败",
             r["total_ms"], r["ttft_ms"], r["size_bytes"],
+            "是" if r.get("retried") else "",
             r["error"], r["text"],
         ])
         out_f.flush()
@@ -241,9 +269,21 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
         latencies.append(r["total_ms"])
         if isinstance(r["ttft_ms"], int):
             ttfts.append(r["ttft_ms"])
+        # 每 10 行回写一次进度，让前端轮询能看到进展
+        if done % 10 == 0:
+            bench_store.update_job(
+                job_id, user_id, done=done, success=success, fail=fail,
+            )
 
+    # 连接池上限 = 并发数，避免池等待成为瓶颈；keepalive 关闭以复用以防被对端掐断的旧连接
+    limits = httpx.Limits(
+        max_connections=max(job["concurrency"], 1),
+        max_keepalive_connections=0,
+    )
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True) as client:
+        async with httpx.AsyncClient(
+            timeout=_TIMEOUT, follow_redirects=True, limits=limits
+        ) as client:
             await asyncio.gather(*[bounded(enumerate_row) for enumerate_row in enumerate(rows)])
     finally:
         out_f.close()

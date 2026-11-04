@@ -117,7 +117,27 @@ async def download_csv(job_id: str, user: dict = Depends(current_user)) -> FileR
     return FileResponse(
         p,
         media_type="text/csv",
-        filename=f"benchmark-{job['name']}-{job_id}.csv",
+        filename=f"benchmark-result-{job['name']}-{job_id}.csv",
+    )
+
+
+@router.get("/jobs/{job_id}/params")
+async def download_params(job_id: str, user: dict = Depends(current_user)) -> FileResponse:
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    params = job.get("params_path") or ""
+    if not params:
+        raise HTTPException(status_code=404, detail="参数文件路径未配置")
+    from pathlib import Path
+
+    p = Path(params)
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="参数文件不存在")
+    return FileResponse(
+        p,
+        media_type="text/csv",
+        filename=f"benchmark-params-{job['name']}-{job_id}.csv",
     )
 
 

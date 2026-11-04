@@ -49,12 +49,23 @@
         </div>
 
         <a-button type="primary" long :loading="starting" :disabled="!upload" @click="start">
-          开始测试（模板：{{ method }} {{ shortUrl }}）
+          开始测试
         </a-button>
+        <div v-if="resolvedUrl" class="resolved-url" :title="resolvedUrl">
+          <span class="muted">将请求：</span>
+          <b>{{ method }}</b> {{ resolvedUrl }}
+        </div>
         <p v-if="!upload" class="hint muted">先上传 CSV；CSV 每一行会替换模板里与表头同名的占位符，并发起一次请求。</p>
       </section>
 
-      <a-divider>任务记录</a-divider>
+      <a-divider>
+        <span class="jobs-head">
+          任务记录
+          <a-button size="mini" type="text" @click="loadJobs" title="刷新进度">
+            <template #icon><icon-refresh /></template>
+          </a-button>
+        </span>
+      </a-divider>
 
       <!-- 任务列表 -->
       <section class="jobs">
@@ -79,8 +90,11 @@
           <div v-if="j.error" class="job-err">{{ j.error }}</div>
 
           <div class="job-actions">
-            <a-button size="mini" type="text" :disabled="j.status === 'running'" @click="download(j)">
-              <template #icon><icon-download /></template>下载 CSV
+            <a-button size="mini" type="text" :disabled="j.status === 'running'" @click="download(j, 'csv', 'result')">
+              <template #icon><icon-download /></template>下载结果
+            </a-button>
+            <a-button size="mini" type="text" @click="download(j, 'params', 'params')">
+              <template #icon><icon-upload /></template>下载参数
             </a-button>
             <a-button size="mini" type="text" status="danger" @click="remove(j)">
               <template #icon><icon-delete /></template>删除
@@ -97,6 +111,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { api, getToken } from '@/api/client'
 import { toast } from '@/utils/feedback'
 import { useEnvironmentsStore } from '@/stores/environments'
+import { renderVars } from '@/utils/env'
 import type { HttpRequestData } from '@/api/types'
 
 const props = defineProps<{ visible: boolean; request: HttpRequestData }>()
@@ -114,9 +129,11 @@ const fileInput = ref<HTMLInputElement | null>(null)
 let timer: number | null = null
 
 const method = computed(() => props.request.method)
-const shortUrl = computed(() => {
-  const u = props.request.url || ''
-  return u.length > 32 ? u.slice(0, 32) + '…' : u
+// 用当前环境变量解析后的真实 URL（内置占位符无法在前端完全还原，未解析的原样保留）
+const resolvedUrl = computed(() => {
+  const url = props.request.url || ''
+  if (!url) return ''
+  return renderVars(url, envStore.scopeVars)
 })
 
 function close() {
@@ -204,17 +221,17 @@ function statusColor(s: string) {
   return { running: 'blue', done: 'green', failed: 'red' }[s] || 'gray'
 }
 
-async function download(j: any) {
+async function download(j: any, kind: 'csv' | 'params', label: string) {
   try {
-    const res = await fetch(`/api/bench/jobs/${j.id}/csv`, {
+    const res = await fetch(`/api/bench/jobs/${j.id}/${kind}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
-    if (!res.ok) throw new Error('下载失败')
+    if (!res.ok) throw new Error(`下载${label}失败`)
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `benchmark-${j.name}-${j.id}.csv`
+    a.download = `benchmark-${label}-${j.name}-${j.id}.csv`
     a.click()
     URL.revokeObjectURL(url)
   } catch (err: any) {
@@ -276,6 +293,20 @@ onBeforeUnmount(() => {
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { font-size: 12px; margin: 0; }
 .muted { color: var(--el-text-color-placeholder); font-size: 12px; }
+
+.resolved-url {
+  font-size: 12px;
+  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  word-break: break-all;
+  line-height: 1.5;
+  b { color: var(--c-put, #58a6ff); margin-right: 4px; }
+}
+
+.jobs-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .jobs { display: flex; flex-direction: column; gap: 10px; }
 .job-card {
