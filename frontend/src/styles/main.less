@@ -101,3 +101,147 @@ body,
     display: none;
   }
 }
+
+// ---- Markdown 预览（v-md-preview github 主题）深色模式适配 ----
+// 主题自带的是浅色硬编码颜色，这里在 Arco 深色主题（body[arco-theme='dark']）下统一覆盖。
+body[arco-theme='dark'] .github-markdown-body {
+  color: var(--color-text-1);
+  background: transparent;
+
+  a {
+    color: rgb(var(--primary-6));
+  }
+
+  h1,
+  h2 {
+    border-bottom-color: var(--color-border-2);
+  }
+
+  h6,
+  blockquote {
+    color: var(--color-text-3);
+  }
+
+  blockquote {
+    border-left-color: var(--color-border-3);
+  }
+
+  hr {
+    background-color: var(--color-border-2);
+  }
+
+  kbd {
+    color: var(--color-text-1);
+    background-color: var(--color-fill-2);
+    border-color: var(--color-border-3);
+    box-shadow: inset 0 -1px 0 var(--color-border-3);
+  }
+
+  // 表格
+  table tr {
+    background-color: transparent;
+    border-top-color: var(--color-border-2);
+  }
+  table tr:nth-child(2n) {
+    background-color: var(--color-fill-1);
+  }
+  table td,
+  table th {
+    border-color: var(--color-border-2);
+  }
+
+  img {
+    background-color: transparent;
+  }
+
+  // 行内代码
+  code,
+  tt {
+    color: #e6edf3;
+    background-color: rgba(110, 118, 129, 0.4);
+  }
+
+  // 代码块
+  div[class*='v-md-pre-wrapper-'],
+  pre {
+    background-color: #161b22;
+  }
+  div[class*='v-md-pre-wrapper-'].line-numbers-mode::after {
+    background-color: #161b22;
+    border-right-color: var(--color-border-2);
+  }
+  div[class*='v-md-pre-wrapper-'].line-numbers-mode .line-numbers-wrapper {
+    color: #6e7681;
+  }
+  pre code,
+  pre tt {
+    color: #e6edf3;
+    background-color: transparent;
+  }
+
+  // highlight.js 语法高亮（GitHub Dark 配色）
+  .hljs {
+    color: #e6edf3;
+    background: transparent;
+  }
+  .hljs-comment,
+  .hljs-quote {
+    color: #8b949e;
+  }
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-subst {
+    color: #ff7b72;
+  }
+  .hljs-literal,
+  .hljs-number,
+  .hljs-tag .hljs-attr,
+  .hljs-template-variable,
+  .hljs-variable {
+    color: #79c0ff;
+  }
+  .hljs-doctag,
+  .hljs-string {
+    color: #a5d6ff;
+  }
+  .hljs-section,
+  .hljs-selector-id,
+  .hljs-title {
+    color: #d2a8ff;
+  }
+  .hljs-class .hljs-title,
+  .hljs-type {
+    color: #ffa657;
+  }
+  .hljs-attribute,
+  .hljs-name,
+  .hljs-tag {
+    color: #7ee787;
+  }
+  .hljs-attr {
+    color: #79c0ff;
+  }
+  .hljs-link,
+  .hljs-regexp {
+    color: #a5d6ff;
+  }
+  .hljs-bullet,
+  .hljs-symbol {
+    color: #ffa657;
+  }
+  .hljs-built_in,
+  .hljs-builtin-name {
+    color: #ffa657;
+  }
+  .hljs-meta {
+    color: #8b949e;
+  }
+  .hljs-deletion {
+    color: #ffdcd7;
+    background: rgba(248, 81, 73, 0.15);
+  }
+  .hljs-addition {
+    color: #aff5b4;
+    background: rgba(46, 160, 67, 0.15);
+  }
+}
