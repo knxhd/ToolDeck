@@ -102,7 +102,9 @@ const rendered = computed(() => {
     out += escapeHtml(text.slice(last, idx))
     const name = m[1]
     const missing = !isKnownVar(name, knownVars.value)
-    out += `<span class="env-var${missing ? ' missing' : ''}" data-var="${escapeHtml(name)}">${escapeHtml(m[0])}</span>`
+    const builtin = !missing && !(name in knownVars.value)
+    const cls = missing ? ' missing' : builtin ? ' builtin' : ''
+    out += `<span class="env-var${cls}" data-var="${escapeHtml(name)}">${escapeHtml(m[0])}</span>`
     last = idx + m[0].length
   }
   out += escapeHtml(text.slice(last))
@@ -326,7 +328,9 @@ function onHover(e: MouseEvent) {
     value: val,
     missing: !isUser && !builtin,
     source,
-    desc: builtin ? `${builtin.def.desc}（示例值，每次发送重新生成）` : '',
+    desc: builtin
+      ? `${builtin.def.desc}${builtin.def.usage ? `；${builtin.def.usage}` : ''}（示例值，每次发送重新生成）`
+      : '',
   }
 }
 
@@ -431,6 +435,11 @@ async function copyValue() {
   &.missing {
     background: rgba(245, 63, 63, 0.18);
     color: #f53f3f;
+  }
+
+  &.builtin {
+    background: rgba(22, 93, 255, 0.14);
+    color: rgb(var(--primary-6));
   }
 }
 

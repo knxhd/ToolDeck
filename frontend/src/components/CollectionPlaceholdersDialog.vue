@@ -13,7 +13,7 @@
         集合内所有请求均可用 <code v-pre>{{名称}}</code> 引用；同名时请求自身的占位符优先。
       </div>
       <div class="ph-dialog-body">
-        <PlaceholderEditor v-model="localList" title="集合占位符" />
+        <PlaceholderEditor v-model="localList" title="集合占位符" :var-resolver="varResolver" />
       </div>
       <div class="dialog-footer">
         <a-button @click="onReset">重置</a-button>
@@ -29,6 +29,7 @@ import { computed, ref, watch } from 'vue'
 import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { VAR_NAME_RE } from '@/utils/env'
+import { buildVarResolver } from '@/utils/varInfo'
 import { toast } from '@/utils/feedback'
 import type { KeyValue } from '@/api/types'
 
@@ -41,6 +42,9 @@ const collection = computed(() => envStore.collection)
 
 /** 编辑副本：保存时才回写集合并持久化。 */
 const localList = ref<KeyValue[]>([])
+
+/** 高亮占位符文本中引用的变量（以当前编辑副本作为集合占位符，未保存的修改也能识别）。 */
+const varResolver = computed(() => buildVarResolver(undefined, localList.value))
 
 watch(
   () => props.visible,

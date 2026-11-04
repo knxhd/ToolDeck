@@ -8,6 +8,9 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as monaco from 'monaco-editor'
 
 import { useSettingsStore } from '@/stores/settings'
+import { PLACEHOLDER_SOURCE } from '@/utils/env'
+import { varHoverMarkdown } from '@/utils/varInfo'
+import type { VarResolver } from '@/utils/varInfo'
 
 const props = withDefaults(
   defineProps<{
@@ -19,6 +22,8 @@ const props = withDefaults(
     fill?: boolean
     autoScrollToEnd?: boolean
     fontSize?: number
+    /** 传入后高亮 {{var}} 占位符，并在悬停时显示变量值 / 内置占位符说明 */
+    varResolver?: VarResolver
   }>(),
   {
     language: 'json',
@@ -57,6 +62,7 @@ onMounted(() => {
   })
   editor.onDidChangeModelContent(() => {
     emit('update:modelValue', editor!.getValue())
+    scheduleVarDecorations()
     if (props.autoScrollToEnd && editor) {
       const model = editor.getModel()
       if (model) {
@@ -65,7 +71,62 @@ onMounted(() => {
       }
     }
   })
+  refreshVarDecorations()
 })
+
+// ---- 占位符高亮 + 悬停说明 ----
+const MAX_VAR_DECORATIONS = 2000
+let varDecorations: monaco.editor.IEditorDecorationsCollection | null = null
+let varTimer: number | null = null
+
+function scheduleVarDecorations() {
+  if (!props.varResolver) return
+  if (varTimer) clearTimeout(varTimer)
+  varTimer = window.setTimeout(() => {
+    varTimer = null
+    refreshVarDecorations()
+  }, 60)
+}
+
+function refreshVarDecorations() {
+  const model = editor?.getModel()
+  if (!editor || !model) return
+  const resolver = props.varResolver
+  if (!resolver) {
+    varDecorations?.clear()
+    return
+  }
+  const text = model.getValue()
+  const list: monaco.editor.IModelDeltaDecoration[] = []
+  for (const m of text.matchAll(new RegExp(PLACEHOLDER_SOURCE, 'g'))) {
+    if (list.length >= MAX_VAR_DECORATIONS) break
+    const idx = m.index ?? 0
+    const start = model.getPositionAt(idx)
+    const end = model.getPositionAt(idx + m[0].length)
+    const info = resolver(m[1])
+    const cls = !info.source
+      ? 'monaco-var monaco-var-missing'
+      : info.source === 'Built-in'
+        ? 'monaco-var monaco-var-builtin'
+        : 'monaco-var'
+    list.push({
+      range: new monaco.Range(start.lineNumber, start.column, end.lineNumber, end.column),
+      options: {
+        inlineClassName: cls,
+        hoverMessage: { value: varHoverMarkdown(info) },
+        stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+      },
+    })
+  }
+  if (varDecorations) varDecorations.set(list)
+  else varDecorations = editor.createDecorationsCollection(list)
+}
+
+// 变量表（环境切换、占位符修改）变化时刷新高亮与提示
+watch(
+  () => props.varResolver,
+  () => refreshVarDecorations(),
+)
 
 watch(
   () => props.modelValue,
@@ -117,10 +178,33 @@ function appendText(text: string) {
 defineExpose({ appendText, editor: () => editor })
 
 onBeforeUnmount(() => {
+  if (varTimer) clearTimeout(varTimer)
+  varDecorations?.clear()
+  varDecorations = null
   editor?.dispose()
   editor = null
 })
 </script>
+
+<!-- 占位符高亮作用于 Monaco 内部 DOM，必须用全局样式；配色与 URL 输入框保持一致 -->
+<style lang="less">
+.monaco-editor .monaco-var {
+  background: rgba(255, 176, 32, 0.22);
+  color: #d48806 !important;
+  border-radius: 3px;
+  cursor: help;
+
+  &.monaco-var-builtin {
+    background: rgba(22, 93, 255, 0.14);
+    color: rgb(var(--primary-6)) !important;
+  }
+
+  &.monaco-var-missing {
+    background: rgba(245, 63, 63, 0.18);
+    color: #f53f3f !important;
+  }
+}
+</style>
 
 <style lang="less" scoped>
 .monaco-container {

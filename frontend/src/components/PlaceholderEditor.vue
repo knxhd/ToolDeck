@@ -77,7 +77,7 @@
         </a-tooltip>
       </div>
       <MonacoEditor :key="activeIdx" :model-value="current.value" language="markdown" fill
-        @update:model-value="onValue" />
+        :var-resolver="varResolver" @update:model-value="onValue" />
     </div>
     <div v-else class="ph-detail ph-detail-empty">
       <a-empty description="选择或新增一个占位符进行编辑" />
@@ -93,10 +93,11 @@ import MonacoEditor from '@/components/MonacoEditor.vue'
 import { BUILTIN_VARS, VAR_NAME_RE } from '@/utils/env'
 import { toast } from '@/utils/feedback'
 import type { KeyValue } from '@/api/types'
+import type { VarResolver } from '@/utils/varInfo'
 import { copyText } from '@/utils/commonUtil'
 
-/** title：列表标题（如「请求占位符」/「集合占位符」）。 */
-const props = defineProps<{ modelValue: KeyValue[]; title?: string }>()
+/** title：列表标题（如「请求占位符」/「集合占位符」）；varResolver：高亮文本中引用的其它变量。 */
+const props = defineProps<{ modelValue: KeyValue[]; title?: string; varResolver?: VarResolver }>()
 const emit = defineEmits<{ 'update:modelValue': [value: KeyValue[]] }>()
 
 const HELP_TEXT =

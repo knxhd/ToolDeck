@@ -32,14 +32,15 @@
         </div>
       </template>
       <a-tab-pane key="params" title="Params">
-        <KeyValueEditor v-model="tab.request.params" bulk />
+        <KeyValueEditor v-model="tab.request.params" bulk :var-resolver="varResolver" />
       </a-tab-pane>
       <a-tab-pane key="headers" title="Headers">
-        <KeyValueEditor v-model="tab.request.headers" bulk />
+        <KeyValueEditor v-model="tab.request.headers" bulk :var-resolver="varResolver" />
       </a-tab-pane>
       <a-tab-pane key="body" title="Body">
         <MonacoEditor v-if="tab.request.body_type !== 'none' && tab.request.body_type !== 'form-data'"
-          v-model="tab.request.body" :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'" fill />
+          v-model="tab.request.body" :language="tab.request.body_type === 'json' ? 'json' : 'plaintext'" fill
+          :var-resolver="varResolver" />
         <FormDataEditor v-else-if="tab.request.body_type === 'form-data'" :model-value="formItems"
           @update:model-value="onFormChange" />
         <a-empty v-else description="无 Body" style="padding: 12px 0" />
@@ -48,7 +49,7 @@
         <template #title>
           占位符<span v-if="placeholderCount" class="tab-count">{{ placeholderCount }}</span>
         </template>
-        <PlaceholderEditor v-model="placeholders" title="请求占位符" />
+        <PlaceholderEditor v-model="placeholders" title="请求占位符" :var-resolver="varResolver" />
       </a-tab-pane>
       <a-tab-pane key="docs">
         <template #title>
@@ -68,6 +69,7 @@ import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
 import FormDataEditor from '@/components/FormDataEditor.vue'
+import { buildVarResolver } from '@/utils/varInfo'
 import DocumentEditor from '@/components/DocumentEditor.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
@@ -95,6 +97,9 @@ const placeholders = computed<KeyValue[]>({
 })
 
 const placeholderCount = computed(() => placeholders.value.filter((p) => p.enabled && p.key).length)
+
+/** 编辑器占位符高亮 / 悬停说明所用的解析函数（环境、集合占位符、请求占位符变化时自动更新）。 */
+const varResolver = computed(() => buildVarResolver(props.tab.request.placeholders))
 
 /** 接口文档（Markdown）；旧数据没有该字段，内容未变时不写回，避免误标未保存。 */
 const docs = computed<string>({

@@ -3,7 +3,7 @@
     <!-- 文本批量编辑模式：每行一条 key:value，// 开头表示禁用 -->
     <template v-if="bulk && bulkMode">
       <MonacoEditor class="kv-bulk-editor" :model-value="bulkText" language="plaintext" fill
-        @update:model-value="onBulkInput" />
+        :var-resolver="varResolver" @update:model-value="onBulkInput" />
     </template>
 
     <!-- 表格模式：与 Form Data 保持一致的表头 + 固定列宽，保证各行垂直对齐 -->
@@ -53,9 +53,10 @@ import { ref, watch } from 'vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import type { KeyValue } from '@/api/types'
+import type { VarResolver } from '@/utils/varInfo'
 
-/** bulk：是否提供「Bulk Edit」文本批量编辑切换（默认关闭）。 */
-const props = defineProps<{ modelValue: KeyValue[]; bulk?: boolean }>()
+/** bulk：是否提供「Bulk Edit」文本批量编辑切换（默认关闭）；varResolver：批量编辑时高亮占位符。 */
+const props = defineProps<{ modelValue: KeyValue[]; bulk?: boolean; varResolver?: VarResolver }>()
 const emit = defineEmits<{ 'update:modelValue': [value: KeyValue[]] }>()
 
 const clone = (list: KeyValue[]) => JSON.parse(JSON.stringify(list || []))
