@@ -1,6 +1,6 @@
 <template>
   <div class="node-row" :style="{ paddingLeft: depth * 8 + 'px' }">
-    <div class="node-line" :class="{ active: isRequest, 'drop-target': dropHover }" :draggable="draggable"
+    <div class="node-line" :class="{ active: isActive, 'drop-target': dropHover }" :draggable="draggable"
       @click="onLineClick" @dragstart="onDragStart" @dragend="onDragEnd" @dragover="onDragOver"
       @dragleave="onDragLeave" @drop.prevent="onDrop">
       <icon-right v-if="node.type !== 'request' && !expanded.has(node.id)" class="twisty" @click.stop="onToggle" />
@@ -42,6 +42,7 @@
 import { computed, ref } from 'vue'
 
 import { useCollectionsStore } from '@/stores/collections'
+import { useWorkbenchStore } from '@/stores/workbench'
 import { treeDrag } from '@/utils/treeDrag'
 import { toast } from '@/utils/feedback'
 import type { CollectionNode } from '@/api/types'
@@ -63,9 +64,12 @@ const emit = defineEmits<{
 }>()
 
 const collections = useCollectionsStore()
+const workbench = useWorkbenchStore()
 
 const hasChildren = computed(() => !!props.node.children && props.node.children.length > 0)
 const isRequest = computed(() => props.node.type === 'request')
+/** 仅当该请求是当前激活标签页对应的节点时才高亮。 */
+const isActive = computed(() => isRequest.value && workbench.activeTab?.nodeId === props.node.id)
 /** 请求和文件夹可拖拽；根级集合不支持移动。 */
 const draggable = computed(() => props.node.type !== 'collection')
 /** 拖拽悬停高亮（仅合法目标时点亮）。 */
