@@ -3,15 +3,21 @@
     <div class="tree-toolbar">
       <span class="tree-title">Collections</span>
       <div class="toolbar-actions">
-        <a-button size="small" type="text" title="导出全部集合" @click="onExportAll">
-          <template #icon><icon-export /></template>
-        </a-button>
-        <a-button size="small" type="text" title="导入集合" @click="onImportClick">
-          <template #icon><icon-import /></template>
-        </a-button>
-        <a-button size="small" type="text" shape="circle" title="新建集合" @click="onNewCollection">
-          <template #icon><icon-plus /></template>
-        </a-button>
+        <a-tooltip content="导出全部集合" position="top">
+          <a-button size="mini" type="text" @click="onExportAll">
+            <template #icon><icon-export /></template>
+          </a-button>
+        </a-tooltip>
+        <a-tooltip content="导入集合" position="top">
+          <a-button size="mini" type="text" @click="onImportClick">
+            <template #icon><icon-import /></template>
+          </a-button>
+        </a-tooltip>
+        <a-tooltip content="新建集合" position="top">
+          <a-button size="mini" type="text" class="add-btn" @click="onNewCollection">
+            <template #icon><icon-plus /></template>
+          </a-button>
+        </a-tooltip>
         <input ref="fileInput" type="file" accept="application/json,.json" style="display:none" @change="onImportFile" />
       </div>
     </div>
@@ -159,14 +165,61 @@ async function applyImport(policy: ConflictPolicy) {
 
 <style lang="less" scoped>
 .collections-tree {
-  display: flex; flex-direction: column; height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 
   .tree-toolbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 8px; border-bottom: 1px solid var(--el-border-color-lighter);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    height: 34px;
+    padding: 0 6px 0 10px;
+    border-bottom: 1px solid var(--ui-border-soft);
   }
-  .tree-title { font-weight: 600; font-size: 13px; }
-  .toolbar-actions { display: flex; align-items: center; gap: 2px; }
-  .tree-body { flex: 1; overflow-y: auto; padding: 4px 0; }
+
+  .tree-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-text-2);
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+
+    :deep(.arco-btn) {
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      border-radius: var(--ui-radius-sm);
+      color: var(--color-text-3);
+      font-size: 13px;
+
+      &:hover {
+        background: var(--ui-bg-hover);
+        color: var(--color-text-1);
+      }
+    }
+
+    :deep(.add-btn) {
+      color: rgb(var(--primary-6));
+      background: rgba(var(--primary-6), 0.1);
+
+      &:hover {
+        background: rgba(var(--primary-6), 0.18);
+        color: rgb(var(--primary-6));
+      }
+    }
+  }
+
+  .tree-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 6px 8px;
+  }
 }
 </style>

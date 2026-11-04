@@ -32,7 +32,7 @@
           class="folder-item"
           @click="enterFolder(f)"
         >
-          <span class="folder-icon">📁</span>
+          <icon-folder class="folder-icon" />
           <span class="folder-name">{{ f.name }}</span>
           <span class="folder-arrow">›</span>
         </div>
@@ -40,8 +40,14 @@
       </div>
 
       <div class="dialog-actions">
-        <a-button type="text" @click="onNewFolder">📁 New Folder</a-button>
-        <a-button v-if="atRoot" type="text" @click="onNewCollection">+ New Collection</a-button>
+        <a-button type="text" class="link-btn" @click="onNewFolder">
+          <template #icon><icon-folder-add /></template>
+          New Folder
+        </a-button>
+        <a-button v-if="atRoot" type="text" class="link-btn" @click="onNewCollection">
+          <template #icon><icon-plus /></template>
+          New Collection
+        </a-button>
         <div class="right">
           <a-button @click="onClose">Cancel</a-button>
           <a-button type="primary" @click="onSave">Save</a-button>
@@ -214,49 +220,109 @@ function onClose() {
 
 <style lang="less" scoped>
 .field-label {
-  font-weight: 600;
   margin-bottom: 6px;
+  color: var(--color-text-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.field + .field {
+  margin-top: 16px;
 }
 
 .crumb {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  margin: 4px 0 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin: 2px 0 10px;
+  font-size: 12px;
+  color: var(--color-text-3);
 
   .crumb-item {
+    padding: 2px 6px;
+    border-radius: var(--ui-radius-sm);
     cursor: pointer;
-    &:hover { color: var(--el-color-primary); }
+    font-family: var(--ui-font-mono);
+    font-size: 11.5px;
+    transition: background-color 0.12s ease, color 0.12s ease;
+
+    &:hover {
+      background: var(--ui-bg-active);
+      color: rgb(var(--primary-6));
+    }
   }
-  .crumb-sep { margin: 0 6px; }
+
+  .crumb-sep {
+    color: var(--color-text-4);
+    font-size: 11px;
+  }
 }
 
 .folder-list {
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  padding: 4px;
-  max-height: 220px;
+  max-height: 230px;
   overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
 }
 
 .folder-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  border-radius: 4px;
+  min-height: 30px;
+  padding: 4px 8px;
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
+  font-size: 12.5px;
+  color: var(--color-text-2);
+  transition: background-color 0.12s ease;
 
-  &:hover { background: var(--el-fill-color-light); }
+  &:hover {
+    background: var(--ui-bg-panel);
+    box-shadow: var(--ui-shadow-1);
+  }
 
-  .folder-name { flex: 1; }
-  .folder-arrow { color: var(--el-text-color-secondary); }
+  .folder-icon {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: var(--ui-accent-warm);
+  }
+
+  .folder-name {
+    flex: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .folder-arrow {
+    flex-shrink: 0;
+    color: var(--color-text-4);
+    font-size: 12px;
+  }
 }
 
 .dialog-actions {
   display: flex;
   align-items: center;
-  margin-top: 12px;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 14px;
+
+  .link-btn {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: var(--ui-radius-sm);
+    color: var(--color-text-3);
+    font-size: 12px;
+
+    &:hover {
+      background: var(--ui-bg-hover);
+      color: rgb(var(--primary-6));
+    }
+  }
 
   .right {
     margin-left: auto;

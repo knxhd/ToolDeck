@@ -1,13 +1,13 @@
 ﻿<template>
   <div class="response-pane">
     <div class="resp-meta">
-      <a-tag v-if="tab.error" color="red" size="small">请求错误</a-tag>
-      <a-tag v-else-if="tab.status_code" :color="statusType" size="small">
+      <span v-if="tab.error" class="status-pill err">请求错误</span>
+      <span v-else-if="tab.status_code" class="status-pill" :class="statusClass">
         {{ tab.status_code }} {{ tab.status_text }}
-      </a-tag>
-      <a-tag v-else-if="tab.streaming" color="orange" size="small">接收中…</a-tag>
-      <span v-if="tab.elapsed_ms">耗时 {{ tab.elapsed_ms }} ms</span>
-      <span v-if="tab.size_bytes"> {{ formatSize(tab.size_bytes) }}</span>
+      </span>
+      <span v-else-if="tab.streaming" class="status-pill redirect">接收中…</span>
+      <span v-if="tab.elapsed_ms" class="meta-item">{{ tab.elapsed_ms }} ms</span>
+      <span v-if="tab.size_bytes" class="meta-item">{{ formatSize(tab.size_bytes) }}</span>
       <span v-if="!tab.body && !tab.error && !tab.status_code && !tab.streaming" class="hint">
         发送请求后在此查看响应
       </span>
@@ -100,11 +100,13 @@ watch(
   () => { selectedFrame.value = props.tab.stream_events.length - 1 },
 )
 
-const statusType = computed(() => {
+const statusClass = computed(() => {
   const c = props.tab.status_code
-  if (c < 300) return 'green'
-  if (c < 400) return 'orange'
-  return 'red'
+  if (!c) return ''
+  if (c < 300) return 's2'
+  if (c < 400) return 's3'
+  if (c < 500) return 's4'
+  return 's5'
 })
 
 function formatSize(bytes: number) {
@@ -139,29 +141,56 @@ const merged = computed(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0 8px 8px;
+  min-height: 0;
 }
 
 .resp-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 2px;
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-  min-height: 30px;
+  gap: 10px;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--ui-border-soft);
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--ui-font-mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-3);
+
+  & + .meta-item::before {
+    content: '';
+    width: 1px;
+    height: 10px;
+    margin-right: 6px;
+    background: var(--ui-border);
+  }
 }
 
 .hint {
-  color: var(--el-text-color-placeholder);
+  color: var(--color-text-4);
 }
 
 .error-box {
-  color: var(--el-color-danger);
-  padding: 10px;
-  margin-top: 8px;
-  background: var(--el-color-danger-light-9);
-  border-radius: 4px;
+  margin: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(220, 70, 64, 0.28);
+  border-left: 3px solid var(--ui-accent-danger);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-status-5xx-bg);
+  color: var(--ui-accent-danger);
+  font-family: var(--ui-font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .resp-tabs {
@@ -172,6 +201,39 @@ const merged = computed(() => {
 
   :deep(.arco-tabs-nav) {
     flex-shrink: 0;
+    height: 34px;
+    padding: 0 10px;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  :deep(.arco-tabs-tab) {
+    height: 24px;
+    margin: 0 2px 0 0;
+    padding: 0 10px;
+    border: none;
+    border-radius: var(--ui-radius-sm);
+    background: transparent;
+    color: var(--color-text-3);
+    font-size: 12.5px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+
+    &:hover {
+      color: var(--color-text-1);
+      background: var(--ui-bg-hover);
+    }
+  }
+
+  :deep(.arco-tabs-tab-active) {
+    background: var(--ui-bg-active);
+    color: rgb(var(--primary-6));
+    font-weight: 600;
+  }
+
+  :deep(.arco-tabs-ink-bar) {
+    display: none;
   }
 
   :deep(.arco-tabs-content) {
@@ -200,6 +262,8 @@ const merged = computed(() => {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: auto;
+    padding: 0 10px 10px;
   }
 }
 
@@ -214,10 +278,12 @@ const merged = computed(() => {
   flex: 1;
   min-height: 0;
   display: flex;
+  gap: 10px;
 }
 
 .merge-toolbar {
   flex-shrink: 0;
+  padding: 2px 0 8px;
 }
 
 /* 合并后的 Markdown 内容：占满剩余高度，超出时纵向滚动 */
@@ -232,9 +298,10 @@ const merged = computed(() => {
 /* 思考过程（reasoning_content）：弱化样式，与正文区分 */
 .reasoning-block {
   margin: 10px 0;
-  border: 1px dashed var(--el-border-color);
-  border-radius: 6px;
-  background: var(--el-fill-color-lighter);
+  border: 1px solid var(--ui-border-soft);
+  border-left: 2px solid var(--ui-accent-warm);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
   overflow: hidden;
 }
 
@@ -242,14 +309,14 @@ const merged = computed(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 5px 10px;
   cursor: pointer;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: var(--color-text-3);
   user-select: none;
 
   &:hover {
-    background: var(--el-fill-color-light);
+    background: var(--ui-bg-hover);
   }
 
   .reasoning-title {
@@ -257,27 +324,30 @@ const merged = computed(() => {
     align-items: center;
     gap: 6px;
     font-weight: 600;
+    color: var(--color-text-2);
   }
 
   .reasoning-icon {
-    color: var(--el-color-warning);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ui-accent-warm);
   }
 
   .reasoning-toggle {
-    color: var(--el-color-primary);
+    color: rgb(var(--primary-6));
+    font-size: 11.5px;
   }
 }
 
 .reasoning-body {
-  padding: 0 12px 4px;
+  padding: 2px 12px 6px;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
-  border-left: 3px solid var(--el-color-warning-light-5);
-  margin-left: 10px;
+  color: var(--color-text-3);
 
   :deep(.github-markdown-body) {
     background: transparent;
-    color: var(--el-text-color-secondary);
+    color: var(--color-text-3);
     font-size: 13px;
     padding: 0;
   }
@@ -291,62 +361,61 @@ const merged = computed(() => {
 .frame-list {
   width: 100%;
   min-height: 0;
-  border-right: 1px solid var(--el-border-color);
   overflow-y: auto;
-  padding: 4px;
+  padding: 2px 2px 6px;
 
   .frame-row {
     display: flex;
     width: 100%;
     align-items: center;
-    justify-content: space-between;
-    gap: 6px;
-    padding: 5px 8px;
-    border-radius: 4px;
+    gap: 8px;
+    padding: 4px 8px;
+    border-radius: var(--ui-radius-sm);
     cursor: pointer;
     font-size: 12px;
 
     &:hover {
-      background: var(--el-fill-color-light);
+      background: var(--ui-bg-hover);
     }
 
     &.active {
-      background: var(--el-color-primary-light-9);
+      background: var(--ui-bg-active);
     }
 
     .frame-idx {
       font-weight: 700;
-      color: var(--el-text-color-secondary);
+      color: var(--color-text-3);
       width: 34px;
       flex-shrink: 0;
     }
 
     .frame-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       flex-shrink: 0;
 
       &.meta {
-        background: #61affe;
+        background: var(--ui-method-put);
       }
 
       &.chunk {
-        background: #49cc90;
+        background: var(--ui-method-get);
       }
 
       &.done {
-        background: #909399;
+        background: var(--color-text-4);
       }
 
       &.error {
-        background: #f93e3e;
+        background: var(--ui-accent-danger);
       }
     }
 
     .frame-time {
-      color: var(--el-text-color-placeholder);
-      font-size: 11px;
+      color: var(--color-text-4);
+      font-family: var(--ui-font-mono);
+      font-size: 10.5px;
       flex-shrink: 0;
     }
 
@@ -355,29 +424,56 @@ const merged = computed(() => {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      color: var(--el-text-color-secondary);
+      color: var(--color-text-2);
+      font-family: var(--ui-font-mono);
     }
   }
 }
 
 .stream-live {
-  color: var(--el-color-success);
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 8px;
+  color: var(--ui-accent-ok);
+  font-size: 12px;
   animation: blink 1s infinite;
 }
 
 .frame-time {
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  font-family: var(--ui-font-mono);
+  font-size: 11px;
+  color: var(--color-text-4);
 }
 
 .html-frame {
   width: 100%;
   height: 100%;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
   background: #fff;
+}
+
+/* SSE 帧折叠列表：去掉 Arco 默认的分割线与缩进 */
+.custom-arco-design {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+
+  :deep(.arco-collapse-item-header) {
+    padding: 0;
+    border: none;
+    background: transparent;
+  }
+
+  :deep(.arco-collapse-item-content) {
+    padding: 0;
+    background: transparent;
+  }
+
+  :deep(.arco-collapse-item-content-box) {
+    padding: 4px 8px 8px;
+  }
 }
 
 @keyframes blink {

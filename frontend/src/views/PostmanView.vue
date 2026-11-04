@@ -21,9 +21,7 @@
       <div class="side-collections">
         <CollectionsTree @open="onOpenNode" />
       </div>
-      <div class="side-divider"></div>
-      <div class="side-section"
-        :style="{ flex: historyOpen ? '1 1 45%' : '', marginBottom: historyOpen ? '0' : '8px', marginTop: historyOpen ? '0' : '8px' }">
+      <div class="side-section" :class="historyOpen ? 'open' : 'closed'">
         <div class="section-header" @click="historyOpen = !historyOpen">
           <icon-down v-if="historyOpen" />
           <icon-right v-else />
@@ -38,11 +36,11 @@
         </div>
         <div v-if="historyOpen" class="history-list">
           <div v-for="(item, i) in history" :key="i" class="history-item" @click="onLoadHistory(item)">
-            <span class="m" :class="item.method.toLowerCase()">{{ item.method }}</span>
+            <span class="method-pill" :class="'m-' + item.method.toLowerCase()">{{ item.method }}</span>
             <span class="u" :title="item.url">{{ item.url }}</span>
-            <span class="s" :class="statusClass(item.status_code)">{{ item.status_code || '—' }}</span>
+            <span class="status-pill" :class="statusClass(item.status_code)">{{ item.status_code || '—' }}</span>
           </div>
-          <a-empty v-if="!history.length" description="暂无历史" style="padding: 12px 0" />
+          <div v-if="!history.length" class="history-empty">暂无历史</div>
         </div>
       </div>
     </aside>
@@ -59,11 +57,12 @@
             <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
               <template #title>
                 <span class="tab-title-wrap" @contextmenu.prevent="onTabContextMenu($event, t)">
-                  <span class="tab-method"
-                    :class="t.kind === 'websocket' ? 'ws' : t.kind === 'mcp' ? 'mcp' : t.request.method.toLowerCase()">
+                  <span class="method-pill"
+                    :class="t.kind === 'websocket' ? 'm-ws' : t.kind === 'mcp' ? 'm-mcp' : 'm-' + t.request.method.toLowerCase()">
                     {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
                   </span>
-                  <span class="tab-title">{{ t.dirty ? '* ' : '' }}{{ t.title }}</span>
+                  <span class="tab-title">{{ t.title }}</span>
+                  <span v-if="t.dirty" class="tab-dirty" title="有未保存的修改"></span>
                 </span>
               </template>
             </a-tab-pane>
@@ -93,6 +92,7 @@
               <a-doption value="__manage">管理环境…</a-doption>
             </template>
           </a-dropdown>
+          <span class="tb-sep"></span>
           <a-button size="small" @click="sidebarHidden = !sidebarHidden">
             <template #icon>
               <IconShowLeft v-if="sidebarHidden" class="svg-icon" />
@@ -105,12 +105,13 @@
               <IconTopBottom v-else class="svg-icon" />
             </template>
           </a-button>
+          <span class="tb-sep"></span>
           <a-button size="small" @click="settingsOpen = true">
             <template #icon><icon-settings /></template>
           </a-button>
           <a-dropdown @select="onUserMenu">
             <a-button size="small" class="user-chip">
-              <template #icon><icon-user /></template>
+              <span class="avatar">{{ userInitial }}</span>
               {{ user.user?.display_name || user.user?.username || '未登录' }}
             </a-button>
             <template #content>
@@ -141,7 +142,17 @@
         <WebSocketPane v-else :tab="wb.activeTab" />
       </div>
       <div class="empty" v-else-if="dataReady">
-        <a-empty description="从左侧 Collections 选择请求，或点击 + 新建" />
+        <div class="ui-empty">
+          <div class="ui-empty-icon"><icon-code-square /></div>
+          <div class="ui-empty-title">还没有打开的请求</div>
+          <div class="ui-empty-desc">从左侧 Collections 选择一个接口，或新建一个空白请求开始调试</div>
+          <div class="ui-empty-actions">
+            <a-button type="primary" @click="onAddTab">
+              <template #icon><icon-plus /></template>
+              新建请求
+            </a-button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -208,6 +219,12 @@ const env = useEnvironmentsStore()
 const user = useUserStore()
 const teams = useTeamsStore()
 const settingsStore = useSettingsStore()
+
+/** 用户头像首字母（无头像时用）。 */
+const userInitial = computed(() => {
+  const name = user.user?.display_name || user.user?.username || '未'
+  return name.trim().charAt(0).toUpperCase()
+})
 
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(false)
@@ -466,7 +483,7 @@ function startRespDrag(e: MouseEvent) {
   const isBottom = responseLayout.value === 'bottom'
   const rect = cont.getBoundingClientRect()
   const containerSize = isBottom ? rect.height : rect.width
-  const splitterSize = 4
+  const splitterSize = 6
   // mousedown 时分隔条应在的位置（req 区域像素宽度）
   const startReqSize = (responseRatio.value / 100) * (containerSize - splitterSize)
   // 鼠标在容器内的起始位置
@@ -713,32 +730,43 @@ function statusClass(code: number) {
 <style lang="less" scoped>
 .postman-view {
   display: flex;
+  gap: 6px;
   height: 100%;
-  background: var(--el-bg-color-page);
-  color: var(--el-text-color-primary);
+  padding: 6px;
+  background: var(--ui-bg-canvas);
+  color: var(--color-text-1);
   font-family: var(--app-font-family);
   font-size: var(--app-font-size);
 }
 
 .sidebar {
   flex-shrink: 0;
-  border-right: 1px solid var(--el-border-color);
   display: flex;
   flex-direction: column;
-  background: var(--el-bg-color);
+  min-height: 0;
   overflow: hidden;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
 }
 
 .scope-bar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--el-border-color);
-}
-.scope-bar :deep(.arco-radio-group) {
-  flex: 1;
-  overflow-x: auto;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px;
+  border-bottom: 1px solid var(--ui-border-soft);
+
+  :deep(.arco-radio-group) {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  :deep(.arco-radio-button) {
+    font-size: 12px;
+  }
 }
 
 .side-collections {
@@ -746,81 +774,91 @@ function statusClass(code: number) {
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.side-divider {
-  height: 1px;
-  background: var(--el-border-color-lighter);
-  flex-shrink: 0;
+  overflow: hidden;
 }
 
 .side-section {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  border-top: 1px solid var(--ui-border-soft);
+
+  &.open {
+    flex: 1 1 45%;
+  }
+
+  &.closed {
+    flex: 0 0 auto;
+  }
 }
 
 .section-header {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 6px 0 10px;
+  font-size: 12px;
   font-weight: 600;
-  font-size: 13px;
+  color: var(--color-text-2);
   cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--ui-bg-hover);
+  }
+
+  > span {
+    flex: 1;
+  }
+
+  :deep(.arco-btn) {
+    opacity: 0;
+    flex-shrink: 0;
+  }
+
+  &:hover :deep(.arco-btn) {
+    opacity: 1;
+  }
 }
 
 .history-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: 2px 6px 8px;
+}
+
+.history-empty {
+  padding: 14px 10px;
+  font-size: 12px;
+  color: var(--color-text-3);
+  text-align: center;
 }
 
 .history-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
+  gap: 8px;
+  padding: 5px 6px;
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
   font-size: 12px;
+  transition: background-color 0.12s ease;
 
   &:hover {
-    background: var(--el-fill-color-light);
-  }
-
-  .m {
-    font-weight: 700;
-    width: 48px;
-  }
-
-  .m.get {
-    color: #49cc90;
-  }
-
-  .m.post {
-    color: #fca130;
-  }
-
-  .m.put {
-    color: #61affe;
-  }
-
-  .m.delete {
-    color: #f93e3e;
+    background: var(--ui-bg-hover);
   }
 
   .u {
     flex: 1;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .s.ok {
-    color: var(--el-color-success);
-  }
-
-  .s.err {
-    color: var(--el-color-danger);
+    color: var(--color-text-2);
   }
 }
 
@@ -828,8 +866,9 @@ function statusClass(code: number) {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 6px;
   min-width: 0;
-  background: var(--el-bg-color);
+  min-height: 0;
 }
 
 .tab-bar {
@@ -837,15 +876,18 @@ function statusClass(code: number) {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 4px 8px 0;
-  border-bottom: 1px solid var(--el-border-color);
-  background: var(--el-bg-color-page);
+  flex-shrink: 0;
+  height: 44px;
+  padding: 0 8px;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
 }
 
 .tabs-left {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   flex: 1;
   min-width: 0;
 }
@@ -855,8 +897,12 @@ function statusClass(code: number) {
   min-width: 0;
 
   :deep(.arco-tabs-nav) {
-    margin-bottom: 0;
-    border-bottom: none;
+    margin: 0;
+    border: none;
+  }
+
+  :deep(.arco-tabs-nav::before) {
+    display: none;
   }
 
   :deep(.arco-tabs-header) {
@@ -864,63 +910,52 @@ function statusClass(code: number) {
   }
 
   :deep(.arco-tabs-tab) {
-    max-width: 220px;
+    max-width: 200px;
+    height: 30px;
+    margin: 0 4px 0 0;
+    padding: 0 10px;
     border: none;
+    border-radius: var(--ui-radius-md);
     background: transparent;
-    border-radius: 6px;
-    margin-right: 4px;
-    transition: background 0.15s;
+    color: var(--color-text-2);
+    font-size: 12.5px;
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover {
-      background: var(--el-fill-color-light);
+      background: var(--ui-bg-hover);
+      color: var(--color-text-1);
     }
   }
 
   :deep(.arco-tabs-tab-active) {
-    background: var(--el-fill-color);
+    background: var(--ui-bg-active);
+    color: rgb(var(--primary-6));
     font-weight: 600;
+    box-shadow: inset 3px 0 0 rgb(var(--primary-6));
   }
 
-  .tab-method {
-    font-size: 10px;
-    font-weight: 700;
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: #fff;
-    margin-right: 4px;
+  :deep(.arco-tabs-close-icon) {
+    color: var(--color-text-3);
+  }
 
-    &.get {
-      background: #49cc90;
-    }
+  // 新增标签页 + 按钮
+  :deep(.arco-tabs-add) {
+    height: 26px;
+    width: 26px;
+    margin-left: 2px;
+    border-radius: var(--ui-radius-md);
+    color: var(--color-text-3);
 
-    &.post {
-      background: #fca130;
-    }
-
-    &.put {
-      background: #61affe;
-    }
-
-    &.delete {
-      background: #f93e3e;
-    }
-
-    &.patch {
-      background: #50e3c2;
-    }
-
-    &.ws {
-      background: #8e44ad;
-    }
-
-    &.mcp {
-      background: #e6a23c;
+    &:hover {
+      background: var(--ui-bg-hover);
+      color: var(--color-text-1);
     }
   }
 
   .tab-title-wrap {
     display: inline-flex;
     align-items: center;
+    gap: 6px;
     min-width: 0;
   }
 
@@ -929,27 +964,78 @@ function statusClass(code: number) {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  .tab-dirty {
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgb(var(--primary-6));
+  }
 }
 
 .tabs-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+
+  :deep(.arco-btn) {
+    height: 28px;
+    padding: 0 8px;
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-bg-subtle);
+    border: 1px solid var(--ui-border-soft);
+    color: var(--color-text-2);
+    font-size: 12px;
+
+    &:hover {
+      background: var(--ui-bg-hover);
+      border-color: var(--ui-border);
+      color: var(--color-text-1);
+    }
+  }
+
+  :deep(.arco-btn-icon-only) {
+    width: 28px;
+    padding: 0;
+  }
+
+  .tb-sep {
+    flex-shrink: 0;
+    width: 1px;
+    height: 16px;
+    background: var(--ui-border);
+  }
 
   .ph-count {
     margin-left: 4px;
     padding: 0 5px;
-    font-size: 11px;
-    line-height: 16px;
+    font-size: 10px;
+    line-height: 15px;
     border-radius: 8px;
-    background: rgba(255, 176, 32, 0.22);
-    color: #d48806;
+    background: rgba(var(--primary-6), 0.16);
+    color: rgb(var(--primary-6));
   }
 
   .svg-icon {
     width: 14px;
     height: 14px;
+  }
+
+  .user-chip .avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    border-radius: 50%;
+    background: rgb(var(--primary-6));
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
   }
 }
 
@@ -957,6 +1043,7 @@ function statusClass(code: number) {
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 6px;
   min-height: 0;
 }
 
@@ -971,6 +1058,10 @@ function statusClass(code: number) {
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  overflow: hidden;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
 }
 
 .empty {
@@ -978,31 +1069,59 @@ function statusClass(code: number) {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
 }
 
 /* 拖拽条 */
 .splitter {
   flex-shrink: 0;
   z-index: 5;
+  position: relative;
+}
+
+.splitter::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: var(--ui-border-strong);
+  opacity: 0;
+  transition: opacity 0.15s ease, width 0.15s ease, height 0.15s ease, background-color 0.15s ease;
 }
 
 .v-splitter {
-  width: 4px;
+  width: 6px;
   cursor: col-resize;
-  background: transparent;
 
-  &:hover {
-    background: var(--el-color-primary-light-5);
+  &::after {
+    width: 2px;
+    height: 28px;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    height: 44px;
+    background: rgb(var(--primary-6));
   }
 }
 
 .h-splitter {
-  height: 4px;
+  height: 6px;
   cursor: row-resize;
-  background: transparent;
 
-  &:hover {
-    background: var(--el-color-primary-light-5);
+  &::after {
+    width: 28px;
+    height: 2px;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    width: 44px;
+    background: rgb(var(--primary-6));
   }
 }
 
@@ -1016,28 +1135,28 @@ function statusClass(code: number) {
 .tab-ctx-menu {
   position: fixed;
   z-index: 1001;
-  min-width: 136px;
+  min-width: 140px;
   padding: 4px;
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color-light);
-  border-radius: 6px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-pop);
 
   .ctx-item {
-    padding: 6px 14px;
-    font-size: 13px;
-    color: var(--el-text-color-primary);
-    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    color: var(--color-text-1);
+    border-radius: var(--ui-radius-sm);
     cursor: pointer;
     white-space: nowrap;
     user-select: none;
 
     &:hover {
-      background: var(--el-fill-color-light);
+      background: var(--ui-bg-hover);
     }
 
     &.disabled {
-      color: var(--el-text-color-placeholder);
+      color: var(--color-text-4);
       cursor: not-allowed;
 
       &:hover {
@@ -1049,7 +1168,7 @@ function statusClass(code: number) {
   .ctx-divider {
     height: 1px;
     margin: 4px 6px;
-    background: var(--el-border-color-lighter);
+    background: var(--ui-border-soft);
   }
 }
 </style>

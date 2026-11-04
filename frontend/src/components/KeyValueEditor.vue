@@ -199,33 +199,48 @@ function remove(i: number) {
   }
 
   .kv-table {
-    border: 1px solid var(--el-border-color);
-    border-radius: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-bg-panel);
+    overflow: hidden;
   }
 
   .kv-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 4px 8px;
-    border-bottom: 1px solid var(--el-border-color);
+    min-height: 34px;
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--ui-border-soft);
+    transition: background-color 0.12s ease;
 
     &:last-child {
       border-bottom: none;
     }
 
+    &:not(.kv-head):hover {
+      background: var(--ui-bg-hover);
+    }
+
     &.kv-head {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--el-text-color-secondary);
-      padding-top: 6px;
-      padding-bottom: 6px;
+      min-height: 28px;
+      padding: 0 8px;
+      border-bottom: 1px solid var(--ui-border);
+      background: var(--ui-bg-subtle);
+      font-family: var(--ui-font-mono);
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-3);
     }
   }
 
   .kv-col-check {
     width: 20px;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
   }
 
   .kv-col-key,
@@ -234,14 +249,43 @@ function remove(i: number) {
     min-width: 0;
     display: flex;
     align-items: center;
+
+    /* 行内输入框默认熔入表格，hover / 聚焦才显形，减少视觉噪音 */
+    :deep(.arco-input-wrapper) {
+      background: transparent;
+      border-color: transparent;
+      border-radius: var(--ui-radius-sm);
+      font-family: var(--ui-font-mono);
+      font-size: 12px;
+      transition: background-color 0.12s ease, border-color 0.12s ease;
+
+      &:hover {
+        background: var(--ui-bg-panel);
+        border-color: var(--ui-border);
+      }
+    }
   }
 
   .kv-col-op {
-    width: 32px;
+    width: 26px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
+
+    :deep(.arco-btn) {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: var(--ui-radius-sm);
+      font-size: 12px;
+      opacity: 0.55;
+      transition: opacity 0.12s ease, background-color 0.12s ease;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
   }
 
   .kv-footer {
@@ -250,12 +294,26 @@ function remove(i: number) {
     align-items: center;
     justify-content: flex-end;
     gap: 8px;
+    padding-top: 2px;
+
+    :deep(.arco-btn) {
+      height: 24px;
+      padding: 0 8px;
+      border-radius: var(--ui-radius-sm);
+      color: var(--color-text-2);
+      font-size: 12px;
+
+      &:hover {
+        background: var(--ui-bg-hover);
+        color: rgb(var(--primary-6));
+      }
+    }
   }
 
   .kv-bulk-hint {
     margin-right: auto;
-    font-size: 12px;
-    color: var(--el-text-color-secondary);
+    color: var(--color-text-3);
+    font-size: 11.5px;
   }
 }
 </style>

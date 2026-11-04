@@ -165,50 +165,89 @@ function onClose() {
 
 <style lang="less" scoped>
 .collection-tag {
+  display: inline-block;
   margin-left: 8px;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
+  padding: 1px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-3);
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: middle;
 }
 
 .env-layout {
   display: flex;
   gap: 12px;
-  min-height: 360px;
+  min-height: 380px;
 }
 
 .env-list {
-  width: 220px;
+  width: 208px;
   flex-shrink: 0;
-  border-right: 1px solid var(--el-border-color);
-  padding-right: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 6px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
 }
 
 .env-list-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  height: 26px;
+  padding: 0 2px 4px 6px;
+
+  :deep(.arco-btn) {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: var(--ui-radius-sm);
+    color: var(--color-text-3);
+
+    &:hover {
+      background: var(--ui-bg-hover);
+      color: rgb(var(--primary-6));
+    }
+  }
 }
 
 .env-list-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--el-text-color-secondary);
+  font-family: var(--ui-font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--color-text-4);
 }
 
 .env-item {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
-  border-radius: 4px;
+  min-height: 28px;
+  padding: 3px 8px;
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12.5px;
+  color: var(--color-text-2);
+  transition: background-color 0.12s ease, color 0.12s ease;
 
-  &:hover { background: var(--el-fill-color-light); }
+  &:hover {
+    background: var(--ui-bg-hover);
+
+    .op {
+      visibility: visible;
+    }
+  }
+
   &.active {
-    background: var(--el-color-primary-light-9);
+    background: var(--ui-bg-panel);
+    box-shadow: inset 3px 0 0 rgb(var(--primary-6)), var(--ui-shadow-1);
+    color: rgb(var(--primary-6));
     font-weight: 600;
   }
 
@@ -221,12 +260,20 @@ function onClose() {
 
   .op {
     visibility: hidden;
+    flex-shrink: 0;
     cursor: pointer;
-    color: var(--el-text-color-secondary);
-    &:hover { color: var(--el-color-primary); }
-    &.danger:hover { color: var(--el-color-danger); }
+    font-size: 12px;
+    color: var(--color-text-4);
+    transition: color 0.12s ease;
+
+    &:hover {
+      color: rgb(var(--primary-6));
+    }
+
+    &.danger:hover {
+      color: var(--ui-accent-danger);
+    }
   }
-  &:hover .op { visibility: visible; }
 }
 
 .env-detail {
@@ -240,38 +287,112 @@ function onClose() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.detail-title { font-weight: 600; }
+.detail-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-1);
+}
 
 .var-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  font-size: 12px;
 
-  th, td {
-    border-bottom: 1px solid var(--el-border-color-lighter);
-    padding: 4px 6px;
+  th {
+    height: 28px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-subtle);
+    font-family: var(--ui-font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-3);
     text-align: left;
-    font-weight: 500;
   }
 
-  .col-on { width: 40px; }
-  .col-name { width: 26%; }
-  .col-value { width: 34%; }
-  .col-desc { width: 26%; }
-  .col-op { width: 40px; }
+  td {
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--ui-border-soft);
+    text-align: left;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover td {
+    background: var(--ui-bg-hover);
+  }
+
+  /* 行内输入默认熔入表格 */
+  :deep(.arco-input-wrapper) {
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--ui-radius-sm);
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+
+    &:hover {
+      background: var(--ui-bg-panel);
+      border-color: var(--ui-border);
+    }
+  }
+
+  .col-on {
+    width: 38px;
+  }
+  .col-name {
+    width: 24%;
+  }
+  .col-value {
+    width: 34%;
+  }
+  .col-desc {
+    width: 24%;
+  }
+  .col-op {
+    width: 36px;
+    text-align: center;
+
+    :deep(.arco-btn) {
+      width: 22px;
+      height: 22px;
+      padding: 0;
+      border-radius: var(--ui-radius-sm);
+      opacity: 0.55;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
 }
 
 .hint {
   margin-top: 12px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-3);
+  font-size: 11.5px;
+  line-height: 1.7;
+
   code {
-    background: var(--el-fill-color);
-    padding: 1px 4px;
-    border-radius: 3px;
+    padding: 1px 5px;
+    border-radius: var(--ui-radius-sm);
+    background: rgba(var(--primary-6), 0.12);
+    color: rgb(var(--primary-6));
+    font-family: var(--ui-font-mono);
+    font-size: 11px;
   }
 }
 

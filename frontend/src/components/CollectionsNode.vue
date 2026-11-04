@@ -5,7 +5,7 @@
       @dragleave="onDragLeave" @drop.prevent="onDrop">
       <icon-right v-if="node.type !== 'request' && !expanded.has(node.id)" class="twisty" @click.stop="onToggle" />
       <icon-down v-else-if="node.type !== 'request'" class="twisty" @click.stop="onToggle" />
-      <span v-else class="method-badge" :class="methodClass">
+      <span v-else class="method-pill" :class="'m-' + methodClass">
         {{ node.kind === 'websocket' ? 'WS' : node.kind === 'mcp' ? 'MCP' : (node.request?.method || 'GET') }}
       </span>
       <span class="node-name" :title="node.name">{{ node.name }}</span>
@@ -184,24 +184,33 @@ function onChildExpand(id: string) { emit('expand', id) }
   .node-line {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 6px;
-    border-radius: 4px;
+    gap: 6px;
+    min-height: 26px;
+    padding: 3px 6px;
+    border-radius: var(--ui-radius-sm);
     cursor: pointer;
-    font-size: 14px;
+    font-size: 12.5px;
+    color: var(--color-text-1);
+    transition: background-color 0.12s ease, color 0.12s ease;
 
     &:hover {
-      background: var(--el-fill-color-light);
+      background: var(--ui-bg-hover);
     }
 
-    &.active .node-name {
-      font-weight: 600;
+    &.active {
+      background: var(--ui-bg-active);
+      box-shadow: inset 3px 0 0 rgb(var(--primary-6));
+
+      .node-name {
+        font-weight: 600;
+        color: rgb(var(--primary-6));
+      }
     }
 
     // 拖拽悬停的合法放置目标
     &.drop-target {
-      background: var(--el-color-primary-light-8);
-      box-shadow: inset 0 0 0 1.5px var(--el-color-primary);
+      background: var(--ui-bg-active);
+      box-shadow: inset 0 0 0 1.5px rgb(var(--primary-6));
     }
 
     &:hover .node-actions {
@@ -211,11 +220,12 @@ function onChildExpand(id: string) { emit('expand', id) }
 
   .twisty {
     width: 14px;
-    color: var(--el-text-color-secondary);
+    flex-shrink: 0;
+    color: var(--color-text-3);
   }
 
   .node-icon {
-    color: var(--el-color-warning);
+    color: var(--ui-method-mcp);
   }
 
   .node-name {
@@ -230,49 +240,20 @@ function onChildExpand(id: string) { emit('expand', id) }
     // getBoundingClientRect 稳定，避免弹出层定位到左上角 (0,0)。
     visibility: hidden;
     align-items: center;
-    gap: 2px;
+    gap: 0;
     display: inline-flex;
 
     .arco-btn {
-      color: var(--el-text-color-secondary);
-    }
-  }
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      font-size: 12px;
+      color: var(--color-text-3);
 
-  .method-badge {
-    font-size: 10px;
-    font-weight: 700;
-    min-width: 34px;
-    text-align: center;
-    padding: 1px 4px;
-    border-radius: 3px;
-    color: #fff;
-
-    &.get {
-      background: #49cc90;
-    }
-
-    &.post {
-      background: #fca130;
-    }
-
-    &.put {
-      background: #61affe;
-    }
-
-    &.delete {
-      background: #f93e3e;
-    }
-
-    &.patch {
-      background: #50e3c2;
-    }
-
-    &.ws {
-      background: #8e44ad;
-    }
-
-    &.mcp {
-      background: #e6a23c;
+      &:hover {
+        background: var(--ui-bg-hover);
+        color: var(--color-text-1);
+      }
     }
   }
 }

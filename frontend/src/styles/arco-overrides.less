@@ -1,0 +1,220 @@
+// Arco Design Vue 全局精修
+// 说明：弹窗 / 下拉 / 消息等通过 Teleport 挂载到 body，必须使用全局选择器；
+// 本文件由 main.less 引入，位置在 arco.css 之后，同权重下可覆盖。
+
+// ---- 深色底板微调：与 tokens 中的「画布 / 卡片 / 次级底」对齐 ----
+// 浅色下保持 Arco 默认的白色面板，仅由 main.less 提供画布底色。
+body[arco-theme='light'] {
+  --color-border-1: #eef0f4;
+  --color-border-2: #e6e8ee;
+  --color-border-3: #d5d9e3;
+}
+
+body[arco-theme='dark'] {
+  --color-bg-1: #0e1117;
+  --color-bg-2: #161a22;
+  --color-bg-3: #1d222c;
+  --color-bg-4: #242a35;
+  --color-bg-5: #2b323f;
+  --color-bg-white: #161a22;
+  --color-border: #262b35;
+  --color-border-1: #1d222c;
+  --color-border-2: #262b35;
+  --color-border-3: #333944;
+  --color-border-4: #414856;
+  --color-fill-1: #1a1f27;
+  --color-fill-2: #1d222c;
+  --color-fill-3: #242a35;
+  --color-fill-4: #2b323f;
+  --color-mask-bg: rgba(0, 0, 0, 0.62);
+}
+
+// ---- 按钮 ----
+.arco-btn {
+  border-radius: var(--ui-radius-md);
+  font-weight: 500;
+}
+
+.arco-btn-primary:not(.arco-btn-disabled) {
+  box-shadow: 0 1px 2px rgba(var(--primary-6), 0.35);
+}
+
+.arco-btn-size-small {
+  border-radius: var(--ui-radius-sm);
+}
+
+.arco-btn-text:not(.arco-btn-disabled):hover {
+  background-color: var(--ui-bg-hover);
+}
+
+// ---- 输入 / 选择器 ----
+.arco-input-wrapper,
+.arco-textarea-wrapper,
+.arco-input-number,
+.arco-select-view {
+  border-radius: var(--ui-radius-md);
+}
+
+.arco-input-wrapper.arco-input-wrapper-focus,
+.arco-textarea-wrapper.arco-textarea-wrapper-focus,
+.arco-select-view.arco-select-view-focus,
+.arco-input-number:focus-within {
+  box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+}
+
+// 大号输入（URL 栏）由组件内部自行控制边框，这里只补圆角与焦点环
+.arco-select-view {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+// ---- 分段控件（radio type="button"） ----
+.arco-radio-group-button {
+  padding: 2px;
+  gap: 2px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border-soft);
+
+  .arco-radio-button {
+    border-radius: var(--ui-radius-sm);
+    background: transparent;
+    color: var(--color-text-2);
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+
+    &::before {
+      display: none;
+    }
+
+    &:hover {
+      color: var(--color-text-1);
+      background: var(--ui-bg-hover);
+    }
+  }
+
+  .arco-radio-button.arco-radio-checked {
+    background: var(--ui-bg-panel);
+    color: rgb(var(--primary-6));
+    font-weight: 600;
+    box-shadow: var(--ui-shadow-1);
+  }
+}
+
+// ---- 标签 ----
+.arco-tag {
+  border-radius: var(--ui-radius-sm);
+  font-weight: 500;
+}
+
+// ---- 弹窗 ----
+.arco-modal {
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-2);
+  border: 1px solid var(--ui-border);
+  overflow: hidden;
+}
+
+.arco-modal-header {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--ui-border-soft);
+
+  .arco-modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text-1);
+  }
+}
+
+.arco-modal-body {
+  padding: 18px 20px;
+}
+
+.arco-modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--ui-border-soft);
+
+  .arco-btn {
+    min-width: 68px;
+  }
+}
+
+// 确认框（MessageBox）的小尺寸头部
+.arco-modal-simple {
+  padding: 20px 20px 16px;
+}
+
+// ---- 下拉 / 选择弹层 ----
+.arco-dropdown,
+.arco-select-dropdown,
+.arco-dropdown-menu {
+  border-radius: var(--ui-radius-md);
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-shadow-pop);
+}
+
+.arco-dropdown-option,
+.arco-select-option {
+  border-radius: var(--ui-radius-sm);
+}
+
+.arco-dropdown-menu .arco-dropdown-option {
+  margin: 2px 4px;
+}
+
+// ---- 表格 ----
+.arco-table-th {
+  background-color: var(--ui-bg-subtle);
+
+  .arco-table-th-item-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--color-text-3);
+  }
+}
+
+.arco-table-td {
+  font-size: 12.5px;
+}
+
+.arco-table-tr:not(.arco-table-tr-empty):hover .arco-table-td {
+  background-color: var(--ui-bg-hover);
+}
+
+.arco-table-border .arco-table-td,
+.arco-table-border .arco-table-th {
+  border-color: var(--ui-border-soft);
+}
+
+// ---- 折叠面板 ----
+.arco-collapse {
+  border-radius: var(--ui-radius-md);
+  border-color: var(--ui-border-soft);
+}
+
+// ---- 空状态 ----
+.arco-empty {
+  .arco-empty-description {
+    font-size: 12px;
+    color: var(--color-text-3);
+  }
+}
+
+// ---- 提示 / 消息 ----
+.arco-tooltip-content {
+  border-radius: var(--ui-radius-md);
+  font-size: 12px;
+  box-shadow: var(--ui-shadow-pop);
+}
+
+.arco-message {
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-pop);
+}
+
+// ---- 拖拽把手等自定义交互元素统一过渡 ----
+.arco-tabs-tab {
+  transition: color 0.15s ease, background-color 0.15s ease;
+}

@@ -210,22 +210,69 @@ watch(
   .body-extra {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    padding-right: 2px;
   }
 
   .body-type-btn {
+    height: 26px;
+    padding: 0 8px;
+    border-radius: var(--ui-radius-sm);
+    color: var(--color-text-2);
+    font-size: 12px;
     font-weight: 600;
+
+    &:hover {
+      background: var(--ui-bg-hover);
+    }
   }
 
   .req-tabs {
     flex: 1;
     min-height: 0;
-    padding: 0 8px;
     display: flex;
     flex-direction: column;
 
     :deep(.arco-tabs-nav) {
       flex-shrink: 0;
+      height: 38px;
+      padding: 0 10px;
+      border-bottom: 1px solid var(--ui-border-soft);
+
+      &::before {
+        display: none;
+      }
+    }
+
+    :deep(.arco-tabs-nav-extra) {
+      height: 38px;
+    }
+
+    :deep(.arco-tabs-tab) {
+      height: 26px;
+      margin: 0 2px 0 0;
+      padding: 0 10px;
+      border: none;
+      border-radius: var(--ui-radius-sm);
+      background: transparent;
+      color: var(--color-text-3);
+      font-size: 12.5px;
+      transition: color 0.15s ease, background-color 0.15s ease;
+
+      &:hover {
+        color: var(--color-text-1);
+        background: var(--ui-bg-hover);
+      }
+    }
+
+    :deep(.arco-tabs-tab-active) {
+      background: var(--ui-bg-active);
+      color: rgb(var(--primary-6));
+      font-weight: 600;
+    }
+
+    :deep(.arco-tabs-ink-bar) {
+      display: none;
     }
 
     :deep(.arco-tabs-content) {
@@ -261,26 +308,34 @@ watch(
 }
 
 .selected-opt-span {
+  float: right;
   margin-left: 16px;
+  color: rgb(var(--primary-6));
 }
 
 .tab-dot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-left: 4px;
+  width: 5px;
+  height: 5px;
+  margin-left: 5px;
   border-radius: 50%;
   background: rgb(var(--primary-6));
   vertical-align: middle;
 }
 
 .tab-count {
-  margin-left: 4px;
-  padding: 0 5px;
-  font-size: 11px;
-  line-height: 16px;
-  border-radius: 8px;
-  background: rgba(255, 176, 32, 0.22);
-  color: #d48806;
+  display: inline-block;
+  min-width: 15px;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--ui-accent-warm-bg, rgba(212, 136, 6, 0.16));
+  color: var(--ui-accent-warm);
+  font-family: var(--ui-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  vertical-align: middle;
 }
 </style>

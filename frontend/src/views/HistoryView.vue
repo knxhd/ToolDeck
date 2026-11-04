@@ -7,9 +7,19 @@
         </div>
         <a-table :data="httpStore.history" :pagination="false" :scroll="{ y: 480 }" size="small">
           <template #columns>
-            <a-table-column data-index="method" title="方法" :width="80" />
+            <a-table-column data-index="method" title="方法" :width="88">
+              <template #cell="{ record }">
+                <span class="method-pill" :class="'m-' + String(record.method).toLowerCase()">{{ record.method }}</span>
+              </template>
+            </a-table-column>
             <a-table-column data-index="url" title="URL" ellipsis tooltip />
-            <a-table-column data-index="status_code" title="状态" :width="70" />
+            <a-table-column data-index="status_code" title="状态" :width="84">
+              <template #cell="{ record }">
+                <span class="status-pill" :class="statusClass(record.status_code)">
+                  {{ record.status_code || '—' }}
+                </span>
+              </template>
+            </a-table-column>
             <a-table-column data-index="elapsed_ms" title="耗时(ms)" :width="90" />
             <a-table-column data-index="timestamp" title="时间" :width="180" />
             <a-table-column title="操作" :width="80">
@@ -112,6 +122,14 @@ function showDetail(row: unknown) {
   detailVisible.value = true
 }
 
+function statusClass(code?: number) {
+  if (!code) return ''
+  if (code < 300) return 's2'
+  if (code < 400) return 's3'
+  if (code < 500) return 's4'
+  return 's5'
+}
+
 async function clearHttp() {
   const ok = await confirmDialog('确认', '清空所有 HTTP 历史？')
   if (!ok) return
@@ -120,7 +138,95 @@ async function clearHttp() {
 </script>
 
 <style lang="less" scoped>
-.history-view { padding: 12px; height: 100%; overflow: auto; background: var(--el-bg-color); }
-.history-toolbar { margin-bottom: 8px; }
-.cell-json { margin: 0; white-space: pre-wrap; word-break: break-all; font-size: 12px; max-height: 60px; overflow: hidden; }
+.history-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 6px;
+  background: var(--ui-bg-canvas);
+  overflow: hidden;
+
+  :deep(.arco-tabs) {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 2px 12px 10px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-lg);
+    background: var(--ui-bg-panel);
+    overflow: hidden;
+  }
+
+  :deep(.arco-tabs-nav) {
+    flex-shrink: 0;
+    height: 42px;
+
+    &::before {
+      display: none;
+    }
+  }
+
+  :deep(.arco-tabs-tab) {
+    height: 26px;
+    margin: 0 2px 0 0;
+    padding: 0 10px;
+    border: none;
+    border-radius: var(--ui-radius-sm);
+    color: var(--color-text-3);
+    font-size: 12.5px;
+
+    &:hover {
+      color: var(--color-text-1);
+      background: var(--ui-bg-hover);
+    }
+  }
+
+  :deep(.arco-tabs-tab-active) {
+    background: var(--ui-bg-active);
+    color: rgb(var(--primary-6));
+    font-weight: 600;
+  }
+
+  :deep(.arco-tabs-ink-bar) {
+    display: none;
+  }
+
+  :deep(.arco-tabs-content) {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  :deep(.arco-tabs-content-item-active) {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+}
+
+.history-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 40px;
+
+  :deep(.arco-btn) {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: var(--ui-radius-sm);
+    font-size: 12px;
+  }
+}
+
+.cell-json {
+  margin: 0;
+  max-height: 60px;
+  overflow: hidden;
+  font-family: var(--ui-font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
 </style>

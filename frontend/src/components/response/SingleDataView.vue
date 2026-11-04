@@ -53,9 +53,18 @@ const rendered = (raw: string) => {
 .body-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 2px 0 6px;
+  gap: 8px;
   flex-shrink: 0;
+  height: 30px;
+  padding: 0 0 6px;
+
+  :deep(.arco-select-view) {
+    height: 24px;
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-bg-subtle);
+    font-family: var(--ui-font-mono);
+    font-size: 11.5px;
+  }
 }
 
 .body-view {
@@ -64,12 +73,13 @@ const rendered = (raw: string) => {
   display: flex;
   flex-direction: column;
   overflow: auto;
+  border-radius: var(--ui-radius-md);
 
   .html-frame {
     width: 100%;
     height: 100%;
-    border: 1px solid var(--el-border-color);
-    border-radius: 4px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
     background: #fff;
   }
 }

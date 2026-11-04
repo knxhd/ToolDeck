@@ -1,6 +1,8 @@
-/** 全局设置：字体、字号、明暗主题、Tab数量，持久化到 localStorage。 */
+/** 全局设置：字体、字号、明暗主题、主题配色、Tab数量，持久化到 localStorage。 */
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+
+import { applyAccent } from '@/utils/theme'
 
 const KEY = 'api-tool-settings'
 
@@ -21,6 +23,8 @@ interface Settings {
   fontFamily: string
   fontSize: number
   dark: boolean
+  /** 主题配色预设 id（见 utils/theme 的 ACCENT_PRESETS）。 */
+  accent: string
   /** 工作台最多同时打开的标签页数，超出时自动关闭最早的标签。 */
   maxTabs: number
 }
@@ -29,6 +33,7 @@ const DEFAULTS: Settings = {
   fontFamily: FONT_OPTIONS[0].value,
   fontSize: 14,
   dark: false,
+  accent: 'indigo',
   maxTabs: 10,
 }
 
@@ -54,6 +59,8 @@ export const useSettingsStore = defineStore('settings', () => {
     root.style.setProperty('--app-font-size', settings.value.fontSize + 'px')
     // Arco Design Vue 深色模式：body[arco-theme='dark']
     document.body.setAttribute('arco-theme', settings.value.dark ? 'dark' : 'light')
+    // 主色阶跟随所选配色（明暗两套色阶由基色推导）
+    applyAccent(settings.value.accent, settings.value.dark)
   }
 
   function persist() {

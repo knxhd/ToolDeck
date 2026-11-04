@@ -73,13 +73,62 @@ onBeforeUnmount(() => ws.value?.close())
 </script>
 
 <style lang="less" scoped>
-.ws-pane { display: flex; flex-direction: column; height: 100%; padding: 8px; gap: 8px; }
-.ws-bar { display: flex; gap: 8px; }
-.ws-log { flex: 1; overflow-y: auto; border: 1px solid var(--el-border-color); border-radius: 4px; padding: 8px; font-family: monospace; font-size: 12px; }
-.ws-msg { display: flex; gap: 8px; padding: 2px 0; }
-.ws-time { color: var(--el-text-color-placeholder); }
-.ws-msg.in .ws-text { color: var(--el-color-success); }
-.ws-msg.out .ws-text { color: var(--el-color-primary); }
-.ws-msg.sys .ws-text { color: var(--el-text-color-secondary); }
-.ws-input { display: flex; gap: 8px; align-items: flex-end; }
+.ws-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+  padding: 10px;
+}
+
+.ws-bar {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ws-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  font-family: var(--ui-font-mono);
+  font-size: 11.5px;
+  line-height: 1.7;
+}
+
+.ws-msg {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.ws-time {
+  flex-shrink: 0;
+  color: var(--color-text-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-msg.in .ws-text {
+  color: var(--ui-accent-ok);
+}
+
+.ws-msg.out .ws-text {
+  color: rgb(var(--primary-6));
+}
+
+.ws-msg.sys .ws-text {
+  color: var(--color-text-3);
+}
+
+.ws-input {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
 </style>

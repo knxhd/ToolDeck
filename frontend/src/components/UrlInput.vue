@@ -356,23 +356,17 @@ async function copyValue() {
   min-width: 0;
   display: flex;
   align-items: center;
-  border: 1px solid var(--el-border-color);
-  border-radius: 2px;
-  background: var(--el-bg-color);
-  transition: border-color 0.1s;
-  height: 32px;
-
-  &:focus-within {
-    border-color: rgb(var(--primary-6));
-    box-shadow: 0 0 0 2px rgb(var(--primary-1));
-  }
+  height: 100%;
+  background: transparent;
 }
 
 /* 高亮层与输入框共用同样的字体/内边距/换行，保证文字对齐 */
 .highlight-layer,
 .real-input {
-  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  padding: 4px 32px 4px 11px;
+  font-family: var(--ui-font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 4px 30px 4px 2px;
   white-space: nowrap;
   letter-spacing: normal;
   word-spacing: normal;
@@ -385,7 +379,7 @@ async function copyValue() {
   overflow-x: auto;
   overflow-y: hidden;
   pointer-events: none;
-  color: var(--el-text-color-primary);
+  color: var(--color-text-1);
   scrollbar-width: none;
   z-index: 1;
 
@@ -400,10 +394,10 @@ async function copyValue() {
 
 .hl-placeholder {
   position: absolute;
-  left: 11px;
+  left: 2px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--el-text-color-placeholder);
+  color: var(--color-text-4);
   pointer-events: none;
 }
 
@@ -415,7 +409,7 @@ async function copyValue() {
   border: none;
   outline: none;
   color: transparent;
-  caret-color: var(--el-text-color-primary);
+  caret-color: rgb(var(--primary-6));
   overflow-x: auto;
   overflow-y: hidden;
   margin: 0;
@@ -424,8 +418,8 @@ async function copyValue() {
 
 /* 占位符高亮色：琥珀色 pill，和普通 URL 文字区分 */
 .hl-text :deep(.env-var) {
-  background: rgba(255, 176, 32, 0.22);
-  color: #d48806;
+  background: rgba(212, 136, 6, 0.16);
+  color: var(--ui-accent-warm);
   border-radius: 3px;
   padding: 0 2px;
   margin: 0 -2px;
@@ -433,12 +427,12 @@ async function copyValue() {
   cursor: default;
 
   &.missing {
-    background: rgba(245, 63, 63, 0.18);
-    color: #f53f3f;
+    background: rgba(220, 70, 64, 0.16);
+    color: var(--ui-accent-danger);
   }
 
   &.builtin {
-    background: rgba(22, 93, 255, 0.14);
+    background: rgba(var(--primary-6), 0.16);
     color: rgb(var(--primary-6));
   }
 }
@@ -449,27 +443,27 @@ async function copyValue() {
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
-  color: var(--el-text-color-secondary);
+  color: var(--color-text-3);
   font-size: 14px;
   padding: 0 4px;
   z-index: 2;
 
   &:hover {
-    color: var(--el-text-color-primary);
+    color: var(--color-text-1);
   }
 }
 
 .var-tip {
   position: absolute;
   z-index: 1000;
-  background: var(--el-bg-color-overlay, var(--el-bg-color));
-  color: var(--el-text-color-primary);
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
+  background: var(--ui-bg-panel);
+  color: var(--color-text-1);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
   padding: 8px 10px;
   font-size: 12px;
   min-width: 220px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--ui-shadow-pop);
   pointer-events: auto;
 }
 
@@ -482,20 +476,20 @@ async function copyValue() {
 
 .var-tip-name {
   font-weight: 600;
-  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
-  color: #d48806;
+  font-family: var(--ui-font-mono);
+  color: var(--ui-accent-warm);
 }
 
 .var-tip-badge {
   font-size: 11px;
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
+  color: rgb(var(--primary-6));
+  background: rgba(var(--primary-6), 0.14);
   border-radius: 3px;
   padding: 1px 6px;
 }
 
 .var-tip-value {
-  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  font-family: var(--ui-font-mono);
   word-break: break-all;
   white-space: pre-wrap;
   max-width: 480px;
@@ -504,9 +498,9 @@ async function copyValue() {
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  background: var(--el-fill-color-light);
+  background: var(--ui-bg-subtle);
   padding: 4px 6px;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
 }
 
 .var-tip-value-text {
@@ -519,24 +513,24 @@ async function copyValue() {
   cursor: pointer;
   border: none;
   background: transparent;
-  color: var(--el-text-color-secondary);
+  color: var(--color-text-3);
   padding: 0;
   font-size: 13px;
 
   &:hover {
-    color: var(--el-color-primary);
+    color: rgb(var(--primary-6));
   }
 }
 
 .var-tip-missing {
   margin-top: 6px;
-  color: var(--el-color-danger);
+  color: var(--ui-accent-danger);
   font-size: 11px;
 }
 
 .var-tip-desc {
   margin-top: 6px;
-  color: var(--el-text-color-secondary);
+  color: var(--color-text-3);
   font-size: 11px;
 }
 
@@ -548,11 +542,12 @@ async function copyValue() {
   min-width: 220px;
   max-height: 240px;
   overflow-y: auto;
-  background: var(--el-bg-color-overlay);
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-pop);
   z-index: 1100;
+  padding: 4px;
   font-size: 13px;
 }
 
@@ -561,20 +556,21 @@ async function copyValue() {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 6px 10px;
+  padding: 6px 8px;
+  border-radius: var(--ui-radius-sm);
   cursor: pointer;
-  font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+  font-family: var(--ui-font-mono);
 
   .ac-desc {
     font-family: var(--app-font-family);
     font-size: 12px;
-    color: var(--el-text-color-secondary);
+    color: var(--color-text-3);
     white-space: nowrap;
   }
 
   &:hover,
   &.active {
-    background: var(--el-color-primary-light-9);
+    background: var(--ui-bg-active);
   }
 }
 </style>

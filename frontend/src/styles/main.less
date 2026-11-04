@@ -2,8 +2,11 @@
 // Arco Design Vue 主题变量兼容层：将旧 Element Plus 变量映射到 Arco 变量，
 // 使组件内的 var(--el-*) 自动跟随明暗主题。
 
+@import './tokens.less';
+@import './arco-overrides.less';
+
 :root {
-  --app-bg: #f5f7fa;
+  --app-bg: #f4f5f8;
   --app-font-family:
     system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -66,8 +69,17 @@ body,
   padding: 0;
   font-family: var(--app-font-family);
   font-size: var(--app-font-size);
-  background-color: var(--el-bg-color-page, var(--app-bg));
+  background-color: var(--ui-bg-canvas);
   color: var(--color-text-1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// 光标移出浏览器窗口时子元素 hover 会「粘住」，用 aria-busy 期间的过渡规避闪跳
+button,
+[role='button'] {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 * {
@@ -75,16 +87,83 @@ body,
 }
 
 // 滚动条美化（跟随主题）
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-border-strong) transparent;
+}
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-fill-3);
-  border-radius: 4px;
+  background: var(--ui-border-strong);
+  border-radius: 3px;
+
+  &:hover {
+    background: var(--color-text-4);
+  }
 }
 ::-webkit-scrollbar-track {
   background: transparent;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+// 键盘焦点环（鼠标点击不显示，保持界面干净）
+a:focus-visible,
+[tabindex]:not(.arco-input):focus-visible {
+  outline: 2px solid rgb(var(--primary-5));
+  outline-offset: 1px;
+  border-radius: var(--ui-radius-sm);
+}
+
+::selection {
+  background: rgba(var(--primary-6), 0.24);
+}
+
+// 自定义空状态：圆角柔底图标 + 标题 + 说明
+.ui-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--color-text-3);
+
+  .ui-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: var(--ui-bg-subtle);
+    border: 1px solid var(--ui-border-soft);
+    font-size: 22px;
+    color: rgb(var(--primary-5));
+  }
+
+  .ui-empty-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-2);
+  }
+
+  .ui-empty-desc {
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--color-text-3);
+    max-width: 320px;
+  }
+
+  .ui-empty-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 2px;
+  }
 }
 
 .custom-arco-design {

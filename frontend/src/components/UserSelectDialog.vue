@@ -38,6 +38,8 @@
           {{ mode === 'login' ? '注册' : '去登录' }}
         </a-link>
       </div>
+
+      <div class="auth-foot">数据存储于本地，不出内网</div>
     </div>
   </div>
 </template>
@@ -108,59 +110,128 @@ async function onSubmit() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-fill-2, rgba(0, 0, 0, 0.6));
-  backdrop-filter: blur(4px);
+  overflow: hidden;
+  background: var(--ui-bg-canvas);
+
+  /* 主色束光：用当前主题色渲染氛围，不影响内容可读性 */
+  &::before {
+    content: '';
+    position: absolute;
+    width: 780px;
+    height: 780px;
+    top: -320px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(var(--primary-6), 0.22) 0%, transparent 62%);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(var(--ui-border-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--ui-border-soft) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(circle at 50% 34%, #000 0%, transparent 72%);
+    opacity: 0.5;
+    pointer-events: none;
+  }
 }
+
 .auth-card {
-  width: 380px;
-  padding: 36px 32px 24px;
-  background: var(--color-bg-2, #1f1f1f);
-  border: 1px solid var(--color-border-2, #333);
-  border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 1;
+  width: 392px;
+  padding: 40px 34px 22px;
+  border: 1px solid var(--ui-border);
+  border-radius: 14px;
+  background: var(--ui-bg-panel);
+  box-shadow: var(--ui-shadow-2), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
   text-align: center;
 }
+
 .auth-logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 12px;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 14px;
-  background: var(--color-primary-light-1, #165dff);
+  background: linear-gradient(140deg, rgb(var(--primary-5)), rgb(var(--primary-8)));
   color: #fff;
+  box-shadow: 0 6px 18px rgba(var(--primary-6), 0.4);
 }
+
 .auth-title {
   margin: 0;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--color-text-1);
 }
+
 .auth-sub {
-  margin: 6px 0 20px;
-  font-size: 13px;
+  margin: 6px 0 22px;
+  font-size: 12.5px;
   color: var(--color-text-3);
 }
-.auth-card :deep(.arco-form-item) {
-  margin-bottom: 12px;
-}
+
 .field {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+
+  :deep(.arco-input-wrapper) {
+    height: 38px;
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-bg-subtle);
+    font-size: 13px;
+
+    &:hover {
+      background: var(--ui-bg-panel);
+    }
+  }
 }
+
 .auth-error {
-  color: rgb(var(--danger-6));
-  font-size: 12px;
-  text-align: left;
-  margin-bottom: 8px;
   min-height: 16px;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent-danger-bg);
+  color: var(--ui-accent-danger);
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: left;
 }
+
 .submit-btn {
+  height: 38px;
   margin-top: 4px;
+  border-radius: var(--ui-radius-md);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
+
 .auth-switch {
   margin-top: 16px;
-  font-size: 13px;
+  font-size: 12.5px;
   color: var(--color-text-3);
+
+  :deep(.arco-link) {
+    font-size: 12.5px;
+    font-weight: 500;
+  }
+}
+
+.auth-foot {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ui-border-soft);
+  color: var(--color-text-4);
+  font-size: 11px;
+  letter-spacing: 0.02em;
 }
 </style>

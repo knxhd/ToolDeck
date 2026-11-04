@@ -159,33 +159,48 @@ async function onBrowserFileChosen(e: Event) {
 }
 
 .fd-table {
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-panel);
+  overflow: hidden;
 }
 
 .fd-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--el-border-color);
+  min-height: 34px;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--ui-border-soft);
+  transition: background-color 0.12s ease;
 
   &:last-child {
     border-bottom: none;
   }
 
+  &:not(.fd-head):hover {
+    background: var(--ui-bg-hover);
+  }
+
   &.fd-head {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--el-text-color-secondary);
-    padding-top: 6px;
-    padding-bottom: 6px;
+    min-height: 28px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--ui-border);
+    background: var(--ui-bg-subtle);
+    font-family: var(--ui-font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-3);
   }
 }
 
 .fd-col-check {
   width: 20px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .fd-col-key {
@@ -200,19 +215,39 @@ async function onBrowserFileChosen(e: Event) {
   align-items: center;
 }
 
+.fd-col-key,
+.fd-col-value {
+  :deep(.arco-input-wrapper) {
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--ui-radius-sm);
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+
+    &:hover {
+      background: var(--ui-bg-panel);
+      border-color: var(--ui-border);
+    }
+  }
+}
+
 .fd-file-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   max-width: 100%;
-  padding: 2px 8px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
-  background: var(--el-fill-color-light);
-  font-size: 13px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(var(--primary-6), 0.32);
+  border-radius: var(--ui-radius-sm);
+  background: rgba(var(--primary-6), 0.1);
+  color: rgb(var(--primary-6));
+  font-family: var(--ui-font-mono);
+  font-size: 12px;
 
   .fd-file-icon {
-    color: var(--el-text-color-secondary);
+    flex-shrink: 0;
   }
 
   .fd-file-name {
@@ -222,18 +257,36 @@ async function onBrowserFileChosen(e: Event) {
   }
 
   .fd-file-clear {
+    flex-shrink: 0;
     cursor: pointer;
-    color: var(--el-text-color-secondary);
-    &:hover { color: var(--el-color-danger); }
+    color: var(--color-text-3);
+
+    &:hover {
+      color: var(--ui-accent-danger);
+    }
   }
 }
 
 .fd-col-op {
-  width: 32px;
+  width: 26px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+
+  :deep(.arco-btn) {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: var(--ui-radius-sm);
+    font-size: 12px;
+    opacity: 0.55;
+    transition: opacity 0.12s ease;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
 }
 
 .fd-hidden-input {
@@ -242,10 +295,17 @@ async function onBrowserFileChosen(e: Event) {
 
 .fd-suffix-icon {
   cursor: pointer;
-  color: var(--el-text-color-secondary);
-  font-size: 14px;
+  color: var(--color-text-4);
+  font-size: 13px;
+  transition: color 0.12s ease;
 
-  &:hover { color: var(--el-color-primary); }
-  &.loading { opacity: 0.6; pointer-events: none; }
+  &:hover {
+    color: rgb(var(--primary-6));
+  }
+
+  &.loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
 }
 </style>

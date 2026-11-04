@@ -223,25 +223,44 @@ async function copyRef() {
 }
 
 .ph-list {
-  width: 200px;
+  width: 208px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
   min-height: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-panel);
+  overflow: hidden;
 
   .ph-list-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 4px 4px 10px;
-    border-bottom: 1px solid var(--el-border-color);
+    flex-shrink: 0;
+    height: 32px;
+    padding: 0 4px 0 10px;
+    border-bottom: 1px solid var(--ui-border-soft);
+    background: var(--ui-bg-subtle);
+
+    :deep(.arco-btn) {
+      height: 22px;
+      padding: 0 6px;
+      border-radius: var(--ui-radius-sm);
+      color: var(--color-text-2);
+      font-size: 11.5px;
+
+      &:hover {
+        background: var(--ui-bg-hover);
+        color: rgb(var(--primary-6));
+      }
+    }
   }
 
   .ph-list-title {
+    font-size: 12px;
     font-weight: 600;
-    font-size: 13px;
+    color: var(--color-text-2);
   }
 
   .ph-items {
@@ -255,13 +274,16 @@ async function copyRef() {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 6px;
-    border-radius: 4px;
+    min-height: 26px;
+    padding: 3px 6px;
+    border-radius: var(--ui-radius-sm);
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
+    color: var(--color-text-2);
+    transition: background-color 0.12s ease, color 0.12s ease;
 
     &:hover {
-      background: var(--color-fill-2);
+      background: var(--ui-bg-hover);
 
       .ph-del {
         visibility: visible;
@@ -269,8 +291,13 @@ async function copyRef() {
     }
 
     &.active {
-      background: rgb(var(--primary-1));
-      color: rgb(var(--primary-6));
+      background: var(--ui-bg-active);
+      box-shadow: inset 3px 0 0 rgb(var(--primary-6));
+
+      .ph-name {
+        color: rgb(var(--primary-6));
+        font-weight: 600;
+      }
     }
 
     &.disabled .ph-name {
@@ -285,31 +312,36 @@ async function copyRef() {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
+    font-family: var(--ui-font-mono);
 
     &.invalid {
-      color: rgb(var(--danger-6));
+      color: var(--ui-accent-danger);
     }
   }
 
   .ph-len {
-    font-size: 11px;
-    color: var(--color-text-3);
+    flex-shrink: 0;
+    font-family: var(--ui-font-mono);
+    font-size: 10.5px;
+    color: var(--color-text-4);
+    font-variant-numeric: tabular-nums;
   }
 
   .ph-del {
     visibility: hidden;
-    color: var(--color-text-3);
+    flex-shrink: 0;
+    color: var(--color-text-4);
+    transition: color 0.12s ease;
 
     &:hover {
-      color: rgb(var(--danger-6));
+      color: var(--ui-accent-danger);
     }
   }
 
   .ph-empty {
-    padding: 24px 8px;
+    padding: 22px 8px;
     text-align: center;
-    color: var(--color-text-3);
+    color: var(--color-text-4);
     font-size: 12px;
     line-height: 1.8;
   }
@@ -317,22 +349,27 @@ async function copyRef() {
   .ph-group-title {
     margin: 8px 2px 4px;
     padding-top: 6px;
-    border-top: 1px dashed var(--el-border-color);
-    font-size: 12px;
-    color: var(--color-text-3);
+    border-top: 1px dashed var(--ui-border);
+    font-family: var(--ui-font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-4);
   }
 
   .ph-builtin-icon {
     flex-shrink: 0;
-    color: rgb(var(--warning-6));
+    font-size: 12px;
+    color: var(--ui-accent-warm);
   }
 }
 
 .ph-builtin-detail {
   .ph-builtin-name {
-    font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
-    font-size: 14px;
+    font-family: var(--ui-font-mono);
+    font-size: 13.5px;
     font-weight: 600;
+    color: var(--color-text-1);
   }
 
   .ph-builtin-body {
@@ -342,10 +379,12 @@ async function copyRef() {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    padding: 12px;
-    border: 1px solid var(--el-border-color);
-    border-radius: 4px;
-    font-size: 13px;
+    padding: 14px;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-bg-panel);
+    font-size: 12.5px;
+    color: var(--color-text-2);
   }
 
   .ph-builtin-row {
@@ -355,23 +394,28 @@ async function copyRef() {
   }
 
   .ph-builtin-label {
-    width: 32px;
+    width: 34px;
     flex-shrink: 0;
-    color: var(--color-text-3);
+    font-size: 11.5px;
+    color: var(--color-text-4);
   }
 
   .ph-builtin-sample {
-    font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
-    padding: 2px 8px;
-    border-radius: 3px;
-    background: var(--color-fill-2);
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: var(--ui-radius-sm);
+    background: rgba(var(--primary-6), 0.1);
+    color: rgb(var(--primary-6));
     word-break: break-all;
   }
 
   .ph-help-text {
     margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--ui-border);
     color: var(--color-text-3);
-    font-size: 12px;
+    font-size: 11.5px;
     line-height: 1.8;
   }
 }
@@ -389,31 +433,60 @@ async function copyRef() {
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
+
+    :deep(.arco-btn) {
+      height: 22px;
+      padding: 0 6px;
+      border-radius: var(--ui-radius-sm);
+      color: var(--color-text-3);
+
+      &:hover {
+        background: var(--ui-bg-hover);
+        color: rgb(var(--primary-6));
+      }
+    }
   }
 
   .ph-key-input {
     width: 240px;
+
+    :deep(.arco-input-wrapper) {
+      background: var(--ui-bg-subtle);
+      font-family: var(--ui-font-mono);
+      font-size: 12px;
+    }
   }
 
   .ph-ref {
-    font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
-    font-size: 12px;
-    padding: 1px 6px;
-    border-radius: 3px;
-    background: rgba(255, 176, 32, 0.22);
-    color: #d48806;
+    font-family: var(--ui-font-mono);
+    font-size: 11.5px;
+    padding: 2px 7px;
+    border: 1px solid rgba(212, 136, 6, 0.28);
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-accent-warm-bg);
+    color: var(--ui-accent-warm);
     cursor: pointer;
+    transition: filter 0.12s ease;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
   }
 
   .ph-error {
-    color: rgb(var(--danger-6));
-    font-size: 12px;
+    color: var(--ui-accent-danger);
+    font-size: 11.5px;
   }
 
   .ph-help {
     margin-left: auto;
-    color: var(--color-text-3);
+    color: var(--color-text-4);
     cursor: help;
+    transition: color 0.12s ease;
+
+    &:hover {
+      color: rgb(var(--primary-6));
+    }
   }
 }
 
@@ -423,7 +496,7 @@ async function copyRef() {
 
   .ph-help-text {
     max-width: 420px;
-    color: var(--color-text-3);
+    color: var(--color-text-4);
     font-size: 12px;
     line-height: 1.8;
     text-align: center;

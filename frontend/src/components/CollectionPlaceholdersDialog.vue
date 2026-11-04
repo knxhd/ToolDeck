@@ -85,21 +85,34 @@ function onClose() {
 
 <style lang="less" scoped>
 .collection-tag {
+  display: inline-block;
   margin-left: 8px;
-  font-size: 12px;
-  font-weight: 400;
-  color: var(--el-text-color-secondary);
+  padding: 1px 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-3);
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: middle;
 }
 
 .ph-dialog-hint {
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: var(--el-text-color-secondary);
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-3);
+  font-size: 11.5px;
+  line-height: 1.7;
 
   code {
-    background: var(--el-fill-color);
-    padding: 1px 4px;
-    border-radius: 3px;
+    padding: 1px 5px;
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-accent-warm-bg);
+    color: var(--ui-accent-warm);
+    font-family: var(--ui-font-mono);
+    font-size: 11px;
   }
 }
 
@@ -111,7 +124,7 @@ function onClose() {
 }
 
 .dialog-footer {
-  margin-top: 12px;
+  margin-top: 14px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;

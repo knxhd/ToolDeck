@@ -1,17 +1,29 @@
 <template>
   <div class="request-bar">
-    <a-select v-model="tab.request.method" style="width: 110px">
-      <a-option v-for="m in methods" :key="m" :value="m">{{ m }}</a-option>
-    </a-select>
-    <UrlInput
-      v-model="tab.request.url"
-      :request="tab.request"
-      @blur="syncQueryToParams"
-      @enter="onSend"
-      @curl="applyCurl"
-    />
-    <a-button v-if="!tab.streaming" type="primary" @click="onSend">发送</a-button>
-    <a-button v-else status="danger" type="secondary" @click="$emit('cancel')">停止</a-button>
+    <!-- 方法 + URL 合并为一个输入组，聚焦时整组高亮 -->
+    <div class="url-group">
+      <a-dropdown trigger="click" @select="onMethodSelect">
+        <button type="button" class="method-trigger" :class="'m-' + tab.request.method.toLowerCase()">
+          <span class="method-text">{{ tab.request.method }}</span>
+          <icon-down class="caret" />
+        </button>
+        <template #content>
+          <a-doption v-for="m in methods" :key="m" :value="m">
+            <span class="method-pill" :class="'m-' + m.toLowerCase()">{{ m }}</span>
+          </a-doption>
+        </template>
+      </a-dropdown>
+      <span class="url-divider"></span>
+      <UrlInput
+        v-model="tab.request.url"
+        :request="tab.request"
+        @blur="syncQueryToParams"
+        @enter="onSend"
+        @curl="applyCurl"
+      />
+    </div>
+    <a-button v-if="!tab.streaming" type="primary" class="send-btn" @click="onSend">发送</a-button>
+    <a-button v-else status="danger" type="secondary" class="send-btn" @click="$emit('cancel')">停止</a-button>
   </div>
 </template>
 
@@ -26,6 +38,11 @@ const props = defineProps<{ tab: OpenTab }>()
 const emit = defineEmits<{ send: []; cancel: []; save: [] }>()
 
 const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
+
+/** 方法下拉选择：只改方法，不动其它字段。 */
+function onMethodSelect(v: string | number | Record<string, unknown> | undefined) {
+  props.tab.request.method = String(v) as HttpMethod
+}
 
 function onSend() {
   syncQueryToParams()
@@ -67,8 +84,96 @@ function applyCurl(parsed: ParsedCurl) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px;
-  border-bottom: 1px solid var(--el-border-color);
   flex-shrink: 0;
+  height: 48px;
+  padding: 0 10px;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+}
+
+/* 输入组：方法 + URL 共用一层边框 */
+.url-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding-right: 2px;
+  background: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+  &:focus-within {
+    background: var(--ui-bg-panel);
+    border-color: rgb(var(--primary-6));
+    box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+  }
+}
+
+.method-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 8px 0 10px;
+  border: none;
+  background: transparent;
+  border-radius: var(--ui-radius-sm);
+  cursor: pointer;
+  font-family: var(--ui-font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-1);
+
+  &:hover {
+    background: var(--ui-bg-hover);
+  }
+
+  .caret {
+    font-size: 10px;
+    color: var(--color-text-3);
+  }
+
+  // 彩色请求方法
+  &.m-get {
+    color: var(--ui-method-get);
+  }
+  &.m-post {
+    color: var(--ui-method-post);
+  }
+  &.m-put {
+    color: var(--ui-method-put);
+  }
+  &.m-patch {
+    color: var(--ui-method-patch);
+  }
+  &.m-delete {
+    color: var(--ui-method-delete);
+  }
+  &.m-head {
+    color: var(--ui-method-head);
+  }
+  &.m-options {
+    color: var(--ui-method-options);
+  }
+}
+
+.url-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin-right: 2px;
+  background: var(--ui-border);
+}
+
+.send-btn {
+  height: 32px;
+  min-width: 84px;
+  border-radius: var(--ui-radius-md);
+  font-weight: 600;
 }
 </style>

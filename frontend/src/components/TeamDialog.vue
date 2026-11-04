@@ -118,29 +118,66 @@ async function onRemove(m: { id: number; username: string }) {
 }
 </script>
 
-<style scoped>
+<style scoped lang="less">
 .team-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 4px;
-  border-bottom: 1px solid var(--color-border-2);
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+
+  &:hover {
+    background: var(--ui-bg-panel);
+    border-color: var(--ui-border);
+  }
+
+  :deep(.arco-btn) {
+    height: 24px;
+    padding: 0 10px;
+    border-radius: var(--ui-radius-sm);
+    font-size: 12px;
+  }
 }
+
 .team-info {
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
 }
+
 .team-name {
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-1);
 }
+
 .team-meta {
-  font-size: 12px;
-  color: var(--color-text-3);
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--color-text-4);
 }
+
 .member-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 4px;
-  border-bottom: 1px solid var(--color-border-2);
+  gap: 10px;
+  margin-bottom: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+
+  :deep(.arco-btn) {
+    height: 24px;
+    padding: 0 10px;
+    border-radius: var(--ui-radius-sm);
+    font-size: 12px;
+  }
 }
 </style>

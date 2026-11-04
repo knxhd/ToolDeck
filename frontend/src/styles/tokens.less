@@ -1,0 +1,297 @@
+// 设计令牌（Design Tokens）
+// 统一「画布 - 卡片 - 浮层」三级层次、主色阶、方法/状态色，明暗两套。
+// 所有组件只引用这里的变量，不写死颜色。
+
+:root {
+  // ---- 字体 ----
+  --ui-font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  --ui-font-size-sm: 11px;
+  --ui-font-size: 13px;
+  --ui-font-size-lg: 15px;
+
+  // ---- 层次：画布 / 卡片 / 次级底 ----
+  --ui-bg-canvas: #f4f5f8;
+  --ui-bg-panel: #ffffff;
+  --ui-bg-subtle: #f7f8fa;
+  --ui-bg-sunken: #eef0f5;
+  --ui-bg-hover: rgba(16, 24, 40, 0.045);
+  --ui-bg-active: rgba(78, 91, 166, 0.1);
+  --ui-bg-inverse: #1f2329;
+
+  // ---- 描边 ----
+  --ui-border: #e6e8ee;
+  --ui-border-soft: #eef0f4;
+  --ui-border-strong: #d5d9e3;
+
+  // ---- 阴影 ----
+  --ui-shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.06);
+  --ui-shadow-2: 0 10px 28px rgba(16, 24, 40, 0.14);
+  --ui-shadow-pop: 0 4px 16px rgba(16, 24, 40, 0.12);
+
+  // ---- 圆角 ----
+  --ui-radius-sm: 4px;
+  --ui-radius-md: 6px;
+  --ui-radius-lg: 10px;
+
+  // ---- 尺寸 ----
+  --ui-header-h: 44px;
+  --ui-row-h: 32px;
+
+  // ---- 强调色（占位符高亮等） ----
+  --ui-accent-warm: #d48806;
+  --ui-accent-warm-bg: rgba(212, 136, 6, 0.12);
+  --ui-accent-ok: #16a06f;
+  --ui-accent-ok-bg: rgba(22, 160, 111, 0.12);
+  --ui-accent-danger: #dc4640;
+  --ui-accent-danger-bg: rgba(220, 70, 64, 0.1);
+
+  // ---- 主色阶：靛蓝紫 #4E5BA6 ----
+  // Arco 以 rgb 三元组定义色阶，hover 取 5（更亮）、active 取 7（更深）
+  --primary-1: 236, 238, 246;
+  --primary-2: 213, 217, 235;
+  --primary-3: 184, 191, 221;
+  --primary-4: 146, 156, 200;
+  --primary-5: 101, 116, 184;
+  --primary-6: 78, 91, 166;
+  --primary-7: 62, 74, 140;
+  --primary-8: 49, 59, 116;
+  --primary-9: 38, 46, 94;
+  --primary-10: 28, 34, 72;
+
+  // ---- HTTP 方法色（浅色） ----
+  --ui-method-get: #16a06f;
+  --ui-method-get-bg: rgba(22, 160, 111, 0.1);
+  --ui-method-post: #d98324;
+  --ui-method-post-bg: rgba(217, 131, 36, 0.12);
+  --ui-method-put: #2f72e0;
+  --ui-method-put-bg: rgba(47, 114, 224, 0.1);
+  --ui-method-patch: #8557c9;
+  --ui-method-patch-bg: rgba(133, 87, 201, 0.1);
+  --ui-method-delete: #dc4640;
+  --ui-method-delete-bg: rgba(220, 70, 64, 0.1);
+  --ui-method-head: #0e8f9e;
+  --ui-method-head-bg: rgba(14, 143, 158, 0.1);
+  --ui-method-options: #64748b;
+  --ui-method-options-bg: rgba(100, 116, 139, 0.12);
+  --ui-method-ws: #7c4dd1;
+  --ui-method-ws-bg: rgba(124, 77, 209, 0.1);
+  --ui-method-mcp: #c2710c;
+  --ui-method-mcp-bg: rgba(194, 113, 12, 0.12);
+
+  // ---- 状态色 ----
+  --ui-status-2xx: #16a06f;
+  --ui-status-2xx-bg: rgba(22, 160, 111, 0.1);
+  --ui-status-3xx: #d98324;
+  --ui-status-3xx-bg: rgba(217, 131, 36, 0.12);
+  --ui-status-4xx: #e0702a;
+  --ui-status-4xx-bg: rgba(224, 112, 42, 0.12);
+  --ui-status-5xx: #dc4640;
+  --ui-status-5xx-bg: rgba(220, 70, 64, 0.1);
+}
+
+body[arco-theme='dark'] {
+  // 冷灰蓝基底：比纯黑更透气，四层明度拉开 4% 保证卡片边界可辨
+  --ui-bg-canvas: #0e1117;
+  --ui-bg-panel: #161a22;
+  --ui-bg-subtle: #1d222c;
+  --ui-bg-sunken: #11151b;
+  --ui-bg-hover: rgba(255, 255, 255, 0.055);
+  --ui-bg-active: rgba(120, 134, 208, 0.2);
+  --ui-bg-inverse: #f4f5f8;
+
+  --ui-border: rgba(255, 255, 255, 0.085);
+  --ui-border-soft: rgba(255, 255, 255, 0.055);
+  --ui-border-strong: rgba(255, 255, 255, 0.15);
+
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.24);
+  --ui-shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --ui-shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.45);
+
+  --ui-accent-warm: #e8a33d;
+  --ui-accent-warm-bg: rgba(232, 163, 61, 0.16);
+  --ui-accent-ok: #3ecf94;
+  --ui-accent-ok-bg: rgba(62, 207, 148, 0.16);
+  --ui-accent-danger: #f2756f;
+  --ui-accent-danger-bg: rgba(242, 117, 111, 0.16);
+
+  // 主色阶（深色下 6 更亮，hover 取 7 更亮、active 取 5 更暗）
+  --primary-1: 28, 31, 44;
+  --primary-2: 35, 39, 58;
+  --primary-3: 46, 52, 78;
+  --primary-4: 60, 68, 104;
+  --primary-5: 90, 101, 160;
+  --primary-6: 108, 123, 200;
+  --primary-7: 128, 142, 214;
+  --primary-8: 150, 162, 226;
+  --primary-9: 176, 185, 238;
+  --primary-10: 208, 214, 250;
+
+  // HTTP 方法色（深色）
+  --ui-method-get: #3ecf94;
+  --ui-method-get-bg: rgba(62, 207, 148, 0.14);
+  --ui-method-post: #f0b055;
+  --ui-method-post-bg: rgba(240, 176, 85, 0.14);
+  --ui-method-put: #6aa5f5;
+  --ui-method-put-bg: rgba(106, 165, 245, 0.14);
+  --ui-method-patch: #b091ee;
+  --ui-method-patch-bg: rgba(176, 145, 238, 0.14);
+  --ui-method-delete: #f2756f;
+  --ui-method-delete-bg: rgba(242, 117, 111, 0.14);
+  --ui-method-head: #45c2cf;
+  --ui-method-head-bg: rgba(69, 194, 207, 0.14);
+  --ui-method-options: #94a3b8;
+  --ui-method-options-bg: rgba(148, 163, 184, 0.14);
+  --ui-method-ws: #a78bfa;
+  --ui-method-ws-bg: rgba(167, 139, 250, 0.14);
+  --ui-method-mcp: #e8a33d;
+  --ui-method-mcp-bg: rgba(232, 163, 61, 0.14);
+
+  --ui-status-2xx: #3ecf94;
+  --ui-status-2xx-bg: rgba(62, 207, 148, 0.14);
+  --ui-status-3xx: #f0b055;
+  --ui-status-3xx-bg: rgba(240, 176, 85, 0.14);
+  --ui-status-4xx: #f5934f;
+  --ui-status-4xx-bg: rgba(245, 147, 79, 0.14);
+  --ui-status-5xx: #f2756f;
+  --ui-status-5xx-bg: rgba(242, 117, 111, 0.14);
+}
+
+// ---- 方法色工具类：柔和药丸标签 ----
+.method-pill() {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 16px;
+  min-width: 36px;
+  padding: 0 5px;
+  border-radius: var(--ui-radius-sm);
+  font-family: var(--ui-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-3);
+}
+
+.method-pill {
+  .method-pill();
+
+  &.get,
+  &.m-get {
+    color: var(--ui-method-get);
+    background: var(--ui-method-get-bg);
+  }
+  &.post,
+  &.m-post {
+    color: var(--ui-method-post);
+    background: var(--ui-method-post-bg);
+  }
+  &.put,
+  &.m-put {
+    color: var(--ui-method-put);
+    background: var(--ui-method-put-bg);
+  }
+  &.patch,
+  &.m-patch {
+    color: var(--ui-method-patch);
+    background: var(--ui-method-patch-bg);
+  }
+  &.delete,
+  &.m-delete {
+    color: var(--ui-method-delete);
+    background: var(--ui-method-delete-bg);
+  }
+  &.head,
+  &.m-head {
+    color: var(--ui-method-head);
+    background: var(--ui-method-head-bg);
+  }
+  &.options,
+  &.m-options {
+    color: var(--ui-method-options);
+    background: var(--ui-method-options-bg);
+  }
+  &.ws,
+  &.m-ws {
+    color: var(--ui-method-ws);
+    background: var(--ui-method-ws-bg);
+  }
+  &.mcp,
+  &.m-mcp {
+    color: var(--ui-method-mcp);
+    background: var(--ui-method-mcp-bg);
+  }
+}
+
+// ---- 状态药丸 ----
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-2);
+
+  &::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  &.ok,
+  &.s2 {
+    color: var(--ui-status-2xx);
+    background: var(--ui-status-2xx-bg);
+  }
+  &.redirect,
+  &.s3 {
+    color: var(--ui-status-3xx);
+    background: var(--ui-status-3xx-bg);
+  }
+  &.s4 {
+    color: var(--ui-status-4xx);
+    background: var(--ui-status-4xx-bg);
+  }
+  &.err,
+  &.s5 {
+    color: var(--ui-status-5xx);
+    background: var(--ui-status-5xx-bg);
+  }
+}
+
+// ---- 通用面板 ----
+.ui-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  overflow: hidden;
+}
+
+.ui-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ui-border-soft);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-2);
+}

@@ -111,22 +111,45 @@ function onClose() {
 .gc-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
 
   .gc-interp {
     margin-left: auto;
+    font-size: 12px;
+    color: var(--color-text-2);
   }
 }
 
 .gc-code {
   position: relative;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-panel);
+  overflow: hidden;
 
   .gc-copy {
     position: absolute;
     top: 8px;
-    right: 20px;
+    right: 8px;
     z-index: 10;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-bg-panel);
+    color: var(--color-text-3);
+    box-shadow: var(--ui-shadow-1);
+
+    &:hover {
+      color: rgb(var(--primary-6));
+      border-color: rgba(var(--primary-6), 0.4);
+    }
   }
 }
 </style>

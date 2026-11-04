@@ -333,8 +333,8 @@ const toolbarGroups: ToolbarBtn[][] = [
     position: fixed;
     inset: 0;
     z-index: 1000;
-    padding: 0 12px 12px;
-    background: var(--color-bg-1, #fff);
+    padding: 0 14px 14px;
+    background: var(--ui-bg-canvas);
   }
 }
 
@@ -343,14 +343,17 @@ const toolbarGroups: ToolbarBtn[][] = [
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 44px;
+  height: 48px;
+  margin-bottom: 10px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--ui-border);
 
   .doc-fs-title {
     flex: 1;
     min-width: 0;
-    font-size: 14px;
+    font-size: 13.5px;
     font-weight: 600;
-    color: var(--color-text-1, #1d2129);
+    color: var(--color-text-1);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -373,8 +376,9 @@ const toolbarGroups: ToolbarBtn[][] = [
 .doc-edit {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-panel);
   overflow: hidden;
 
   /* 外层已带边框，编辑器自身边框去掉 */
@@ -389,10 +393,10 @@ const toolbarGroups: ToolbarBtn[][] = [
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
-  padding: 4px 6px;
-  border-bottom: 1px solid var(--el-border-color);
-  background: var(--el-fill-color-lighter);
+  gap: 1px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-subtle);
 }
 
 .md-btn {
@@ -403,15 +407,21 @@ const toolbarGroups: ToolbarBtn[][] = [
   height: 26px;
   padding: 0;
   border: none;
-  border-radius: 4px;
+  border-radius: var(--ui-radius-sm);
   background: transparent;
-  color: var(--el-text-color-regular, #4e5969);
-  font-size: 16px;
+  color: var(--color-text-2);
+  font-size: 15px;
   cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease;
 
   &:hover {
-    background: var(--el-fill-color-light, rgba(0, 0, 0, 0.06));
+    background: var(--ui-bg-panel);
     color: rgb(var(--primary-6));
+    box-shadow: var(--ui-shadow-1);
+  }
+
+  &:active {
+    background: var(--ui-bg-active);
   }
 }
 
@@ -422,26 +432,30 @@ const toolbarGroups: ToolbarBtn[][] = [
 
 .md-divider {
   width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background: var(--el-border-color);
+  height: 15px;
+  margin: 0 5px;
+  background: var(--ui-border);
 }
 
 .doc-preview {
   overflow-y: auto;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-panel);
 
   :deep(.github-markdown-body) {
-    padding: 12px 16px;
+    padding: 4px 18px 18px;
     background: transparent;
+    font-size: 13.5px;
+    line-height: 1.75;
   }
 }
 
 .doc-empty {
-  padding: 16px;
-  font-size: 13px;
-  color: var(--el-text-color-placeholder);
+  padding: 28px 16px;
+  color: var(--color-text-4);
+  font-size: 12.5px;
+  text-align: center;
 }
 
 .tbl-picker {
@@ -456,20 +470,21 @@ const toolbarGroups: ToolbarBtn[][] = [
   .tbl-cell {
     width: 16px;
     height: 16px;
-    border: 1px solid var(--color-border-3, #c9cdd4);
-    border-radius: 2px;
+    border: 1px solid var(--ui-border-strong);
+    border-radius: 3px;
     cursor: pointer;
+    transition: background-color 0.1s ease, border-color 0.1s ease;
 
     &.active {
       border-color: rgb(var(--primary-6));
-      background: rgb(var(--primary-2));
+      background: rgba(var(--primary-6), 0.22);
     }
   }
 
   .tbl-label {
     margin-top: 6px;
-    font-size: 12px;
-    color: var(--color-text-2, #4e5969);
+    color: var(--color-text-3);
+    font-size: 11.5px;
     text-align: center;
   }
 }

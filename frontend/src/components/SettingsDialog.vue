@@ -1,5 +1,5 @@
 <template>
-  <a-modal :visible="modelValue" title="系统设置" width="480px" :mask-closable="false"
+  <a-modal :visible="modelValue" title="系统设置" width="520px" :mask-closable="false"
     @update:visible="(v: boolean) => emit('update:modelValue', v)">
     <div class="settings-form">
       <div class="form-row">
@@ -20,6 +20,17 @@
           <a-radio :value="false">浅色</a-radio>
           <a-radio :value="true">深色</a-radio>
         </a-radio-group>
+      </div>
+      <div class="form-row form-row-top">
+        <span class="form-label">配色</span>
+        <div class="accent-list">
+          <button v-for="p in ACCENT_PRESETS" :key="p.id" type="button" class="accent-item"
+            :class="{ active: settings.accent === p.id }" :style="{ '--swatch': p.base }"
+            :title="p.name" @click="settings.accent = p.id">
+            <span class="swatch" :style="{ background: p.base }"></span>
+            <span class="accent-name">{{ p.name }}</span>
+          </button>
+        </div>
       </div>
       <div class="form-row form-row-top">
         <span class="form-label">Tab数量</span>
@@ -47,6 +58,7 @@
 
 <script setup lang="ts">
 import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
+import { ACCENT_PRESETS } from '@/utils/theme'
 
 defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
@@ -63,7 +75,7 @@ function onReset() {
 .settings-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 
   .form-row {
     display: flex;
@@ -71,16 +83,17 @@ function onReset() {
     gap: 12px;
 
     .form-label {
-      width: 60px;
+      width: 58px;
       flex-shrink: 0;
-      color: var(--el-text-color-primary);
-      font-size: 13px;
+      color: var(--color-text-2);
+      font-size: 12.5px;
+      font-weight: 500;
     }
 
     .form-tip {
       flex: 1;
       min-width: 0;
-      color: var(--el-text-color-secondary);
+      color: var(--color-text-3);
       font-size: 12px;
       line-height: 1.5;
     }
@@ -90,16 +103,73 @@ function onReset() {
     align-items: flex-start;
 
     .form-label {
-      line-height: 32px;
+      line-height: 30px;
     }
   }
 }
-.preview {
+
+// ---- 配色预设 ----
+.accent-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
   width: 100%;
-  padding: 10px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+}
+
+.accent-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    background: var(--ui-bg-panel);
+    border-color: var(--ui-border-strong);
+    color: var(--color-text-1);
+  }
+
+  &.active {
+    border-color: var(--swatch, rgb(var(--primary-6)));
+    background: var(--ui-bg-panel);
+    color: var(--color-text-1);
+    font-weight: 600;
+    box-shadow: 0 0 0 2px rgba(var(--primary-6), 0.14);
+  }
+
+  .swatch {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  }
+
+  .accent-name {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+.preview {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border: 1px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  color: var(--color-text-1);
   font-family: var(--app-font-family);
   font-size: var(--app-font-size);
+  line-height: 1.5;
 }
 </style>
