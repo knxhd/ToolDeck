@@ -14,6 +14,48 @@ export interface AccentPreset {
   base: string
 }
 
+export type ThemeMode = 'light' | 'dark'
+
+/** 界面主题（浅色系 5 套 + 暗色系 5 套），令牌由 styles/themes.less 提供。 */
+export interface ThemePreset {
+  id: string
+  name: string
+  /** 明暗模式：决定 Arco 组件使用 light / dark 变量集 */
+  mode: ThemeMode
+  /** 下拉菜单里的预览小色块（取画布色） */
+  swatch: string
+  /** 一句话说明 */
+  desc: string
+}
+
+export const THEME_PRESETS: ThemePreset[] = [
+  // ---- 浅色系 ----
+  { id: 'light', name: '浅色', mode: 'light', swatch: '#f4f5f8', desc: '冷灰白，默认' },
+  { id: 'mono', name: '极简', mode: 'light', swatch: '#f5f5f6', desc: '纯中性灰，无彩色干扰' },
+  { id: 'paper', name: '素纸', mode: 'light', swatch: '#f3efe6', desc: '暖白米色，接近纸张' },
+  { id: 'sepia', name: '护眼绿', mode: 'light', swatch: '#e8efe4', desc: '豆沙绿底，长时间阅读不刺眼' },
+  { id: 'mist', name: '雾蓝', mode: 'light', swatch: '#eef2f9', desc: '淡蓝冷调，清透安静' },
+  // ---- 暗色系 ----
+  { id: 'dark', name: '暗黑', mode: 'dark', swatch: '#0e1117', desc: '冷灰蓝，默认' },
+  { id: 'midnight', name: '午夜蓝', mode: 'dark', swatch: '#0a101c', desc: '深藏蓝，夜空感' },
+  { id: 'graphite', name: '石墨', mode: 'dark', swatch: '#141417', desc: '中性纯灰，极简克制' },
+  { id: 'forest', name: '松林', mode: 'dark', swatch: '#0c1310', desc: '暗绿底，柔和护眼' },
+  { id: 'dusk', name: '暖夜', mode: 'dark', swatch: '#14100d', desc: '暗褐暖调，低蓝光' },
+]
+
+/** 按 id 取主题；未知 id 回退默认浅色。 */
+export function themePreset(id: string): ThemePreset {
+  return THEME_PRESETS.find((t) => t.id === id) || THEME_PRESETS[0]
+}
+
+/** 主题对应的明暗模式。 */
+export function themeMode(id: string): ThemeMode {
+  return themePreset(id).mode
+}
+
+export const LIGHT_THEMES = THEME_PRESETS.filter((t) => t.mode === 'light')
+export const DARK_THEMES = THEME_PRESETS.filter((t) => t.mode === 'dark')
+
 /** 可选配色预设（默认第一个）。 */
 export const ACCENT_PRESETS: AccentPreset[] = [
   { id: 'indigo', name: '靛蓝紫', base: '#4E5BA6' },

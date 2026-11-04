@@ -16,10 +16,24 @@
       </div>
       <div class="form-row">
         <span class="form-label">主题</span>
-        <a-radio-group v-model="settings.dark" type="button">
-          <a-radio :value="false">浅色</a-radio>
-          <a-radio :value="true">深色</a-radio>
-        </a-radio-group>
+        <a-select v-model="settings.theme" style="width: 100%">
+          <a-optgroup label="浅色系">
+            <a-option v-for="t in LIGHT_THEMES" :key="t.id" :value="t.id" :title="t.desc">
+              <span class="ui-theme-opt">
+                <span class="ui-theme-dot" :style="{ background: t.swatch }"></span>
+                <span class="ui-theme-name">{{ t.name }}</span>
+              </span>
+            </a-option>
+          </a-optgroup>
+          <a-optgroup label="暗色系">
+            <a-option v-for="t in DARK_THEMES" :key="t.id" :value="t.id" :title="t.desc">
+              <span class="ui-theme-opt">
+                <span class="ui-theme-dot" :style="{ background: t.swatch }"></span>
+                <span class="ui-theme-name">{{ t.name }}</span>
+              </span>
+            </a-option>
+          </a-optgroup>
+        </a-select>
       </div>
       <div class="form-row form-row-top">
         <span class="form-label">配色</span>
@@ -58,7 +72,7 @@
 
 <script setup lang="ts">
 import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
-import { ACCENT_PRESETS } from '@/utils/theme'
+import { ACCENT_PRESETS, DARK_THEMES, LIGHT_THEMES } from '@/utils/theme'
 
 defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()

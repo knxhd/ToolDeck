@@ -1,0 +1,289 @@
+// 界面主题令牌（10 套：浅色系 5 + 暗色系 5）
+//
+// 由 stores/settings.ts 的 apply() 写入两个属性：
+//   body[data-theme='<主题id>']  → 具体主题的底板 / 描边 / Arco 变量
+//   body[arco-theme='light|dark']→ Arco 组件的明暗变量集
+//
+// 本文件由 main.less 在 tokens.less、arco-overrides.less 之后引入，
+// 属性选择器权重相同，靠「后出现」生效。
+
+// ══════════════════════════════ 浅色系 ══════════════════════════════
+
+// ---- 浅色（冷灰白，默认，令牌与 :root 一致，无需覆盖）----
+
+// ---- 极简（纯中性灰，无彩色倾向）----
+body[data-theme='mono'] {
+  --ui-bg-canvas: #f5f5f6;
+  --ui-bg-panel: #ffffff;
+  --ui-bg-subtle: #fafafa;
+  --ui-bg-sunken: #efeff0;
+
+  --ui-border: #e8e8e9;
+  --ui-border-soft: #f0f0f1;
+  --ui-border-strong: #d9d9db;
+
+  --color-bg-1: #ffffff;
+  --color-bg-2: #ffffff;
+  --color-bg-3: #fafafa;
+  --color-bg-4: #f4f4f5;
+  --color-bg-5: #eeeef0;
+  --color-bg-white: #ffffff;
+  --color-fill-1: #fafafa;
+  --color-fill-2: #f4f4f5;
+  --color-fill-3: #eeeef0;
+  --color-fill-4: #e8e8ea;
+  --color-border: #e8e8e9;
+  --color-border-1: #f0f0f1;
+  --color-border-2: #e8e8e9;
+  --color-border-3: #d9d9db;
+  --color-border-4: #c8c8ca;
+}
+
+// ---- 素纸（暖白米色，接近纸张）----
+body[data-theme='paper'] {
+  --ui-bg-canvas: #f3efe6;
+  --ui-bg-panel: #fffdf8;
+  --ui-bg-subtle: #f8f4ec;
+  --ui-bg-sunken: #ece7db;
+
+  --ui-border: #e6ddcd;
+  --ui-border-soft: #efe8db;
+  --ui-border-strong: #d8cdb8;
+
+  --ui-shadow-1: 0 1px 2px rgba(92, 74, 42, 0.06), 0 1px 3px rgba(92, 74, 42, 0.07);
+  --ui-shadow-2: 0 10px 28px rgba(92, 74, 42, 0.16);
+  --ui-shadow-pop: 0 4px 16px rgba(92, 74, 42, 0.14);
+
+  --color-bg-1: #fffdf8;
+  --color-bg-2: #fffdf8;
+  --color-bg-3: #faf6ee;
+  --color-bg-4: #f5efe4;
+  --color-bg-5: #efe8db;
+  --color-bg-white: #fffdf8;
+  --color-fill-1: #faf6ee;
+  --color-fill-2: #f5efe4;
+  --color-fill-3: #efe8db;
+  --color-fill-4: #e8dfd0;
+  --color-border: #e6ddcd;
+  --color-border-1: #efe8db;
+  --color-border-2: #e6ddcd;
+  --color-border-3: #d8cdb8;
+  --color-border-4: #c7b99f;
+}
+
+// ---- 护眼绿（豆沙绿底，长时间阅读不刺眼）----
+body[data-theme='sepia'] {
+  --ui-bg-canvas: #e8efe4;
+  --ui-bg-panel: #f9fbf6;
+  --ui-bg-subtle: #eff5ea;
+  --ui-bg-sunken: #dde7d7;
+
+  --ui-border: #dae4d4;
+  --ui-border-soft: #e4ecdd;
+  --ui-border-strong: #c8d5c0;
+
+  --color-bg-1: #f9fbf6;
+  --color-bg-2: #f9fbf6;
+  --color-bg-3: #f3f8ee;
+  --color-bg-4: #edf4e7;
+  --color-bg-5: #e6efe0;
+  --color-bg-white: #f9fbf6;
+  --color-fill-1: #f3f8ee;
+  --color-fill-2: #edf4e7;
+  --color-fill-3: #e6efe0;
+  --color-fill-4: #dee9d8;
+  --color-border: #dae4d4;
+  --color-border-1: #e4ecdd;
+  --color-border-2: #dae4d4;
+  --color-border-3: #c8d5c0;
+  --color-border-4: #b4c5ab;
+}
+
+// ---- 雾蓝（淡蓝冷调，清透安静）----
+body[data-theme='mist'] {
+  --ui-bg-canvas: #eef2f9;
+  --ui-bg-panel: #fbfcff;
+  --ui-bg-subtle: #f3f6fc;
+  --ui-bg-sunken: #e5ebf5;
+
+  --ui-border: #dde5f1;
+  --ui-border-soft: #e7edf7;
+  --ui-border-strong: #cbd6e7;
+
+  --color-bg-1: #fbfcff;
+  --color-bg-2: #fbfcff;
+  --color-bg-3: #f5f8fd;
+  --color-bg-4: #eff4fb;
+  --color-bg-5: #e8eff9;
+  --color-bg-white: #fbfcff;
+  --color-fill-1: #f5f8fd;
+  --color-fill-2: #eff4fb;
+  --color-fill-3: #e8eff9;
+  --color-fill-4: #e0e9f6;
+  --color-border: #dde5f1;
+  --color-border-1: #e7edf7;
+  --color-border-2: #dde5f1;
+  --color-border-3: #cbd6e7;
+  --color-border-4: #b8c8de;
+}
+
+// ══════════════════════════════ 暗色系 ══════════════════════════════
+
+// ---- 暗黑（冷灰蓝，默认）----
+body[data-theme='dark'] {
+  --ui-bg-canvas: #0e1117;
+  --ui-bg-panel: #161a22;
+  --ui-bg-subtle: #1d222c;
+  --ui-bg-sunken: #11151b;
+  --ui-bg-hover: rgba(255, 255, 255, 0.055);
+  --ui-bg-active: rgba(120, 134, 208, 0.2);
+  --ui-bg-inverse: #f4f5f8;
+
+  --ui-border: rgba(255, 255, 255, 0.085);
+  --ui-border-soft: rgba(255, 255, 255, 0.055);
+  --ui-border-strong: rgba(255, 255, 255, 0.15);
+
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.24);
+  --ui-shadow-2: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --ui-shadow-pop: 0 6px 20px rgba(0, 0, 0, 0.45);
+
+  --color-bg-1: #0e1117;
+  --color-bg-2: #161a22;
+  --color-bg-3: #1d222c;
+  --color-bg-4: #242a35;
+  --color-bg-5: #2b323f;
+  --color-bg-white: #161a22;
+  --color-fill-1: #1a1f27;
+  --color-fill-2: #1d222c;
+  --color-fill-3: #242a35;
+  --color-fill-4: #2b323f;
+  --color-border: #262b35;
+  --color-border-1: #1d222c;
+  --color-border-2: #262b35;
+  --color-border-3: #333944;
+  --color-border-4: #414856;
+}
+
+// ---- 午夜蓝（深藏蓝，夜空感）----
+body[data-theme='midnight'] {
+  --ui-bg-canvas: #0a101c;
+  --ui-bg-panel: #111a2b;
+  --ui-bg-subtle: #162133;
+  --ui-bg-sunken: #0d1524;
+  --ui-bg-hover: rgba(150, 180, 255, 0.06);
+  --ui-bg-active: rgba(120, 150, 235, 0.2);
+  --ui-bg-inverse: #eef2f9;
+
+  --ui-border: rgba(148, 178, 255, 0.1);
+  --ui-border-soft: rgba(148, 178, 255, 0.06);
+  --ui-border-strong: rgba(148, 178, 255, 0.18);
+
+  --color-bg-1: #0a101c;
+  --color-bg-2: #111a2b;
+  --color-bg-3: #162133;
+  --color-bg-4: #1c2940;
+  --color-bg-5: #23324c;
+  --color-bg-white: #111a2b;
+  --color-fill-1: #131d2e;
+  --color-fill-2: #162133;
+  --color-fill-3: #1c2940;
+  --color-fill-4: #23324c;
+  --color-border: #1e2b41;
+  --color-border-1: #162133;
+  --color-border-2: #1e2b41;
+  --color-border-3: #29395a;
+  --color-border-4: #354866;
+}
+
+// ---- 石墨（中性纯灰，极简克制）----
+body[data-theme='graphite'] {
+  --ui-bg-canvas: #141417;
+  --ui-bg-panel: #1b1b1f;
+  --ui-bg-subtle: #222227;
+  --ui-bg-sunken: #101013;
+  --ui-bg-hover: rgba(255, 255, 255, 0.06);
+  --ui-bg-active: rgba(150, 150, 160, 0.2);
+  --ui-bg-inverse: #f5f5f6;
+
+  --ui-border: rgba(255, 255, 255, 0.09);
+  --ui-border-soft: rgba(255, 255, 255, 0.06);
+  --ui-border-strong: rgba(255, 255, 255, 0.16);
+
+  --color-bg-1: #141417;
+  --color-bg-2: #1b1b1f;
+  --color-bg-3: #222227;
+  --color-bg-4: #292930;
+  --color-bg-5: #313139;
+  --color-bg-white: #1b1b1f;
+  --color-fill-1: #1e1e22;
+  --color-fill-2: #222227;
+  --color-fill-3: #292930;
+  --color-fill-4: #313139;
+  --color-border: #2a2a31;
+  --color-border-1: #222227;
+  --color-border-2: #2a2a31;
+  --color-border-3: #35353d;
+  --color-border-4: #42424c;
+}
+
+// ---- 松林（暗绿底，柔和护眼）----
+body[data-theme='forest'] {
+  --ui-bg-canvas: #0c1310;
+  --ui-bg-panel: #121c17;
+  --ui-bg-subtle: #17241e;
+  --ui-bg-sunken: #0a100d;
+  --ui-bg-hover: rgba(140, 220, 170, 0.06);
+  --ui-bg-active: rgba(90, 200, 150, 0.2);
+  --ui-bg-inverse: #e8efe4;
+
+  --ui-border: rgba(140, 220, 170, 0.09);
+  --ui-border-soft: rgba(140, 220, 170, 0.055);
+  --ui-border-strong: rgba(140, 220, 170, 0.16);
+
+  --color-bg-1: #0c1310;
+  --color-bg-2: #121c17;
+  --color-bg-3: #17241e;
+  --color-bg-4: #1d2d25;
+  --color-bg-5: #24382e;
+  --color-bg-white: #121c17;
+  --color-fill-1: #14201a;
+  --color-fill-2: #17241e;
+  --color-fill-3: #1d2d25;
+  --color-fill-4: #24382e;
+  --color-border: #1e2f27;
+  --color-border-1: #17241e;
+  --color-border-2: #1e2f27;
+  --color-border-3: #2b4036;
+  --color-border-4: #3a5348;
+}
+
+// ---- 暖夜（暗褐暖调，低蓝光）----
+body[data-theme='dusk'] {
+  --ui-bg-canvas: #14100d;
+  --ui-bg-panel: #1c1713;
+  --ui-bg-subtle: #241e18;
+  --ui-bg-sunken: #100c0a;
+  --ui-bg-hover: rgba(255, 220, 180, 0.06);
+  --ui-bg-active: rgba(220, 160, 90, 0.2);
+  --ui-bg-inverse: #f3efe6;
+
+  --ui-border: rgba(255, 220, 180, 0.1);
+  --ui-border-soft: rgba(255, 220, 180, 0.06);
+  --ui-border-strong: rgba(255, 220, 180, 0.17);
+
+  --color-bg-1: #14100d;
+  --color-bg-2: #1c1713;
+  --color-bg-3: #241e18;
+  --color-bg-4: #2c251e;
+  --color-bg-5: #362d24;
+  --color-bg-white: #1c1713;
+  --color-fill-1: #1f1913;
+  --color-fill-2: #241e18;
+  --color-fill-3: #2c251e;
+  --color-fill-4: #362d24;
+  --color-border: #2e261e;
+  --color-border-1: #241e18;
+  --color-border-2: #2e261e;
+  --color-border-3: #3b3127;
+  --color-border-4: #4a3e31;
+}

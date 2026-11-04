@@ -62,10 +62,20 @@ function blend(fg: string, bg: string, alpha: number): string {
     .join('')}`
 }
 
+/** 读取 body 上定义的颜色令牌；只接受 #hex，其他形式（rgb/rgba）回退到默认值。 */
+function readColor(name: string, fallback: string): string {
+  const v = getComputedStyle(document.body).getPropertyValue(name).trim()
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? v : fallback
+}
+
 function defineThemes() {
   const accent = accentBase(settings.settings.accent)
-
-  const darkBg = '#161a22'
+  const dark = settings.settings.dark
+  // 背景取主题的卡片色，让编辑器跟着 10 套主题一起变
+  const bg = readColor('--ui-bg-panel', dark ? '#161a22' : '#ffffff')
+  const subtle = readColor('--ui-bg-subtle', dark ? '#1d222c' : '#f7f8fa')
+  const mixBase = dark ? '#ffffff' : '#000000'
+  const darkBg = bg
   monaco.editor.defineTheme(THEME_DARK_KEY, {
     base: 'vs-dark',
     inherit: true,
@@ -83,26 +93,26 @@ function defineThemes() {
       'editor.background': darkBg,
       'editor.foreground': '#c9d1e0',
       'editorCursor.foreground': accent,
-      'editor.lineHighlightBackground': '#1c2230',
+      'editor.lineHighlightBackground': blend(mixBase, darkBg, 0.05),
       'editor.selectionBackground': blend(accent, darkBg, 0.34),
       'editor.inactiveSelectionBackground': blend(accent, darkBg, 0.18),
-      'editorLineNumber.foreground': '#4a5364',
-      'editorLineNumber.activeForeground': '#8b96a8',
-      'editorIndentGuide.background1': '#232a36',
-      'editorIndentGuide.activeBackground1': '#333c4b',
-      'editorWidget.background': '#1d222c',
-      'editorWidget.border': '#2a3140',
-      'editorSuggestWidget.background': '#1d222c',
+      'editorLineNumber.foreground': blend(mixBase, darkBg, 0.26),
+      'editorLineNumber.activeForeground': blend(mixBase, darkBg, 0.5),
+      'editorIndentGuide.background1': blend(mixBase, darkBg, 0.09),
+      'editorIndentGuide.activeBackground1': blend(mixBase, darkBg, 0.18),
+      'editorWidget.background': subtle,
+      'editorWidget.border': blend(mixBase, subtle, 0.14),
+      'editorSuggestWidget.background': subtle,
       'editorSuggestWidget.selectedBackground': blend(accent, darkBg, 0.34),
-      'editorHoverWidget.background': '#1d222c',
-      'editorHoverWidget.border': '#2a3140',
+      'editorHoverWidget.background': subtle,
+      'editorHoverWidget.border': blend(mixBase, subtle, 0.14),
       'scrollbarSlider.background': '#ffffff1f',
       'scrollbarSlider.hoverBackground': '#ffffff2e',
       'editorGutter.background': darkBg,
     },
   })
 
-  const lightBg = '#ffffff'
+  const lightBg = bg
   monaco.editor.defineTheme(THEME_LIGHT_KEY, {
     base: 'vs',
     inherit: true,
@@ -117,18 +127,18 @@ function defineThemes() {
       'editor.background': lightBg,
       'editor.foreground': '#333a47',
       'editorCursor.foreground': accent,
-      'editor.lineHighlightBackground': '#f5f7fa',
+      'editor.lineHighlightBackground': blend(mixBase, lightBg, 0.035),
       'editor.selectionBackground': blend(accent, lightBg, 0.18),
       'editor.inactiveSelectionBackground': blend(accent, lightBg, 0.1),
-      'editorLineNumber.foreground': '#b9c0cc',
-      'editorLineNumber.activeForeground': '#6b7484',
-      'editorIndentGuide.background1': '#eceef3',
-      'editorIndentGuide.activeBackground1': '#d5d9e3',
-      'editorWidget.background': '#ffffff',
-      'editorWidget.border': '#e6e8ee',
+      'editorLineNumber.foreground': blend(mixBase, lightBg, 0.28),
+      'editorLineNumber.activeForeground': blend(mixBase, lightBg, 0.55),
+      'editorIndentGuide.background1': blend(mixBase, lightBg, 0.06),
+      'editorIndentGuide.activeBackground1': blend(mixBase, lightBg, 0.14),
+      'editorWidget.background': subtle,
+      'editorWidget.border': blend(mixBase, subtle, 0.12),
       'editorSuggestWidget.selectedBackground': blend(accent, lightBg, 0.12),
-      'editorHoverWidget.background': '#ffffff',
-      'editorHoverWidget.border': '#e6e8ee',
+      'editorHoverWidget.background': subtle,
+      'editorHoverWidget.border': blend(mixBase, subtle, 0.12),
       'scrollbarSlider.background': '#0000001a',
       'scrollbarSlider.hoverBackground': '#00000029',
     },
@@ -242,18 +252,11 @@ watch(
 )
 
 watch(
-  () => settings.settings.dark,
-  (dark) => {
-    monaco.editor.setTheme(props.theme ? props.theme : dark ? THEME_DARK_KEY : THEME_LIGHT_KEY)
-  },
-)
-
-// 配色切换时重新生成主题（光标 / 选区跟随主色）
-watch(
-  () => settings.settings.accent,
+  () => [settings.settings.theme, settings.settings.accent],
   () => {
+    // 主题 / 配色变化：重算背景色、光标与选区
     defineThemes()
-    monaco.editor.setTheme(resolvedTheme())
+    if (!props.theme) monaco.editor.setTheme(resolvedTheme())
   },
 )
 
