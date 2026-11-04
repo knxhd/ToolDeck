@@ -129,6 +129,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { Modal } from '@arco-design/web-vue'
 import { api, getToken } from '@/api/client'
 import { toast } from '@/utils/feedback'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -279,10 +280,20 @@ async function download(j: any, kind: 'csv' | 'params', label: string) {
   }
 }
 
-async function remove(j: any) {
-  await api.del(`/api/bench/jobs/${j.id}`)
-  jobs.value = jobs.value.filter((x) => x.id !== j.id)
-  toast.success('已删除')
+function remove(j: any) {
+  Modal.warning({
+    title: '删除该任务？',
+    content: `将删除任务「${j.name}」及其参数/结果 CSV 文件，此操作不可恢复。`,
+    okText: '删除',
+    okButtonProps: { status: 'danger' },
+    cancelText: '取消',
+    hideCancel: false,
+    onOk: async () => {
+      await api.del(`/api/bench/jobs/${j.id}`)
+      jobs.value = jobs.value.filter((x) => x.id !== j.id)
+      toast.success('已删除')
+    },
+  })
 }
 
 // 有运行中任务时轮询
