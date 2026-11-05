@@ -24,10 +24,12 @@ interface Settings {
   fontSize: number
   /** 界面主题 id（见 utils/theme 的 THEME_PRESETS，共 10 套）。 */
   theme: string
-  /** 由 theme 派生的明暗标记，保留给依赖“是否暗色”的逻辑（如 Monaco）。 */
+  /** 由 theme 派生的明暗标记，保留给依赖”是否暗色”的逻辑（如 Monaco）。 */
   dark: boolean
-  /** 主题配色预设 id（见 utils/theme 的 ACCENT_PRESETS）。 */
+  /** 主题配色预设 id（见 utils/theme 的 ACCENT_PRESETS），选 'custom' 时用 customAccent。 */
   accent: string
+  /** 用户自定义配色（hex），仅在 accent === 'custom' 时生效。 */
+  customAccent: string
   /** 工作台最多同时打开的标签页数，超出时自动关闭最早的标签。 */
   maxTabs: number
 }
@@ -38,6 +40,7 @@ const DEFAULTS: Settings = {
   theme: 'light',
   dark: false,
   accent: 'indigo',
+  customAccent: '#4E5BA6',
   maxTabs: 10,
 }
 
@@ -75,7 +78,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const meta = document.querySelector('meta[name="theme-color"]')
     if (meta) meta.setAttribute('content', themePreset(settings.value.theme).swatch)
     // 主色阶跟随所选配色（明暗两套色阶由基色推导）
-    applyAccent(settings.value.accent, mode === 'dark')
+    applyAccent(settings.value.accent, mode === 'dark', settings.value.customAccent)
   }
 
   function persist() {

@@ -56,7 +56,7 @@ export function themeMode(id: string): ThemeMode {
 export const LIGHT_THEMES = THEME_PRESETS.filter((t) => t.mode === 'light')
 export const DARK_THEMES = THEME_PRESETS.filter((t) => t.mode === 'dark')
 
-/** 可选配色预设（默认第一个）。 */
+/** 可选配色预设（默认第一个）。末尾追加"自定义"占位，UI 里用取色器填充。 */
 export const ACCENT_PRESETS: AccentPreset[] = [
   { id: 'indigo', name: '靛蓝紫', base: '#4E5BA6' },
   { id: 'blue', name: '拂晓蓝', base: '#1668DC' },
@@ -66,6 +66,7 @@ export const ACCENT_PRESETS: AccentPreset[] = [
   { id: 'rose', name: '玫瑰红', base: '#E11D63' },
   { id: 'violet', name: '电光紫', base: '#7C3AED' },
   { id: 'graphite', name: '石墨灰', base: '#4E5969' },
+  { id: 'custom', name: '自定义', base: '#4E5BA6' },
 ]
 
 type RGB = [number, number, number]
@@ -122,8 +123,9 @@ export function buildRamp(base: string, dark: boolean): string[] {
   return ramp.map(toVar)
 }
 
-/** 按预设 id 取基色；未知 id 回退默认。 */
-export function accentBase(id: string): string {
+/** 按预设 id 取基色；传 customHex 时覆盖 "custom" 预设的基色。未知 id 回退默认。 */
+export function accentBase(id: string, customHex?: string): string {
+  if (id === 'custom' && customHex) return customHex
   return (ACCENT_PRESETS.find((p) => p.id === id) || ACCENT_PRESETS[0]).base
 }
 
@@ -132,8 +134,8 @@ export function accentBase(id: string): string {
  * 必须挂在 body 上：tokens.less 在 `body[arco-theme='dark']` 里也定义了色阶，
  * 只有内联样式能同时覆盖明暗两套。
  */
-export function applyAccent(accentId: string, dark: boolean): void {
-  const base = accentBase(accentId)
+export function applyAccent(accentId: string, dark: boolean, customHex?: string): void {
+  const base = accentBase(accentId, customHex)
   const body = document.body
   buildRamp(base, dark).forEach((c, i) => body.style.setProperty(`--primary-${i + 1}`, c))
   const [r, g, b] = hexToRgb(base)

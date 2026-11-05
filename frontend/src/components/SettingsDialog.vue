@@ -39,12 +39,22 @@
         <span class="form-label">配色</span>
         <div class="accent-list">
           <button v-for="p in ACCENT_PRESETS" :key="p.id" type="button" class="accent-item"
-            :class="{ active: settings.accent === p.id }" :style="{ '--swatch': p.base }"
-            :title="p.name" @click="settings.accent = p.id">
-            <span class="swatch" :style="{ background: p.base }">
-              <icon-check v-if="settings.accent === p.id" class="swatch-check" />
+            :class="{ active: settings.accent === p.id }"
+            :style="p.id === 'custom' ? { '--swatch': settings.customAccent } : { '--swatch': p.base }"
+            :title="p.name" @click="onAccentClick(p.id)">
+            <span class="swatch" :style="{ background: p.id === 'custom' ? settings.customAccent : p.base }">
+              <template v-if="p.id === 'custom'">
+                <svg v-if="settings.accent !== 'custom'" class="swatch-plus" viewBox="0 0 16 16" aria-hidden="true">
+                  <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <icon-check v-else class="swatch-check" />
+              </template>
+              <icon-check v-else-if="settings.accent === p.id" class="swatch-check" />
             </span>
             <span class="accent-name">{{ p.name }}</span>
+            <input v-if="p.id === 'custom'" ref="customColorRef" type="color"
+              class="custom-color-input" :value="settings.customAccent"
+              @input="onCustomColorInput" @click.stop />
           </button>
         </div>
       </div>
@@ -81,6 +91,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
 import { ACCENT_PRESETS, DARK_THEMES, LIGHT_THEMES } from '@/utils/theme'
 
@@ -89,6 +100,27 @@ const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
 
 const store = useSettingsStore()
 const settings = store.settings
+
+const customColorRef = ref<HTMLInputElement>()
+
+function onAccentClick(id: string) {
+  if (id === 'custom') {
+    // 首次点击自定义：直接打开取色器；已选中则保持当前色
+    if (settings.accent !== 'custom') {
+      settings.accent = 'custom'
+      // 等 DOM 渲染后触发取色器
+      requestAnimationFrame(() => customColorRef.value?.click())
+    }
+  } else {
+    settings.accent = id
+  }
+}
+
+function onCustomColorInput(e: Event) {
+  const val = (e.target as HTMLInputElement).value
+  settings.customAccent = val
+  settings.accent = 'custom'
+}
 
 function onReset() {
   store.reset()
@@ -141,6 +173,7 @@ function onReset() {
 }
 
 .accent-item {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -186,10 +219,25 @@ function onReset() {
     font-size: 10px;
   }
 
+  .swatch-plus {
+    width: 10px;
+    height: 10px;
+  }
+
   .accent-name {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  /* 原生取色器：透明覆盖在"自定义"按钮上，点击即弹出选色面板 */
+  .custom-color-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
   }
 }
 
