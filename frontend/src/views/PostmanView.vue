@@ -876,7 +876,7 @@ function statusClass(code: number) {
 <style lang="less" scoped>
 .postman-view {
   display: flex;
-  gap: 6px;
+  // gap: 6px;
   height: 100%;
   padding: 6px;
   background: var(--ui-bg-canvas);

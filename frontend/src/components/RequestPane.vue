@@ -1,6 +1,6 @@
 <template>
   <div class="request-pane">
-    <a-tabs v-model:active-key="tabKey" class="req-tabs" :lazy-load="false">
+    <a-tabs v-model:active-key="tabKey" class="req-tabs" :lazy-load="true">
       <!-- Body 工具栏：仅在 Body tab 下显示在标签栏右侧；Prettify 仅 JSON 时显示 -->
       <template #extra>
         <div class="req-extra">
