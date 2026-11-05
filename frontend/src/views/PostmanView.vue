@@ -820,6 +820,7 @@ function statusClass(code: number) {
   background: var(--ui-bg-panel);
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-lg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .scope-bar {

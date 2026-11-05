@@ -41,7 +41,9 @@
           <button v-for="p in ACCENT_PRESETS" :key="p.id" type="button" class="accent-item"
             :class="{ active: settings.accent === p.id }" :style="{ '--swatch': p.base }"
             :title="p.name" @click="settings.accent = p.id">
-            <span class="swatch" :style="{ background: p.base }"></span>
+            <span class="swatch" :style="{ background: p.base }">
+              <icon-check v-if="settings.accent === p.id" class="swatch-check" />
+            </span>
             <span class="accent-name">{{ p.name }}</span>
           </button>
         </div>
@@ -160,11 +162,20 @@ function onReset() {
   }
 
   .swatch {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
     border-radius: 50%;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 10px;
+  }
+
+  .swatch-check {
+    font-size: 10px;
   }
 
   .accent-name {

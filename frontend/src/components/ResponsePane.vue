@@ -1,26 +1,40 @@
 ﻿<template>
   <div class="response-pane">
     <div class="resp-meta">
-      <span v-if="tab.error" class="status-pill err">请求错误</span>
-      <span v-else-if="tab.status_code" class="status-pill" :class="statusClass">
-        {{ tab.status_code }} {{ tab.status_text }}
+      <span v-if="tab.error" class="status-pill err large">请求错误</span>
+      <span v-else-if="tab.status_code" class="status-pill large" :class="statusClass">
+        {{ tab.status_code }}
       </span>
-      <span v-else-if="tab.streaming" class="status-pill redirect">接收中…</span>
-      <span v-if="tab.elapsed_ms" class="meta-item">{{ tab.elapsed_ms }} ms</span>
-      <span v-if="tab.size_bytes" class="meta-item">{{ formatSize(tab.size_bytes) }}</span>
+      <span v-else-if="tab.streaming" class="status-pill redirect large">接收中…</span>
+      <span v-if="tab.status_code" class="meta-item status-text">{{ tab.status_text }}</span>
+      <span v-if="tab.elapsed_ms" class="meta-item">
+        <span class="meta-label">耗时</span>{{ tab.elapsed_ms }} ms
+      </span>
+      <span v-if="tab.size_bytes" class="meta-item">
+        <span class="meta-label">大小</span>{{ formatSize(tab.size_bytes) }}
+      </span>
       <span v-if="!tab.body && !tab.error && !tab.status_code && !tab.streaming" class="hint">
         发送请求后在此查看响应
       </span>
+      <div class="meta-actions">
+        <a-tooltip content="复制响应体" position="top">
+          <a-button size="mini" type="text" :disabled="!tab.body" @click="copyBody">
+            <template #icon><icon-copy /></template>
+          </a-button>
+        </a-tooltip>
+      </div>
     </div>
     <div v-if="tab.error" class="error-box">{{ tab.error }}</div>
     <a-tabs v-else class="resp-tabs">
       <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
           <div class="merge-toolbar">
-            <a-select v-model="mergeType" :style="{ width: '320px' }" placeholder="数据合并" :allow-clear="true">
-              <a-option value="OpenAi">OpenAi</a-option>
-              <a-option value="Qwen">Qwen协议</a-option>
+            <span class="merge-label">响应格式</span>
+            <a-select v-model="mergeType" :style="{ width: '200px' }" placeholder="选择解析格式" :allow-clear="true">
+              <a-option value="OpenAi">OpenAI 兼容</a-option>
+              <a-option value="Qwen">Qwen 协议</a-option>
             </a-select>
+            <span class="merge-tip muted">按所选格式把 SSE 帧合并为完整正文</span>
           </div>
           <div class="stream-layout">
             <div v-if="mergeType" class="merge-view">
@@ -28,6 +42,7 @@
                 <div class="reasoning-header" @click="reasoningOpen = !reasoningOpen">
                   <span class="reasoning-title">
                     <span class="reasoning-icon"></span>
+                    思考过程
                   </span>
                   <span class="reasoning-toggle">{{ reasoningOpen ? '收起' : '展开' }}</span>
                 </div>
@@ -39,25 +54,34 @@
                 <v-md-preview :text="merged.content" />
               </div>
             </div>
-            <div class="frame-list custom-arco-design" v-else>
-              <a-collapse :show-expand-icon="false" :bordered="false">
-                <template v-for="(item, index) in tab.stream_events" :key="index">
-                  <a-collapse-item v-if="item.data.trim().length > 0" :key="index">
-                    <template #header>
-                      <div class="frame-row" :class="{ active: index === selectedFrame }"
-                        @click="selectedFrame = index">
-                        <span class="frame-dot" :class="item.type"></span>
-                        <span class="frame-preview">{{ item.data }}</span>
-                        <span class="frame-time">{{ item.time }}</span>
+            <div v-else class="frame-list-wrap">
+              <div class="frame-list-head">
+                <span>SSE 事件帧</span>
+                <span class="frame-count muted">{{ tab.stream_events.length }} 帧</span>
+              </div>
+              <div v-if="!tab.stream_events.length && !tab.streaming" class="frame-empty muted">
+                等待数据流…
+              </div>
+              <div class="frame-list custom-arco-design">
+                <a-collapse :show-expand-icon="false" :bordered="false">
+                  <template v-for="(item, index) in tab.stream_events" :key="index">
+                    <a-collapse-item v-if="item.data.trim().length > 0" :key="index">
+                      <template #header>
+                        <div class="frame-row" :class="{ active: index === selectedFrame }"
+                          @click="selectedFrame = index">
+                          <span class="frame-dot" :class="item.type"></span>
+                          <span class="frame-preview">{{ item.data }}</span>
+                          <span class="frame-time">{{ item.time }}</span>
+                        </div>
+                      </template>
+                      <div style="width: 100%;height: 200px;overflow: auto;">
+                        <SingleDataView :data="item.data || ''" />
                       </div>
-                    </template>
-                    <div style="width: 100%;height: 200px;overflow: auto;">
-                      <SingleDataView :data="item.data || ''" />
-                    </div>
-                  </a-collapse-item>
-                </template>
-              </a-collapse>
-              <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
+                    </a-collapse-item>
+                  </template>
+                </a-collapse>
+                <div v-if="tab.streaming" class="stream-live">● 接收中…</div>
+              </div>
             </div>
           </div>
         </template>
@@ -115,6 +139,16 @@ function formatSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+async function copyBody() {
+  const text = props.tab.body || ''
+  try {
+    await navigator.clipboard.writeText(text)
+    // 简单提示：用 title 变更即可，避免引入 toast
+  } catch {
+    /* ignore */
+  }
+}
+
 const mergeType = ref('')
 const reasoningOpen = ref(true)
 
@@ -149,11 +183,24 @@ const merged = computed(() => {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
-  height: 38px;
-  padding: 0 10px;
+  height: 40px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--ui-border-soft);
   font-size: 12px;
   color: var(--color-text-3);
+}
+
+.status-pill.large {
+  font-size: 13px;
+  font-weight: 700;
+  min-width: 48px;
+  padding: 3px 10px;
+  border-radius: var(--ui-radius-sm);
+}
+
+.status-text {
+  font-weight: 500;
+  color: var(--color-text-2);
 }
 
 .meta-item {
@@ -165,6 +212,12 @@ const merged = computed(() => {
   font-variant-numeric: tabular-nums;
   color: var(--color-text-3);
 
+  .meta-label {
+    font-family: var(--app-font-family);
+    color: var(--color-text-4);
+    margin-right: 2px;
+  }
+
   & + .meta-item::before {
     content: '';
     width: 1px;
@@ -172,6 +225,13 @@ const merged = computed(() => {
     margin-right: 6px;
     background: var(--ui-border);
   }
+}
+
+.meta-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .hint {
@@ -283,7 +343,44 @@ const merged = computed(() => {
 
 .merge-toolbar {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 2px 0 8px;
+}
+
+.merge-label {
+  font-size: 12px;
+  color: var(--color-text-2);
+  font-weight: 500;
+}
+
+.merge-tip {
+  font-size: 11.5px;
+}
+
+.frame-list-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.frame-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-2);
+}
+
+.frame-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 12px;
 }
 
 /* 合并后的 Markdown 内容：占满剩余高度，超出时纵向滚动 */
