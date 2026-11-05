@@ -1,6 +1,6 @@
 <template>
   <div class="request-pane">
-    <a-tabs v-model:active-key="tabKey" class="req-tabs">
+    <a-tabs v-model:active-key="tabKey" class="req-tabs" :lazy-load="false">
       <!-- Body 工具栏：仅在 Body tab 下显示在标签栏右侧；Prettify 仅 JSON 时显示 -->
       <template #extra>
         <div class="req-extra">
@@ -47,6 +47,55 @@
           @update:model-value="onFormChange" />
         <a-empty v-else description="无 Body" style="padding: 12px 0" />
       </a-tab-pane>
+      <a-tab-pane key="auth" title="Auth">
+        <div class="auth-pane">
+          <a-radio-group v-model="auth.type" type="button" size="small">
+            <a-radio value="none">无</a-radio>
+            <a-radio value="bearer">Bearer Token</a-radio>
+            <a-radio value="basic">Basic Auth</a-radio>
+            <a-radio value="apikey">API Key</a-radio>
+          </a-radio-group>
+
+          <div v-if="auth.type === 'bearer'" class="auth-form">
+            <div class="auth-row">
+              <label>Token</label>
+              <a-input v-model="auth.token" placeholder="输入 Token，自动加 Authorization: Bearer <token>" />
+            </div>
+          </div>
+
+          <div v-else-if="auth.type === 'basic'" class="auth-form">
+            <div class="auth-row">
+              <label>用户名</label>
+              <a-input v-model="auth.username" placeholder="用户名" />
+            </div>
+            <div class="auth-row">
+              <label>密码</label>
+              <a-input v-model="auth.password" type="password" placeholder="密码" />
+            </div>
+          </div>
+
+          <div v-else-if="auth.type === 'apikey'" class="auth-form">
+            <div class="auth-row">
+              <label>Header 名</label>
+              <a-input v-model="auth.key" placeholder="X-API-Key" />
+            </div>
+            <div class="auth-row">
+              <label>值</label>
+              <a-input v-model="auth.value" placeholder="API Key" />
+            </div>
+            <div class="auth-row">
+              <label>位置</label>
+              <a-radio-group v-model="auth.addTo" type="button" size="small">
+                <a-radio value="header">Header</a-radio>
+                <a-radio value="query">Query</a-radio>
+              </a-radio-group>
+            </div>
+          </div>
+
+          <p v-if="auth.type === 'none'" class="auth-hint muted">不使用鉴权。如需在 Header 手动填写，请到 Headers 页签。</p>
+          <p v-else class="auth-hint muted">发送请求时自动注入对应 Header，可用 <span v-pre>{{变量}}</span> 引用环境变量。</p>
+        </div>
+      </a-tab-pane>
       <a-tab-pane key="placeholders">
         <template #title>
           占位符<span v-if="placeholderCount" class="tab-count">{{ placeholderCount }}</span>
@@ -79,7 +128,7 @@ import DocumentEditor from '@/components/DocumentEditor.vue'
 import BenchDrawer from '@/components/BenchDrawer.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
-import type { BodyType, DocMode, FormDataItem, KeyValue, OpenTab } from '@/api/types'
+import type { AuthConfig, BodyType, DocMode, FormDataItem, KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -105,6 +154,19 @@ const placeholders = computed<KeyValue[]>({
 })
 
 const placeholderCount = computed(() => placeholders.value.filter((p) => p.enabled && p.key).length)
+
+/** 鉴权配置；旧数据没有该字段，getter 首次访问时补上，保证 v-model 改 .type 时命中响应式对象。 */
+const auth = computed<AuthConfig>({
+  get: () => {
+    if (!props.tab.request.auth) {
+      props.tab.request.auth = { type: 'none', addTo: 'header' }
+    }
+    return props.tab.request.auth
+  },
+  set: (v) => {
+    props.tab.request.auth = v
+  },
+})
 
 /** 编辑器占位符高亮 / 悬停说明所用的解析函数（环境、集合占位符、请求占位符变化时自动更新）。 */
 const varResolver = computed(() => buildVarResolver(props.tab.request.placeholders))
@@ -364,5 +426,33 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.auth-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 4px;
+}
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+}
+.auth-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  label {
+    width: 70px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--color-text-2);
+  }
+}
+.auth-hint {
+  font-size: 12px;
+  margin: 0;
 }
 </style>

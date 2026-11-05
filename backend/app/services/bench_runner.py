@@ -310,3 +310,12 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
         status="done", done=done, success=success, fail=fail,
         avg_ms=round(avg, 1), p95_ms=round(float(p95), 1), ttft_avg_ms=round(ttft_avg, 1),
     )
+
+    # 生成 HTML 报告（失败不影响任务状态）
+    try:
+        from backend.app.services import bench_report
+        html_str = bench_report.render_report(job, Path(result))
+        report_path = Path(result).with_suffix(".report.html")
+        report_path.write_text(html_str, encoding="utf-8")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[bench] report generation failed: {exc}")

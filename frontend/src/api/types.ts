@@ -31,6 +31,8 @@ export interface HttpRequestData {
   params: KeyValue[]
   body_type: BodyType
   body: string
+  /** 鉴权配置：发送时自动注入对应 header。 */
+  auth?: AuthConfig
   /**
    * 请求级占位符（长文本变量，如系统提示词）：在 url / params / headers / body 中用 {{key}} 引用。
    * 仅前端使用，发送前已插值，不会提交给后端。
@@ -38,6 +40,22 @@ export interface HttpRequestData {
   placeholders?: KeyValue[]
   /** 接口文档（Markdown），仅前端展示与随集合保存，不会提交给后端。 */
   docs?: string
+}
+
+/** 鉴权配置。 */
+export interface AuthConfig {
+  type: 'none' | 'bearer' | 'basic' | 'apikey'
+  /** Bearer Token */
+  token?: string
+  /** Basic Auth */
+  username?: string
+  password?: string
+  /** API Key：header 名 */
+  key?: string
+  /** API Key：值 */
+  value?: string
+  /** API Key 放在 header 还是 query */
+  addTo?: 'header' | 'query'
 }
 
 /** 接口文档显示模式：edit 仅编辑 / split 左右分屏（实时预览）/ preview 仅预览。 */

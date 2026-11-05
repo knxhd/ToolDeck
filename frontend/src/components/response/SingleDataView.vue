@@ -6,10 +6,27 @@
         <a-option value="json">JSON</a-option>
         <a-option value="html">HTML</a-option>
       </a-select>
+      <span class="toolbar-spacer" />
+      <a-tooltip content="复制响应体" position="top">
+        <a-button size="mini" type="text" @click="copyBody">
+          <template #icon><icon-copy /></template>
+        </a-button>
+      </a-tooltip>
+      <a-tooltip content="在响应中查找" position="top">
+        <a-button size="mini" type="text" @click="openFind">
+          <template #icon><icon-search /></template>
+        </a-button>
+      </a-tooltip>
     </div>
     <div class="body-view">
-      <MonacoEditor v-if="formatType !== 'html'" :model-value="rendered(data)"
-        :language="formatType === 'json' ? 'json' : 'plaintext'" read-only fill />
+      <MonacoEditor
+        ref="monacoRef"
+        v-if="formatType !== 'html'"
+        :model-value="rendered(data)"
+        :language="formatType === 'json' ? 'json' : 'plaintext'"
+        read-only
+        fill
+      />
       <iframe v-else class="html-frame" :srcdoc="data" sandbox=""></iframe>
     </div>
   </div>
@@ -17,6 +34,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { toast } from '@/utils/feedback'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 
 const props = defineProps({
@@ -31,6 +49,7 @@ const props = defineProps({
 })
 
 const formatType = ref(props.defaultFormat)
+const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
 
 const rendered = (raw: string) => {
   if (formatType.value !== 'json' || !raw) return raw || ''
@@ -39,6 +58,22 @@ const rendered = (raw: string) => {
   } catch {
     return raw
   }
+}
+
+async function copyBody() {
+  const text = props.data || ''
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('已复制')
+  } catch {
+    toast.error('复制失败')
+  }
+}
+
+function openFind() {
+  const ed = monacoRef.value?.editor?.()
+  ed?.focus()
+  ed?.trigger('keyboard', 'actions.find', undefined)
 }
 </script>
 
@@ -53,7 +88,7 @@ const rendered = (raw: string) => {
 .body-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex-shrink: 0;
   height: 30px;
   padding: 0 0 6px;
@@ -65,6 +100,10 @@ const rendered = (raw: string) => {
     font-family: var(--ui-font-mono);
     font-size: 11.5px;
   }
+}
+
+.toolbar-spacer {
+  flex: 1;
 }
 
 .body-view {

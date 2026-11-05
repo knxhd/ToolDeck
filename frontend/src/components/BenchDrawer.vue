@@ -103,6 +103,14 @@
 
           <div class="job-actions">
             <a-button
+              v-if="j.status === 'done'"
+              size="mini"
+              type="text"
+              @click="openReport(j)"
+            >
+              <template #icon><icon-chart-bar /></template>查看报告
+            </a-button>
+            <a-button
               v-if="j.status === 'running'"
               size="mini"
               type="text"
@@ -253,6 +261,24 @@ async function cancel(j: any) {
   } catch (err: any) {
     toast.error(err.message || '取消失败')
   }
+}
+
+function openReport(j: any) {
+  // 直接在新窗口打开报告 HTML（浏览器会带 Authorization 由 fetch 不行，改用带 token 的下载链接）
+  const token = getToken()
+  const url = `/api/bench/jobs/${j.id}/report`
+  // 用隐藏 fetch 拿 blob 再 open，避免 token 暴露在地址栏
+  fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    .then((r) => {
+      if (!r.ok) throw new Error('报告未生成')
+      return r.blob()
+    })
+    .then((blob) => {
+      const u = URL.createObjectURL(blob)
+      window.open(u, '_blank')
+      setTimeout(() => URL.revokeObjectURL(u), 60_000)
+    })
+    .catch((err) => toast.error(err.message || '打开报告失败'))
 }
 
 function statusText(s: string) {

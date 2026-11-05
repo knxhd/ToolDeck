@@ -141,6 +141,32 @@ async def download_params(job_id: str, user: dict = Depends(current_user)) -> Fi
     )
 
 
+@router.get("/jobs/{job_id}/report")
+async def download_report(job_id: str, user: dict = Depends(current_user)) -> FileResponse:
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    result = job.get("result_path") or ""
+    if not result:
+        raise HTTPException(status_code=404, detail="结果文件路径未配置")
+    from pathlib import Path
+
+    p = Path(result).with_suffix(".report.html")
+    if not p.exists():
+        # 旧任务没有预生成报告，现场生成一份
+        try:
+            from backend.app.services import bench_report
+            html_str = bench_report.render_report(job, Path(result))
+            p.write_text(html_str, encoding="utf-8")
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=404, detail=f"报告生成失败：{exc}")
+    return FileResponse(
+        p,
+        media_type="text/html",
+        filename=f"benchmark-report-{job['name']}-{job_id}.html",
+    )
+
+
 @router.delete("/jobs/{job_id}")
 async def remove_job(job_id: str, user: dict = Depends(current_user)) -> dict:
     ok = bench_store.delete_job(job_id, user["id"])

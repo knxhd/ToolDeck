@@ -22,7 +22,39 @@ const blankRequest = (): HttpRequestData => ({
   params: [{ key: '', value: '', enabled: true }],
   body_type: 'none',
   body: '',
+  auth: { type: 'none', addTo: 'header' },
 })
+
+/**
+ * 把请求级 auth 配置转成 header 注入 resolved.headers。
+ * 值里的 {{var}} 也会走环境变量插值。
+ */
+function applyAuthHeaders(req: HttpRequestData, vars: Record<string, string>) {
+  const auth = req.auth
+  if (!auth || auth.type === 'none') return
+  const interp = (s: string = '') =>
+    Object.entries(vars).reduce((acc, [k, v]) => acc.split(`{{${k}}}`).join(v), s)
+
+  const push = (key: string, value: string) => {
+    // 若用户已手填同名字段，不覆盖
+    const exists = req.headers.some((h) => h.key.trim().toLowerCase() === key.toLowerCase())
+    if (!exists) req.headers.push({ key, value, enabled: true })
+  }
+
+  if (auth.type === 'bearer') {
+    push('Authorization', `Bearer ${interp(auth.token || '')}`)
+  } else if (auth.type === 'basic') {
+    const raw = `${interp(auth.username || '')}:${interp(auth.password || '')}`
+    push('Authorization', `Basic ${btoa(unescape(encodeURIComponent(raw)))}`)
+  } else if (auth.type === 'apikey') {
+    const key = interp(auth.key || 'X-API-Key')
+    if (auth.addTo === 'query') {
+      req.params.push({ key, value: interp(auth.value || ''), enabled: true })
+    } else {
+      push(key, interp(auth.value || ''))
+    }
+  }
+}
 
 function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
   return {
@@ -202,6 +234,9 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       // 变量插值（优先级：请求占位符 > 集合占位符 > 环境变量），替换 url/headers/params/body 中的 {{var}}
       const env = useEnvironmentsStore()
       const resolved = resolveRequest(tab.request, env.scopeVars)
+
+      // 鉴权：按类型注入 header（环境变量同样会被插值）
+      applyAuthHeaders(resolved, env.scopeVars)
 
       // 发送前提醒未定义的占位符（不阻断请求）：插值后仍残留的 {{var}} 即为未定义
       const resolvedText = [
