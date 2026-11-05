@@ -1,27 +1,38 @@
 <template>
   <div class="masked-input">
+    <!-- 空值时：直接用普通输入框，不触发密码解锁 -->
     <a-input
-      v-if="unlocked"
+      v-if="!modelValue"
       :model-value="modelValue"
-      :type="password ? 'password' : 'text'"
       :placeholder="placeholder"
       allow-clear
       @update:model-value="emit('update:modelValue', $event)"
-    >
-      <template #suffix>
-        <icon-eye-invisible class="eye" @click="unlocked = false" />
-      </template>
-    </a-input>
-    <a-input
-      v-else
-      model-value="••••••••••"
-      disabled
-      @click="askPassword"
-    >
-      <template #suffix>
-        <icon-eye class="eye" @click.stop="askPassword" />
-      </template>
-    </a-input>
+    />
+    <!-- 有值且未解锁：显示掩码，点眼睛需密码 -->
+    <template v-else>
+      <a-input
+        v-if="unlocked"
+        :model-value="modelValue"
+        :type="password ? 'password' : 'text'"
+        :placeholder="placeholder"
+        allow-clear
+        @update:model-value="emit('update:modelValue', $event)"
+      >
+        <template #suffix>
+          <icon-eye-invisible class="eye" @click="unlocked = false" />
+        </template>
+      </a-input>
+      <a-input
+        v-else
+        model-value="••••••••••"
+        disabled
+        @click="askPassword"
+      >
+        <template #suffix>
+          <icon-eye class="eye" @click.stop="askPassword" />
+        </template>
+      </a-input>
+    </template>
   </div>
 </template>
 

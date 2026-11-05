@@ -36,9 +36,14 @@ function applyAuthHeaders(req: HttpRequestData, vars: Record<string, string>) {
     Object.entries(vars).reduce((acc, [k, v]) => acc.split(`{{${k}}}`).join(v), s)
 
   const push = (key: string, value: string) => {
-    // 若用户已手填同名字段，不覆盖
-    const exists = req.headers.some((h) => h.key.trim().toLowerCase() === key.toLowerCase())
-    if (!exists) req.headers.push({ key, value, enabled: true })
+    // Auth 注入的 header 优先：若已有同名字段，更新其值并启用；否则追加
+    const existing = req.headers.find((h) => h.key.trim().toLowerCase() === key.toLowerCase())
+    if (existing) {
+      existing.value = value
+      existing.enabled = true
+    } else {
+      req.headers.push({ key, value, enabled: true })
+    }
   }
 
   if (auth.type === 'bearer') {

@@ -262,5 +262,6 @@ export function resolveRequest(
     params: resolveKv(req.params || []),
     body_type: req.body_type,
     body: jsonLike ? renderVarsJson(req.body || '', all) : renderVars(req.body || '', all),
+    auth: req.auth,
   }
 }
