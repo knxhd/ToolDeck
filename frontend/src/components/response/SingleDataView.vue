@@ -7,31 +7,16 @@
         <a-option value="html">HTML</a-option>
       </a-select>
       <span class="toolbar-spacer" />
-      <a-tooltip content="复制响应体" position="top">
-        <a-button size="mini" type="text" @click="copyBody">
-          <template #icon><icon-copy /></template>
-        </a-button>
-      </a-tooltip>
-      <a-tooltip content="在响应中查找" position="top">
-        <a-button size="mini" type="text" @click="openFind">
-          <template #icon><icon-search /></template>
-        </a-button>
-      </a-tooltip>
-      <a-tooltip content="下载响应" position="top">
-        <a-button size="mini" type="text" @click="downloadBody">
-          <template #icon><icon-download /></template>
-        </a-button>
-      </a-tooltip>
+      <a-button size="mini" type="text" @click="copyBody">
+        <template #icon><icon-copy /></template>
+      </a-button>
+      <a-button size="mini" type="text" @click="downloadBody">
+        <template #icon><icon-download /></template>
+      </a-button>
     </div>
     <div class="body-view">
-      <MonacoEditor
-        ref="monacoRef"
-        v-if="formatType !== 'html'"
-        :model-value="rendered(data)"
-        :language="formatType === 'json' ? 'json' : 'plaintext'"
-        read-only
-        fill
-      />
+      <MonacoEditor ref="monacoRef" v-if="formatType !== 'html'" :model-value="rendered(data)"
+        :language="formatType === 'json' ? 'json' : 'plaintext'" read-only fill />
       <iframe v-else class="html-frame" :srcdoc="data" sandbox=""></iframe>
     </div>
   </div>
@@ -100,12 +85,6 @@ async function copyBody() {
   } catch {
     toast.error('复制失败')
   }
-}
-
-function openFind() {
-  const ed = monacoRef.value?.editor?.()
-  ed?.focus()
-  ed?.trigger('keyboard', 'actions.find', undefined)
 }
 
 function downloadBody() {

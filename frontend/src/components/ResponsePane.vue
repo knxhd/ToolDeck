@@ -17,16 +17,13 @@
         发送请求后在此查看响应
       </span>
       <div class="meta-actions">
-        <a-tooltip content="复制响应体" position="top">
-          <a-button size="mini" type="text" :disabled="!tab.body" @click="copyBody">
-            <template #icon><icon-copy /></template>
-          </a-button>
-        </a-tooltip>
-        <a-tooltip content="清空响应" position="top">
-          <a-button size="mini" type="text" :disabled="!tab.body && !tab.status_code && !tab.stream_events.length" @click="clearResponse">
-            <template #icon><icon-delete /></template>
-          </a-button>
-        </a-tooltip>
+        <a-button size="mini" type="text" :disabled="!tab.body" @click="copyBody">
+          <template #icon><icon-copy /></template>
+        </a-button>
+        <a-button size="mini" type="text" :disabled="!tab.body && !tab.status_code && !tab.stream_events.length"
+          @click="clearResponse">
+          <template #icon><icon-delete /></template>
+        </a-button>
       </div>
     </div>
     <div v-if="tab.error" class="error-box">
@@ -262,7 +259,7 @@ const merged = computed(() => {
     margin-right: 2px;
   }
 
-  & + .meta-item::before {
+  &+.meta-item::before {
     content: '';
     width: 1px;
     height: 10px;
@@ -299,11 +296,13 @@ const merged = computed(() => {
     color: var(--ui-accent-danger);
     flex-shrink: 0;
   }
+
   .error-title {
     font-weight: 600;
     color: var(--ui-accent-danger);
     margin-bottom: 2px;
   }
+
   .error-msg {
     font-family: var(--ui-font-mono);
     font-size: 12px;
@@ -311,6 +310,7 @@ const merged = computed(() => {
     word-break: break-all;
     white-space: pre-wrap;
   }
+
   .error-hint {
     margin-top: 6px;
     padding: 6px 8px;

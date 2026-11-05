@@ -313,14 +313,17 @@ watch(
 
   .req-tabs {
     flex: 1;
+    min-width: 0;
     min-height: 0;
+    width: 100%;
     display: flex;
     flex-direction: column;
 
+    // 标签栏左右内边距与内容区一致（12px），使标签底色块与内容左边缘对齐
     :deep(.arco-tabs-nav) {
       flex-shrink: 0;
       height: 38px;
-      padding: 0 10px;
+      padding: 0 12px;
       border-bottom: 1px solid var(--ui-border-soft);
 
       &::before {
@@ -361,32 +364,41 @@ watch(
 
     :deep(.arco-tabs-content) {
       flex: 1;
+      min-width: 0;
       min-height: 0;
+      width: 100%;
       overflow: hidden;
     }
 
     :deep(.arco-tabs-content-list) {
       height: 100%;
+      min-width: 0;
     }
 
     :deep(.arco-tabs-content-item) {
       height: 100%;
-      overflow: auto;
+      min-width: 0;
+      overflow: hidden;
     }
 
     :deep(.arco-tabs-content-item-active) {
       display: flex;
       flex-direction: column;
+      min-width: 0;
       overflow: hidden;
     }
 
+    /* Params / Headers / Body / Auth / 占位符 / 文档 统一内边距，保证左右完全对称 */
     :deep(.arco-tabs-content-item-active .arco-tabs-pane) {
       flex: 1;
+      box-sizing: border-box;
+      width: 100%;
+      min-width: 0;
       min-height: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      padding: 0 16px;
+      padding: 0 12px 12px;
       /* 子组件自行处理滚动：KV 表格 .kv-rows overflow-y:auto，Monaco fill，DocEditor 内部滚动 */
     }
   }
