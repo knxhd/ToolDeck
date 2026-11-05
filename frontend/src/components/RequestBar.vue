@@ -14,13 +14,8 @@
         </template>
       </a-dropdown>
       <span class="url-divider"></span>
-      <UrlInput
-        v-model="tab.request.url"
-        :request="tab.request"
-        @blur="syncQueryToParams"
-        @enter="onSend"
-        @curl="applyCurl"
-      />
+      <UrlInput v-model="tab.request.url" :request="tab.request" @blur="syncQueryToParams" @enter="onSend"
+        @curl="applyCurl" />
     </div>
     <a-tooltip content="保存到集合（Ctrl+S）" position="top">
       <button type="button" class="save-btn" :class="{ 'is-dirty': tab.dirty }" aria-label="保存请求"
@@ -35,33 +30,22 @@
     </a-tooltip>
     <a-button v-if="!tab.streaming" type="primary" class="send-btn" @click="onSend">发送</a-button>
     <a-button v-else status="danger" type="secondary" class="send-btn" @click="$emit('cancel')">停止</a-button>
-    <a-popover position="bottom" :trigger="['click']">
-      <template #content>
-        <div class="req-opts">
-          <div class="opt-row">
-            <label>超时（秒）</label>
-            <a-input-number v-model="tab.request.timeout" :min="1" :max="600" size="small" style="width: 90px" />
-          </div>
-          <div class="opt-row">
-            <label><a-switch v-model="tab.request.follow_redirects" size="small" /> 跟随重定向</label>
-          </div>
-          <div class="opt-row">
-            <label><a-switch v-model="tab.request.verify_ssl" size="small" /> 校验 SSL 证书</label>
-          </div>
-        </div>
-      </template>
-      <button type="button" class="opts-btn" aria-label="请求设置">
-        <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" fill="none" stroke="currentColor" stroke-width="1.3"/>
-          <path d="M13.7 9.5a1.4 1.4 0 0 0 .3 1.5l.1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.4 1.4 0 0 0-1.5-.3 1.4 1.4 0 0 0-.8 1.2v.2a1.7 1.7 0 1 1-3.4 0v-.2a1.4 1.4 0 0 0-.9-1.2 1.4 1.4 0 0 0-1.5.3l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.4 1.4 0 0 0 .3-1.5 1.4 1.4 0 0 0-1.2-.8H1.7a1.7 1.7 0 1 1 0-3.4h.2a1.4 1.4 0 0 0 1.2-.9 1.4 1.4 0 0 0-.3-1.5l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.4 1.4 0 0 0 1.5.3h.1a1.4 1.4 0 0 0 .8-1.2V1.7a1.7 1.7 0 1 1 3.4 0v.2a1.4 1.4 0 0 0 .8 1.2 1.4 1.4 0 0 0 1.5-.3l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.4 1.4 0 0 0-.3 1.5v.1a1.4 1.4 0 0 0 1.2.8h.2a1.7 1.7 0 1 1 0 3.4h-.2a1.4 1.4 0 0 0-1.2.8Z" fill="none" stroke="currentColor" stroke-width="1.1"/>
-        </svg>
-      </button>
-    </a-popover>
+    <a-button type="button" class="opts-btn" aria-label="请求设置" @click="showSettings = true">
+      <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" fill="none" stroke="currentColor" stroke-width="1.3" />
+        <path
+          d="M13.7 9.5a1.4 1.4 0 0 0 .3 1.5l.1.1a1.7 1.7 0 1 1-2.4 2.4l-.1-.1a1.4 1.4 0 0 0-1.5-.3 1.4 1.4 0 0 0-.8 1.2v.2a1.7 1.7 0 1 1-3.4 0v-.2a1.4 1.4 0 0 0-.9-1.2 1.4 1.4 0 0 0-1.5.3l-.1.1a1.7 1.7 0 1 1-2.4-2.4l.1-.1a1.4 1.4 0 0 0 .3-1.5 1.4 1.4 0 0 0-1.2-.8H1.7a1.7 1.7 0 1 1 0-3.4h.2a1.4 1.4 0 0 0 1.2-.9 1.4 1.4 0 0 0-.3-1.5l-.1-.1a1.7 1.7 0 1 1 2.4-2.4l.1.1a1.4 1.4 0 0 0 1.5.3h.1a1.4 1.4 0 0 0 .8-1.2V1.7a1.7 1.7 0 1 1 3.4 0v.2a1.4 1.4 0 0 0 .8 1.2 1.4 1.4 0 0 0 1.5-.3l.1-.1a1.7 1.7 0 1 1 2.4 2.4l-.1.1a1.4 1.4 0 0 0-.3 1.5v.1a1.4 1.4 0 0 0 1.2.8h.2a1.7 1.7 0 1 1 0 3.4h-.2a1.4 1.4 0 0 0-1.2.8Z"
+          fill="none" stroke="currentColor" stroke-width="1.1" />
+      </svg>
+    </a-button>
+    <RequestSettingsDialog v-model="showSettings" :request="tab.request" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import UrlInput from '@/components/UrlInput.vue'
+import RequestSettingsDialog from '@/components/RequestSettingsDialog.vue'
 import { parseUrlQuery } from '@/utils/parseCurl'
 import type { ParsedCurl } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
@@ -69,6 +53,8 @@ import type { HttpMethod, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 const emit = defineEmits<{ send: []; cancel: []; save: []; saveClick: [] }>()
+
+const showSettings = ref(false)
 
 const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
@@ -175,21 +161,27 @@ function applyCurl(parsed: ParsedCurl) {
   &.m-get {
     color: var(--ui-method-get);
   }
+
   &.m-post {
     color: var(--ui-method-post);
   }
+
   &.m-put {
     color: var(--ui-method-put);
   }
+
   &.m-patch {
     color: var(--ui-method-patch);
   }
+
   &.m-delete {
     color: var(--ui-method-delete);
   }
+
   &.m-head {
     color: var(--ui-method-head);
   }
+
   &.m-options {
     color: var(--ui-method-options);
   }
@@ -283,29 +275,6 @@ function applyCurl(parsed: ParsedCurl) {
   .ico {
     width: 15px;
     height: 15px;
-  }
-}
-
-.req-opts {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 200px;
-  font-size: 13px;
-
-  .opt-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-
-    label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--color-text-2);
-      cursor: pointer;
-    }
   }
 }
 </style>
