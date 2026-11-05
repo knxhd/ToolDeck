@@ -75,6 +75,12 @@ function nodeToPostmanItem(node: CollectionNode): any {
   }
 }
 
+function stamp(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+}
+
 function exportPostman(tree: CollectionNode[], name: string) {
   const payload = {
     info: {
@@ -84,7 +90,7 @@ function exportPostman(tree: CollectionNode[], name: string) {
     },
     item: tree.map(nodeToPostmanItem),
   }
-  downloadJson(payload, `postman-collection-${name}-${new Date().toISOString().slice(0, 10)}.json`)
+  downloadJson(payload, `ToolDeck-api-${stamp()}.json`)
 }
 
 // ---------- 对外导出 ----------
