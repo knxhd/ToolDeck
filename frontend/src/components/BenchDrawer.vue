@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 6px;
   label {
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--el-text-color-secondary);
     font-weight: 600;
   }
@@ -368,11 +368,11 @@ onBeforeUnmount(() => {
 .file-box { display: flex; flex-direction: column; gap: 8px; }
 .upload-info { display: flex; align-items: center; gap: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.hint { font-size: 12px; margin: 0; }
-.muted { color: var(--el-text-color-placeholder); font-size: 12px; }
+.hint { font-size: 0.86em; margin: 0; }
+.muted { color: var(--el-text-color-placeholder); font-size: 0.86em; }
 
 .resolved-url {
-  font-size: 12px;
+  font-size: 0.86em;
   font-family: ui-monospace, 'JetBrains Mono', Menlo, monospace;
   word-break: break-all;
   line-height: 1.5;
@@ -398,11 +398,11 @@ onBeforeUnmount(() => {
 .job-name { font-weight: 600; }
 .job-meta {
   display: flex; flex-wrap: wrap; gap: 12px;
-  font-size: 12px; color: var(--el-text-color-secondary);
+  font-size: 0.86em; color: var(--el-text-color-secondary);
   .ok { color: var(--el-color-success); }
   .err { color: var(--el-color-danger); }
 }
-.job-err { color: var(--el-color-danger); font-size: 12px; }
+.job-err { color: var(--el-color-danger); font-size: 0.86em; }
 .job-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 .bar-wrap { display: flex; align-items: center; gap: 8px; }
 .bar {
@@ -416,6 +416,6 @@ onBeforeUnmount(() => {
   transition: width 0.3s ease;
   &.warn { background: var(--el-color-warning, #ff7d00); }
 }
-.bar-text { font-size: 12px; color: var(--el-text-color-secondary); min-width: 38px; text-align: right; }
+.bar-text { font-size: 0.86em; color: var(--el-text-color-secondary); min-width: 38px; text-align: right; }
 .empty { text-align: center; padding: 24px 0; }
 </style>

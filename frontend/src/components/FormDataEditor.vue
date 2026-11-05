@@ -222,7 +222,7 @@ async function onBrowserFileChosen(e: Event) {
     border-color: transparent;
     border-radius: var(--ui-radius-sm);
     font-family: var(--ui-font-mono);
-    font-size: 12px;
+    font-size: 0.86em;
     transition: background-color 0.12s ease, border-color 0.12s ease;
 
     &:hover {
@@ -244,7 +244,7 @@ async function onBrowserFileChosen(e: Event) {
   background: rgba(var(--primary-6), 0.1);
   color: rgb(var(--primary-6));
   font-family: var(--ui-font-mono);
-  font-size: 12px;
+  font-size: 0.86em;
 
   .fd-file-icon {
     flex-shrink: 0;
@@ -279,7 +279,7 @@ async function onBrowserFileChosen(e: Event) {
     height: 22px;
     padding: 0;
     border-radius: var(--ui-radius-sm);
-    font-size: 12px;
+    font-size: 0.86em;
     opacity: 0.55;
     transition: opacity 0.12s ease;
 
@@ -296,7 +296,7 @@ async function onBrowserFileChosen(e: Event) {
 .fd-suffix-icon {
   cursor: pointer;
   color: var(--color-text-4);
-  font-size: 13px;
+  font-size: 0.93em;
   transition: color 0.12s ease;
 
   &:hover {

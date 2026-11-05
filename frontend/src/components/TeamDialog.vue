@@ -423,20 +423,20 @@ async function onRemove(m: { id: number; username: string }) {
   color: var(--color-text-3);
 
   .empty-ico {
-    font-size: 30px;
+    font-size: 2.14em;
     color: var(--color-text-4);
   }
 
   .empty-title {
     margin-top: 10px;
-    font-size: 13px;
+    font-size: 0.93em;
     font-weight: 600;
     color: var(--color-text-2);
   }
 
   .empty-desc {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: 0.86em;
   }
 }
 
@@ -466,7 +466,7 @@ async function onRemove(m: { id: number; username: string }) {
 .team-avatar {
   width: 38px;
   height: 38px;
-  font-size: 16px;
+  font-size: 1.14em;
 }
 
 .team-main {
@@ -483,7 +483,7 @@ async function onRemove(m: { id: number; username: string }) {
 
 .team-name {
   overflow: hidden;
-  font-size: 14px;
+  font-size: 1em;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -492,7 +492,7 @@ async function onRemove(m: { id: number; username: string }) {
 
 .team-meta {
   margin-top: 3px;
-  font-size: 12px;
+  font-size: 0.86em;
   color: var(--color-text-3);
 }
 
@@ -521,7 +521,7 @@ async function onRemove(m: { id: number; username: string }) {
   flex-shrink: 0;
   padding: 0 7px;
   border-radius: 9px;
-  font-size: 11px;
+  font-size: 0.79em;
   line-height: 18px;
   background: var(--color-fill-2);
   color: var(--color-text-3);
@@ -542,7 +542,7 @@ async function onRemove(m: { id: number; username: string }) {
   align-items: center;
   gap: 6px;
   margin: 16px 0 2px;
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 600;
   color: var(--color-text-2);
 
@@ -551,7 +551,7 @@ async function onRemove(m: { id: number; username: string }) {
     border-radius: 8px;
     background: var(--color-fill-2);
     color: var(--color-text-3);
-    font-size: 11px;
+    font-size: 0.79em;
     font-weight: 500;
     line-height: 16px;
   }
@@ -603,7 +603,7 @@ async function onRemove(m: { id: number; username: string }) {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: 0.86em;
 }
 
 .member-info {
@@ -613,7 +613,7 @@ async function onRemove(m: { id: number; username: string }) {
 
 .member-name {
   overflow: hidden;
-  font-size: 13px;
+  font-size: 0.93em;
   font-weight: 500;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -650,7 +650,7 @@ async function onRemove(m: { id: number; username: string }) {
     flex-shrink: 0;
     margin-top: 3px;
     color: rgb(var(--danger-6));
-    font-size: 15px;
+    font-size: 1.07em;
   }
 }
 

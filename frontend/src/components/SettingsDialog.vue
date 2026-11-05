@@ -3,22 +3,34 @@
     @update:visible="(v: boolean) => emit('update:modelValue', v)">
     <div class="settings-form">
       <div class="form-row">
-        <span class="form-label">字体</span>
+        <span class="form-label">编辑器字体</span>
         <a-select v-model="settings.fontFamily" style="width: 100%">
           <a-option v-for="o in FONT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</a-option>
         </a-select>
       </div>
       <div class="form-row">
-        <span class="form-label">字号</span>
+        <span class="form-label">编辑器字号</span>
         <a-select v-model="settings.fontSize" style="width: 100%">
           <a-option v-for="s in FONT_SIZE_OPTIONS" :key="s" :value="s">{{ s }} px</a-option>
         </a-select>
       </div>
       <div class="form-row">
+        <span class="form-label">UI字体</span>
+        <a-select v-model="settings.uiFontFamily" style="width: 100%">
+          <a-option v-for="o in FONT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</a-option>
+        </a-select>
+      </div>
+      <div class="form-row">
+        <span class="form-label">UI字号</span>
+        <a-select v-model="settings.uiFontSize" style="width: 100%">
+          <a-option v-for="s in UI_FONT_SIZE_OPTIONS" :key="s" :value="s">{{ s }} px</a-option>
+        </a-select>
+      </div>
+      <div class="form-row">
         <span class="form-label">缩放</span>
-        <a-input-number v-model="settings.zoom" :min="0.1" :max="5" :step="0.1" :precision="1"
+        <a-input-number v-model="settings.zoom" :min="0.8" :max="1.5" :step="0.1" :precision="1"
           mode="button" style="width: 132px" />
-        <span class="form-tip">UI 整体缩放，不影响代码编辑器</span>
+        <span class="form-tip">整体放大界面，含布局和文字</span>
       </div>
       <div class="form-row">
         <span class="form-label">主题</span>
@@ -78,7 +90,7 @@
       </div>
       <div class="form-row">
         <span class="form-label">预览</span>
-        <div class="preview">The quick brown fox 敏捷的棕色狐狸 123</div>
+        <div class="preview" :style="{ fontFamily: settings.uiFontFamily, fontSize: settings.uiFontSize + 'px' }">The quick brown fox 敏捷的棕色狐狸 123</div>
       </div>
       <div class="form-row form-row-top">
         <span class="form-label">快捷键</span>
@@ -98,7 +110,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
+import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS, UI_FONT_SIZE_OPTIONS } from '@/stores/settings'
 import { ACCENT_PRESETS, DARK_THEMES, LIGHT_THEMES } from '@/utils/theme'
 
 defineProps<{ modelValue: boolean }>()
@@ -148,7 +160,7 @@ function onReset() {
       width: 58px;
       flex-shrink: 0;
       color: var(--color-text-2);
-      font-size: 12.5px;
+      font-size: 0.89em;
       font-weight: 500;
     }
 
@@ -156,7 +168,7 @@ function onReset() {
       flex: 1;
       min-width: 0;
       color: var(--color-text-3);
-      font-size: 12px;
+      font-size: 0.86em;
       line-height: 1.5;
     }
   }
@@ -189,7 +201,7 @@ function onReset() {
   border-radius: var(--ui-radius-md);
   background: var(--ui-bg-subtle);
   color: var(--color-text-2);
-  font-size: 12px;
+  font-size: 0.86em;
   cursor: pointer;
   transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease,
     box-shadow 0.15s ease;
@@ -218,11 +230,11 @@ function onReset() {
     align-items: center;
     justify-content: center;
     color: #fff;
-    font-size: 10px;
+    font-size: 0.71em;
   }
 
   .swatch-check {
-    font-size: 10px;
+    font-size: 0.71em;
   }
 
   .swatch-plus {
@@ -255,8 +267,6 @@ function onReset() {
   border-radius: var(--ui-radius-md);
   background: var(--ui-bg-subtle);
   color: var(--color-text-1);
-  font-family: var(--app-font-family);
-  font-size: var(--app-font-size);
   line-height: 1.5;
 }
 
@@ -285,7 +295,7 @@ function onReset() {
       border-radius: 4px;
       background: var(--ui-bg-panel);
       font-family: var(--ui-font-mono);
-      font-size: 11.5px;
+      font-size: 0.82em;
       color: var(--color-text-1);
     }
   }

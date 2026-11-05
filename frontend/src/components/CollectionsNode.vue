@@ -260,7 +260,7 @@ function onChildExpand(id: string) { emit('expand', id) }
       width: 20px;
       height: 20px;
       padding: 0;
-      font-size: 12px;
+      font-size: 0.86em;
       color: var(--color-text-3);
 
       &:hover {

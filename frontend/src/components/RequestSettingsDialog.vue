@@ -54,7 +54,7 @@ const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
       flex: 1;
       min-width: 0;
       color: var(--color-text-3);
-      font-size: 12px;
+      font-size: 0.86em;
       line-height: 1.5;
     }
   }

@@ -92,7 +92,7 @@ function onClose() {
   border-radius: 10px;
   background: var(--ui-bg-subtle);
   color: var(--color-text-3);
-  font-size: 11px;
+  font-size: 0.79em;
   font-weight: 500;
   vertical-align: middle;
 }
@@ -112,7 +112,7 @@ function onClose() {
     background: var(--ui-accent-warm-bg);
     color: var(--ui-accent-warm);
     font-family: var(--ui-font-mono);
-    font-size: 11px;
+    font-size: 0.79em;
   }
 }
 

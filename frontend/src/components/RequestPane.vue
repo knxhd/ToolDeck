@@ -303,7 +303,7 @@ watch(
     padding: 0 8px;
     border-radius: var(--ui-radius-sm);
     color: var(--color-text-2);
-    font-size: 12px;
+    font-size: 0.86em;
     font-weight: 600;
 
     &:hover {
@@ -343,7 +343,7 @@ watch(
       border-radius: var(--ui-radius-sm);
       background: transparent;
       color: var(--color-text-3);
-      font-size: 12.5px;
+      font-size: 0.89em;
       transition: color 0.15s ease, background-color 0.15s ease;
 
       &:hover {
@@ -429,9 +429,9 @@ watch(
   background: var(--ui-accent-warm-bg, rgba(212, 136, 6, 0.16));
   color: var(--ui-accent-warm);
   font-family: var(--ui-font-mono);
-  font-size: 10px;
+  font-size: 0.71em;
   font-weight: 700;
-  line-height: 15px;
+  line-height: 1.07em;
   text-align: center;
   vertical-align: middle;
 }
@@ -461,12 +461,12 @@ watch(
   label {
     width: 70px;
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-2);
   }
 }
 .auth-hint {
-  font-size: 12px;
+  font-size: 0.86em;
   margin: 0;
 }
 </style>

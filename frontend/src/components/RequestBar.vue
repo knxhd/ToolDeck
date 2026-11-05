@@ -143,7 +143,7 @@ function applyCurl(parsed: ParsedCurl) {
   border-radius: var(--ui-radius-sm);
   cursor: pointer;
   font-family: var(--ui-font-mono);
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--color-text-1);

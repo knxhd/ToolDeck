@@ -322,7 +322,7 @@ watch(formValues, () => emit('save'), { deep: true })
     padding: 2px 8px;
     border-radius: var(--ui-radius-sm);
     color: var(--color-text-3);
-    font-size: 12px;
+    font-size: 0.86em;
     cursor: pointer;
 
     &:hover {
@@ -367,7 +367,7 @@ watch(formValues, () => emit('save'), { deep: true })
   .tool-title {
     color: var(--color-text-1);
     font-family: var(--ui-font-mono);
-    font-size: 12px;
+    font-size: 0.86em;
     font-weight: 600;
   }
 
@@ -410,7 +410,7 @@ watch(formValues, () => emit('save'), { deep: true })
   .field-desc {
     margin: 2px 0 4px;
     color: var(--color-text-4);
-    font-size: 11px;
+    font-size: 0.79em;
   }
 }
 
@@ -434,7 +434,7 @@ watch(formValues, () => emit('save'), { deep: true })
   border-bottom: 1px solid var(--ui-border-soft);
   background: var(--ui-bg-subtle);
   color: var(--color-text-2);
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 600;
 }
 

@@ -410,7 +410,7 @@ const toolbarGroups: ToolbarBtn[][] = [
   border-radius: var(--ui-radius-sm);
   background: transparent;
   color: var(--color-text-2);
-  font-size: 15px;
+  font-size: 1.07em;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 

@@ -256,7 +256,7 @@ function remove(i: number) {
       border-color: transparent;
       border-radius: var(--ui-radius-sm);
       font-family: var(--ui-font-mono);
-      font-size: 12px;
+      font-size: 0.86em;
       transition: background-color 0.12s ease, border-color 0.12s ease;
 
       &:hover {
@@ -278,7 +278,7 @@ function remove(i: number) {
       height: 22px;
       padding: 0;
       border-radius: var(--ui-radius-sm);
-      font-size: 12px;
+      font-size: 0.86em;
       opacity: 0.55;
       transition: opacity 0.12s ease, background-color 0.12s ease;
 
@@ -301,7 +301,7 @@ function remove(i: number) {
       padding: 0 8px;
       border-radius: var(--ui-radius-sm);
       color: var(--color-text-2);
-      font-size: 12px;
+      font-size: 0.86em;
 
       &:hover {
         background: var(--ui-bg-hover);

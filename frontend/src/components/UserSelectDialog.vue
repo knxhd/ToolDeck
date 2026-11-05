@@ -167,7 +167,7 @@ async function onSubmit() {
 
 .auth-title {
   margin: 0;
-  font-size: 19px;
+  font-size: 1.36em;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--color-text-1);
@@ -186,7 +186,7 @@ async function onSubmit() {
     height: 38px;
     border-radius: var(--ui-radius-md);
     background: var(--ui-bg-subtle);
-    font-size: 13px;
+    font-size: 0.93em;
 
     &:hover {
       background: var(--ui-bg-panel);
@@ -231,7 +231,7 @@ async function onSubmit() {
   padding-top: 14px;
   border-top: 1px solid var(--ui-border-soft);
   color: var(--color-text-4);
-  font-size: 11px;
+  font-size: 0.79em;
   letter-spacing: 0.02em;
 }
 </style>

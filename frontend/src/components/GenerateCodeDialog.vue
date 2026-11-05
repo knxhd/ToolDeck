@@ -120,7 +120,7 @@ function onClose() {
 
   .gc-interp {
     margin-left: auto;
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-2);
   }
 }

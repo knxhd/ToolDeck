@@ -227,12 +227,12 @@ const merged = computed(() => {
   height: 40px;
   padding: 0 12px;
   border-bottom: 1px solid var(--ui-border-soft);
-  font-size: 12px;
+  font-size: 0.86em;
   color: var(--color-text-3);
 }
 
 .status-pill.large {
-  font-size: 13px;
+  font-size: 0.93em;
   font-weight: 700;
   min-width: 48px;
   padding: 3px 10px;
@@ -249,7 +249,7 @@ const merged = computed(() => {
   align-items: center;
   gap: 4px;
   font-family: var(--ui-font-mono);
-  font-size: 11.5px;
+  font-size: 0.82em;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-3);
 
@@ -288,11 +288,11 @@ const merged = computed(() => {
   border-left: 3px solid var(--ui-accent-danger);
   border-radius: var(--ui-radius-md);
   background: var(--ui-status-5xx-bg);
-  font-size: 13px;
+  font-size: 0.93em;
   line-height: 1.5;
 
   .error-icon {
-    font-size: 18px;
+    font-size: 1.29em;
     color: var(--ui-accent-danger);
     flex-shrink: 0;
   }
@@ -305,7 +305,7 @@ const merged = computed(() => {
 
   .error-msg {
     font-family: var(--ui-font-mono);
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-2);
     word-break: break-all;
     white-space: pre-wrap;
@@ -316,7 +316,7 @@ const merged = computed(() => {
     padding: 6px 8px;
     background: var(--ui-bg-subtle);
     border-radius: var(--ui-radius-sm);
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-3);
   }
 }
@@ -345,7 +345,7 @@ const merged = computed(() => {
     border-radius: var(--ui-radius-sm);
     background: transparent;
     color: var(--color-text-3);
-    font-size: 12.5px;
+    font-size: 0.89em;
     transition: color 0.15s ease, background-color 0.15s ease;
 
     &:hover {
@@ -418,13 +418,13 @@ const merged = computed(() => {
 }
 
 .merge-label {
-  font-size: 12px;
+  font-size: 0.86em;
   color: var(--color-text-2);
   font-weight: 500;
 }
 
 .merge-tip {
-  font-size: 11.5px;
+  font-size: 0.82em;
 }
 
 .frame-list-wrap {
@@ -440,7 +440,7 @@ const merged = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 2px 4px 6px;
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 600;
   color: var(--color-text-2);
 }
@@ -448,7 +448,7 @@ const merged = computed(() => {
 .frame-empty {
   padding: 24px 0;
   text-align: center;
-  font-size: 12px;
+  font-size: 0.86em;
 }
 
 /* 合并后的 Markdown 内容：占满剩余高度，超出时纵向滚动 */
@@ -476,7 +476,7 @@ const merged = computed(() => {
   justify-content: space-between;
   padding: 5px 10px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.86em;
   color: var(--color-text-3);
   user-select: none;
 
@@ -501,7 +501,7 @@ const merged = computed(() => {
 
   .reasoning-toggle {
     color: rgb(var(--primary-6));
-    font-size: 11.5px;
+    font-size: 0.82em;
   }
 }
 
@@ -537,7 +537,7 @@ const merged = computed(() => {
     padding: 4px 8px;
     border-radius: var(--ui-radius-sm);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.86em;
 
     &:hover {
       background: var(--ui-bg-hover);
@@ -580,7 +580,7 @@ const merged = computed(() => {
     .frame-time {
       color: var(--color-text-4);
       font-family: var(--ui-font-mono);
-      font-size: 10.5px;
+      font-size: 0.75em;
       flex-shrink: 0;
     }
 
@@ -601,13 +601,13 @@ const merged = computed(() => {
   gap: 6px;
   padding: 6px 8px;
   color: var(--ui-accent-ok);
-  font-size: 12px;
+  font-size: 0.86em;
   animation: blink 1s infinite;
 }
 
 .frame-time {
   font-family: var(--ui-font-mono);
-  font-size: 11px;
+  font-size: 0.79em;
   color: var(--color-text-4);
 }
 

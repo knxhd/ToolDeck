@@ -174,7 +174,7 @@ function onClose() {
   border-radius: 10px;
   background: var(--ui-bg-subtle);
   color: var(--color-text-3);
-  font-size: 11px;
+  font-size: 0.79em;
   font-weight: 500;
   vertical-align: middle;
 }
@@ -264,7 +264,7 @@ function onClose() {
     visibility: hidden;
     flex-shrink: 0;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-4);
     transition: color 0.12s ease;
 
@@ -293,7 +293,7 @@ function onClose() {
 }
 
 .detail-title {
-  font-size: 13px;
+  font-size: 0.93em;
   font-weight: 600;
   color: var(--color-text-1);
 }
@@ -305,7 +305,7 @@ function onClose() {
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
-  font-size: 12px;
+  font-size: 0.86em;
 
   th {
     height: 28px;
@@ -341,7 +341,7 @@ function onClose() {
     border-color: transparent;
     border-radius: var(--ui-radius-sm);
     font-family: var(--ui-font-mono);
-    font-size: 12px;
+    font-size: 0.86em;
 
     &:hover {
       background: var(--ui-bg-panel);
@@ -394,7 +394,7 @@ function onClose() {
     background: rgba(var(--primary-6), 0.12);
     color: rgb(var(--primary-6));
     font-family: var(--ui-font-mono);
-    font-size: 11px;
+    font-size: 0.79em;
   }
 }
 

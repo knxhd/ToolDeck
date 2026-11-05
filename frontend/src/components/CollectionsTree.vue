@@ -197,7 +197,7 @@ async function applyImport(policy: ConflictPolicy) {
   }
 
   .tree-title {
-    font-size: 12px;
+    font-size: 0.86em;
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--color-text-2);

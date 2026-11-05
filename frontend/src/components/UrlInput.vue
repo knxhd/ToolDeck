@@ -444,7 +444,7 @@ async function copyValue() {
   transform: translateY(-50%);
   cursor: pointer;
   color: var(--color-text-3);
-  font-size: 14px;
+  font-size: 1em;
   padding: 0 4px;
   z-index: 2;
 
@@ -461,7 +461,7 @@ async function copyValue() {
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: 0.86em;
   min-width: 220px;
   box-shadow: var(--ui-shadow-pop);
   pointer-events: auto;
@@ -481,7 +481,7 @@ async function copyValue() {
 }
 
 .var-tip-badge {
-  font-size: 11px;
+  font-size: 0.79em;
   color: rgb(var(--primary-6));
   background: rgba(var(--primary-6), 0.14);
   border-radius: 3px;
@@ -515,7 +515,7 @@ async function copyValue() {
   background: transparent;
   color: var(--color-text-3);
   padding: 0;
-  font-size: 13px;
+  font-size: 0.93em;
 
   &:hover {
     color: rgb(var(--primary-6));
@@ -525,13 +525,13 @@ async function copyValue() {
 .var-tip-missing {
   margin-top: 6px;
   color: var(--ui-accent-danger);
-  font-size: 11px;
+  font-size: 0.79em;
 }
 
 .var-tip-desc {
   margin-top: 6px;
   color: var(--color-text-3);
-  font-size: 11px;
+  font-size: 0.79em;
 }
 
 .ac-popup {
@@ -548,7 +548,7 @@ async function copyValue() {
   box-shadow: var(--ui-shadow-pop);
   z-index: 1100;
   padding: 4px;
-  font-size: 13px;
+  font-size: 0.93em;
 }
 
 .ac-item {
@@ -563,7 +563,7 @@ async function copyValue() {
 
   .ac-desc {
     font-family: var(--app-font-family);
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-3);
     white-space: nowrap;
   }

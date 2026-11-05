@@ -881,8 +881,8 @@ function statusClass(code: number) {
   padding: 6px;
   background: var(--ui-bg-canvas);
   color: var(--color-text-1);
-  font-family: var(--app-font-family);
-  font-size: var(--app-font-size);
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
   zoom: var(--app-zoom, 1);
 }
 
@@ -914,11 +914,11 @@ function statusClass(code: number) {
   :deep(.scope-select .arco-select-view-prefix) {
     padding-right: 6px;
     color: rgb(var(--primary-6));
-    font-size: 14px;
+    font-size: 1em;
   }
 
   :deep(.scope-select .arco-select-view-value) {
-    font-size: 12.5px;
+    font-size: 0.89em;
     font-weight: 600;
   }
 }
@@ -953,7 +953,7 @@ function statusClass(code: number) {
   flex-shrink: 0;
   height: 32px;
   padding: 0 6px 0 10px;
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 600;
   color: var(--color-text-2);
   cursor: pointer;
@@ -991,7 +991,7 @@ function statusClass(code: number) {
 
 .history-empty {
   padding: 14px 10px;
-  font-size: 12px;
+  font-size: 0.86em;
   color: var(--color-text-3);
   text-align: center;
 }
@@ -1003,7 +1003,7 @@ function statusClass(code: number) {
   padding: 5px 6px;
   border-radius: var(--ui-radius-sm);
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.86em;
   transition: background-color 0.12s ease;
 
   &:hover {
@@ -1076,7 +1076,7 @@ function statusClass(code: number) {
     border-radius: var(--ui-radius-md);
     background: transparent;
     color: var(--color-text-2);
-    font-size: 12.5px;
+    font-size: 0.89em;
     transition: background-color 0.15s ease, color 0.15s ease;
 
     &:hover {
@@ -1154,7 +1154,7 @@ function statusClass(code: number) {
     background: var(--ui-bg-subtle);
     border: 1px solid var(--ui-border-soft);
     color: var(--color-text-2);
-    font-size: 12px;
+    font-size: 0.86em;
 
     &:hover {
       background: var(--ui-bg-hover);
@@ -1178,8 +1178,8 @@ function statusClass(code: number) {
   .ph-count {
     margin-left: 4px;
     padding: 0 5px;
-    font-size: 10px;
-    line-height: 15px;
+    font-size: 0.71em;
+    line-height: 1.07em;
     border-radius: 8px;
     background: rgba(var(--primary-6), 0.16);
     color: rgb(var(--primary-6));
@@ -1207,7 +1207,7 @@ function statusClass(code: number) {
     border-radius: 50%;
     background: rgb(var(--primary-6));
     color: #fff;
-    font-size: 11px;
+    font-size: 0.79em;
     font-weight: 700;
     line-height: 1;
   }
@@ -1323,7 +1323,7 @@ function statusClass(code: number) {
 
   .ctx-item {
     padding: 6px 12px;
-    font-size: 12.5px;
+    font-size: 0.89em;
     color: var(--color-text-1);
     border-radius: var(--ui-radius-sm);
     cursor: pointer;
@@ -1360,7 +1360,7 @@ function statusClass(code: number) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 13px;
+  font-size: 0.93em;
   .keys {
     display: inline-flex;
     gap: 3px;
@@ -1371,7 +1371,7 @@ function statusClass(code: number) {
       border-radius: 4px;
       background: var(--ui-bg-subtle);
       font-family: var(--ui-font-mono);
-      font-size: 12px;
+      font-size: 0.86em;
       color: var(--color-text-1);
     }
   }

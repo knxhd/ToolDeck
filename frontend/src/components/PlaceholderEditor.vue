@@ -258,7 +258,7 @@ async function copyRef() {
   }
 
   .ph-list-title {
-    font-size: 12px;
+    font-size: 0.86em;
     font-weight: 600;
     color: var(--color-text-2);
   }
@@ -278,7 +278,7 @@ async function copyRef() {
     padding: 3px 6px;
     border-radius: var(--ui-radius-sm);
     cursor: pointer;
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-2);
     transition: background-color 0.12s ease, color 0.12s ease;
 
@@ -342,7 +342,7 @@ async function copyRef() {
     padding: 22px 8px;
     text-align: center;
     color: var(--color-text-4);
-    font-size: 12px;
+    font-size: 0.86em;
     line-height: 1.8;
   }
 
@@ -359,7 +359,7 @@ async function copyRef() {
 
   .ph-builtin-icon {
     flex-shrink: 0;
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--ui-accent-warm);
   }
 }
@@ -402,7 +402,7 @@ async function copyRef() {
 
   .ph-builtin-sample {
     font-family: var(--ui-font-mono);
-    font-size: 12px;
+    font-size: 0.86em;
     padding: 3px 8px;
     border-radius: var(--ui-radius-sm);
     background: rgba(var(--primary-6), 0.1);
@@ -453,7 +453,7 @@ async function copyRef() {
     :deep(.arco-input-wrapper) {
       background: var(--ui-bg-subtle);
       font-family: var(--ui-font-mono);
-      font-size: 12px;
+      font-size: 0.86em;
     }
   }
 
@@ -497,7 +497,7 @@ async function copyRef() {
   .ph-help-text {
     max-width: 420px;
     color: var(--color-text-4);
-    font-size: 12px;
+    font-size: 0.86em;
     line-height: 1.8;
     text-align: center;
   }

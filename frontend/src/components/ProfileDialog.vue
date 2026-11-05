@@ -211,7 +211,7 @@ async function onSave() {
     width: 100%;
     height: 100%;
     color: #fff;
-    font-size: 24px;
+    font-size: 1.71em;
     font-weight: 700;
   }
 
@@ -225,7 +225,7 @@ async function onSave() {
     gap: 2px;
     background: rgba(0, 0, 0, 0.52);
     color: #fff;
-    font-size: 11px;
+    font-size: 0.79em;
     opacity: 0;
     transition: opacity 0.15s ease;
   }

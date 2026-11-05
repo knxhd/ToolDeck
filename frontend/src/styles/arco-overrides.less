@@ -2,6 +2,99 @@
 // 说明：弹窗 / 下拉 / 消息等通过 Teleport 挂载到 body，必须使用全局选择器；
 // 本文件由 main.less 引入，位置在 arco.css 之后，同权重下可覆盖。
 
+// ---- UI 字体：覆盖 Arco 默认字体族，所有组件跟随 --ui-font-family ----
+:root {
+  --font-family: var(--ui-font-family);
+}
+
+// ---- Arco 组件字号：用 em 单位，跟随容器 --ui-font-size 缩放 ----
+// 按钮
+.arco-btn {
+  font-family: var(--ui-font-family);
+}
+.arco-btn-size-mini {
+  font-size: 0.8em;
+}
+.arco-btn-size-small {
+  font-size: 0.86em;
+}
+.arco-btn-size-medium {
+  font-size: 0.93em;
+}
+.arco-btn-size-large {
+  font-size: 1em;
+}
+
+// 输入框 / 选择器 / 数字输入
+.arco-input-wrapper,
+.arco-textarea-wrapper,
+.arco-select-view,
+.arco-input-number {
+  font-family: var(--ui-font-family);
+  font-size: 0.93em;
+}
+
+// 标签页
+.arco-tabs-tab {
+  font-family: var(--ui-font-family);
+}
+
+// 弹窗标题
+.arco-modal-title {
+  font-family: var(--ui-font-family);
+}
+
+// 下拉选项
+.arco-dropdown-option,
+.arco-select-option {
+  font-family: var(--ui-font-family);
+}
+
+// 表格
+.arco-table-td,
+.arco-table-th {
+  font-family: var(--ui-font-family);
+}
+
+// 标签
+.arco-tag {
+  font-family: var(--ui-font-family);
+}
+
+// 单选 / 复选
+.arco-radio,
+.arco-checkbox {
+  font-family: var(--ui-font-family);
+}
+
+// 空状态
+.arco-empty {
+  font-family: var(--ui-font-family);
+}
+
+// 提示
+.arco-tooltip-content {
+  font-family: var(--ui-font-family);
+}
+
+// 消息
+.arco-message {
+  font-family: var(--ui-font-family);
+}
+
+// 弹出层（teleport 到 body，不继承 .postman-view 的 font-size）
+.arco-popover,
+.arco-modal,
+.arco-dropdown,
+.arco-select-dropdown,
+.arco-drawer,
+.arco-message,
+.arco-notification,
+.arco-tooltip-content {
+  font-family: var(--ui-font-family);
+  font-size: var(--ui-font-size);
+}
+
 // ---- 深色底板微调：与 tokens 中的「画布 / 卡片 / 次级底」对齐 ----
 // 浅色下保持 Arco 默认的白色面板，仅由 main.less 提供画布底色。
 body[arco-theme='light'] {
@@ -121,7 +214,7 @@ body[arco-theme='dark'] {
   border-bottom: 1px solid var(--ui-border-soft);
 
   .arco-modal-title {
-    font-size: 15px;
+    font-size: 1.07em;
     font-weight: 600;
     color: var(--color-text-1);
   }
@@ -168,7 +261,7 @@ body[arco-theme='dark'] {
   background-color: var(--ui-bg-subtle);
 
   .arco-table-th-item-title {
-    font-size: 11px;
+    font-size: 0.79em;
     font-weight: 600;
     letter-spacing: 0.04em;
     color: var(--color-text-3);
@@ -176,7 +269,7 @@ body[arco-theme='dark'] {
 }
 
 .arco-table-td {
-  font-size: 12.5px;
+  font-size: 0.89em;
 }
 
 .arco-table-tr:not(.arco-table-tr-empty):hover .arco-table-td {
@@ -197,7 +290,7 @@ body[arco-theme='dark'] {
 // ---- 空状态 ----
 .arco-empty {
   .arco-empty-description {
-    font-size: 12px;
+    font-size: 0.86em;
     color: var(--color-text-3);
   }
 }
@@ -205,7 +298,7 @@ body[arco-theme='dark'] {
 // ---- 提示 / 消息 ----
 .arco-tooltip-content {
   border-radius: var(--ui-radius-md);
-  font-size: 12px;
+  font-size: 0.86em;
   box-shadow: var(--ui-shadow-pop);
 }
 
@@ -224,7 +317,7 @@ body[arco-theme='dark'] {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 0.89em;
   line-height: 1;
 }
 
@@ -249,10 +342,10 @@ body[arco-theme='dark'] .ui-theme-dot {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 12.5px;
+  font-size: 0.89em;
 
   .arco-icon {
-    font-size: 14px;
+    font-size: 1em;
     color: var(--color-text-3);
   }
 }
@@ -288,7 +381,7 @@ body[arco-theme='dark'] .ui-theme-dot {
     border-radius: 8px;
     background: rgba(var(--primary-6), 0.12);
     color: rgb(var(--primary-6));
-    font-size: 10.5px;
-    line-height: 16px;
+    font-size: 0.75em;
+    line-height: 1.14em;
   }
 }

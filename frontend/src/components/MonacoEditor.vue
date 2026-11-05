@@ -164,6 +164,7 @@ onMounted(() => {
     stickyScroll: { enabled: false },
     scrollBeyondLastLine: false,
     fontSize: props.fontSize || settings.settings.fontSize || 14,
+    fontFamily: settings.settings.fontFamily,
     tabSize: 2,
     wordWrap: 'on',
     scrollbar: {
@@ -266,9 +267,12 @@ watch(
 )
 
 watch(
-  () => [props.fontSize, settings.settings.fontSize],
-  ([fs]) => {
-    editor?.updateOptions({ fontSize: fs || settings.settings.fontSize || 14 })
+  () => [props.fontSize, settings.settings.fontSize, settings.settings.fontFamily],
+  ([fs, , ff]) => {
+    editor?.updateOptions({
+      fontSize: fs || settings.settings.fontSize || 14,
+      fontFamily: ff || settings.settings.fontFamily,
+    })
   },
 )
 
@@ -356,8 +360,6 @@ body[arco-theme='dark'] .monaco-editor .monaco-var {
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
   /* overflow: hidden; */
-  /* 抵消父级 --app-zoom，编辑器内容保持原始字号 */
-  zoom: calc(1 / var(--app-zoom, 1));
 
   &.is-fill {
     flex: 1;

@@ -222,7 +222,7 @@ function onClose() {
 .field-label {
   margin-bottom: 6px;
   color: var(--color-text-2);
-  font-size: 12px;
+  font-size: 0.86em;
   font-weight: 600;
 }
 
@@ -236,7 +236,7 @@ function onClose() {
   flex-wrap: wrap;
   gap: 2px;
   margin: 2px 0 10px;
-  font-size: 12px;
+  font-size: 0.86em;
   color: var(--color-text-3);
 
   .crumb-item {
@@ -255,7 +255,7 @@ function onClose() {
 
   .crumb-sep {
     color: var(--color-text-4);
-    font-size: 11px;
+    font-size: 0.79em;
   }
 }
 
@@ -287,7 +287,7 @@ function onClose() {
 
   .folder-icon {
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: 0.93em;
     color: var(--ui-accent-warm);
   }
 
@@ -301,7 +301,7 @@ function onClose() {
   .folder-arrow {
     flex-shrink: 0;
     color: var(--color-text-4);
-    font-size: 12px;
+    font-size: 0.86em;
   }
 }
 
@@ -316,7 +316,7 @@ function onClose() {
     padding: 0 8px;
     border-radius: var(--ui-radius-sm);
     color: var(--color-text-3);
-    font-size: 12px;
+    font-size: 0.86em;
 
     &:hover {
       background: var(--ui-bg-hover);

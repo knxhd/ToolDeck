@@ -7,13 +7,16 @@ import { applyAccent, themeMode, themePreset } from '@/utils/theme'
 const KEY = 'api-tool-settings'
 
 export const FONT_OPTIONS = [
-  { label: '系统默认', value: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif' },
-  { label: '等宽', value: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace' },
-  { label: '微软雅黑', value: '"Microsoft YaHei", sans-serif' },
+  { label: '系统默认', value: 'system-ui, -apple-system, “Segoe UI”, Roboto, “Helvetica Neue”, Arial, “PingFang SC”, “Microsoft YaHei”, sans-serif' },
+  { label: '等宽', value: 'ui-monospace, SFMono-Regular, Menlo, Consolas, “Liberation Mono”, monospace' },
+  { label: '微软雅黑', value: '”Microsoft YaHei”, sans-serif' },
   { label: '宋体', value: 'SimSun, serif' },
 ]
 
 export const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 18]
+
+/** UI 字体大小（绝对值 px），区别于编辑器字号。 */
+export const UI_FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 17, 18, 20]
 
 /** 标签页数量上限的可选范围。 */
 export const MAX_TABS_MIN = 1
@@ -22,6 +25,10 @@ export const MAX_TABS_MAX = 100
 interface Settings {
   fontFamily: string
   fontSize: number
+  /** UI 字体族（侧边栏、标签、按钮等界面文字，不影响编辑器）。 */
+  uiFontFamily: string
+  /** UI 字号（绝对值 px，不影响编辑器）。 */
+  uiFontSize: number
   /** 界面主题 id（见 utils/theme 的 THEME_PRESETS，共 10 套）。 */
   theme: string
   /** 由 theme 派生的明暗标记，保留给依赖”是否暗色”的逻辑（如 Monaco）。 */
@@ -39,6 +46,8 @@ interface Settings {
 const DEFAULTS: Settings = {
   fontFamily: FONT_OPTIONS[0].value,
   fontSize: 14,
+  uiFontFamily: FONT_OPTIONS[0].value,
+  uiFontSize: 14,
   theme: 'light',
   dark: false,
   accent: 'indigo',
@@ -70,6 +79,8 @@ export const useSettingsStore = defineStore('settings', () => {
     const root = document.documentElement
     root.style.setProperty('--app-font-family', settings.value.fontFamily)
     root.style.setProperty('--app-font-size', settings.value.fontSize + 'px')
+    root.style.setProperty('--ui-font-family', settings.value.uiFontFamily)
+    root.style.setProperty('--ui-font-size', settings.value.uiFontSize + 'px')
     root.style.setProperty('--app-zoom', String(settings.value.zoom))
     const mode = themeMode(settings.value.theme)
     // dark 是 theme 的派生值，供 Monaco 等只关心明暗的地方使用
