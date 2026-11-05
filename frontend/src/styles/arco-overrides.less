@@ -256,3 +256,29 @@ body[arco-theme='dark'] .ui-theme-dot {
     color: var(--color-text-3);
   }
 }
+
+// 侧栏「个人 / 团队」空间下拉项：名称过长省略，管理员小标签靠右
+.ui-scope-opt {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+
+  .ui-scope-name {
+    flex: 1;
+    min-width: 0;
+    max-width: 220px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .ui-scope-role {
+    flex-shrink: 0;
+    padding: 0 6px;
+    border-radius: 8px;
+    background: rgba(var(--primary-6), 0.12);
+    color: rgb(var(--primary-6));
+    font-size: 10.5px;
+    line-height: 16px;
+  }
+}

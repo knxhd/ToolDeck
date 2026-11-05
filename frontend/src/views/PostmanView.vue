@@ -3,17 +3,31 @@
     <!-- 左侧：Collections + History -->
     <aside class="sidebar" v-show="!sidebarHidden" :style="{ width: sidebarWidth + 'px' }">
       <div class="scope-bar">
-        <a-radio-group
+        <a-select
           v-model="scopeMode"
-          size="mini"
-          type="button"
-          @change="onScopeChange"
+          size="small"
+          class="scope-select"
+          :allow-search="teams.myTeams.length > 6"
+          :trigger-props="{ autoFitPopupMinWidth: true }"
+          @change="(v: unknown) => onScopeChange(String(v))"
         >
-          <a-radio value="personal">我的</a-radio>
-          <a-radio v-for="t in teams.myTeams" :key="t.id" :value="String(t.id)" :style="{ maxWidth: '120px' }">
-            {{ t.name }}
-          </a-radio>
-        </a-radio-group>
+          <template #prefix>
+            <icon-user v-if="scopeMode === 'personal'" />
+            <icon-user-group v-else />
+          </template>
+          <a-option value="personal" label="我的">
+            <span class="ui-menu-item"><icon-user /> 我的</span>
+          </a-option>
+          <a-optgroup v-if="teams.myTeams.length" label="团队">
+            <a-option v-for="t in teams.myTeams" :key="t.id" :value="String(t.id)" :label="t.name">
+              <span class="ui-menu-item ui-scope-opt">
+                <icon-user-group />
+                <span class="ui-scope-name" :title="t.name">{{ t.name }}</span>
+                <span v-if="t.role === 'admin'" class="ui-scope-role">管理员</span>
+              </span>
+            </a-option>
+          </a-optgroup>
+        </a-select>
         <a-button size="mini" type="text" @click="teamDialogOpen = true" title="团队管理">
           <template #icon><icon-team /></template>
         </a-button>
@@ -329,7 +343,7 @@ async function loadUserData() {
 }
 
 /** 切换个人/团队空间：清空 tabs，重新加载对应集合。 */
-async function onScopeChange(v: string | number | boolean) {
+async function onScopeChange(v: string) {
   const val = String(v)
   wb.reset()
   dataReady.value = false
@@ -803,14 +817,20 @@ function statusClass(code: number) {
   padding: 8px;
   border-bottom: 1px solid var(--ui-border-soft);
 
-  :deep(.arco-radio-group) {
+  :deep(.scope-select) {
     flex: 1;
     min-width: 0;
-    overflow-x: auto;
   }
 
-  :deep(.arco-radio-button) {
-    font-size: 12px;
+  :deep(.scope-select .arco-select-view-prefix) {
+    padding-right: 6px;
+    color: rgb(var(--primary-6));
+    font-size: 14px;
+  }
+
+  :deep(.scope-select .arco-select-view-value) {
+    font-size: 12.5px;
+    font-weight: 600;
   }
 }
 
