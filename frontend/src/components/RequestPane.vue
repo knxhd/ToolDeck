@@ -1,6 +1,6 @@
 <template>
   <div class="request-pane">
-    <a-tabs v-model:active-key="activeKey" class="req-tabs">
+    <a-tabs v-model:active-key="tabKey" class="req-tabs">
       <!-- Body 工具栏：仅在 Body tab 下显示在标签栏右侧；Prettify 仅 JSON 时显示 -->
       <template #extra>
         <div class="req-extra">
@@ -17,7 +17,7 @@
               </template>
             </a-dropdown>
             <a-button v-if="tab.request.body_type === 'json'" size="small" type="text" @click="prettify">
-              Prettify
+              格式化
             </a-button>
           </div>
           <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 + 全屏 -->
@@ -31,11 +31,6 @@
               <template #icon><icon-fullscreen /></template>
             </a-button>
           </div>
-          <span class="bench-divider" />
-          <a-button size="small" class="bench-trigger" type="text" @click="benchOpen = true">
-            <template #icon><icon-thunderbolt /></template>
-            批量测试
-          </a-button>
         </div>
       </template>
       <a-tab-pane key="params" title="Params">
@@ -65,6 +60,8 @@
         <DocumentEditor v-model="docs" v-model:mode="docMode" v-model:fullscreen="docFullscreen"
           :title="`${tab.title} · 接口文档`" />
       </a-tab-pane>
+      <!-- 批量测试：放在标签栏左侧末尾，点击只打开抽屉，不切换当前标签 -->
+      <a-tab-pane :key="BENCH_KEY" title="批量测试" />
     </a-tabs>
     <BenchDrawer v-model:visible="benchOpen" :request="tab.request" />
   </div>
@@ -171,6 +168,19 @@ const hasBody = computed(() => {
 const activeKey = ref(hasBody.value ? 'body' : 'params')
 watch(activeKey, (k) => {
   if (k !== 'docs') docFullscreen.value = false
+})
+
+/** 「批量测试」伪标签：点击时仅打开抽屉，保持当前标签不变。 */
+const BENCH_KEY = '__bench'
+const tabKey = computed<string>({
+  get: () => activeKey.value,
+  set: (k) => {
+    if (k === BENCH_KEY) {
+      benchOpen.value = true
+      return
+    }
+    activeKey.value = k
+  },
 })
 
 /** Form Data 字段：body 中的 JSON 数组（兼容旧数据：缺 type 视为 text，缺 enabled 视为启用）。 */
@@ -354,17 +364,5 @@ watch(
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.bench-divider {
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background: var(--el-border-color, rgba(0, 0, 0, 0.12));
-}
-.bench-trigger {
-  margin-left: 4px;
-  color: var(--el-text-color-secondary);
-  &:hover { color: var(--el-color-primary); }
 }
 </style>
