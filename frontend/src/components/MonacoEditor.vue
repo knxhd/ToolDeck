@@ -355,7 +355,7 @@ body[arco-theme='dark'] .monaco-editor .monaco-var {
   min-height: 200px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
-  overflow: hidden;
+  /* overflow: hidden; */
 
   &.is-fill {
     flex: 1;
