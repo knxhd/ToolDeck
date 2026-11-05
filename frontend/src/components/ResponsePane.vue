@@ -37,7 +37,7 @@
         <div v-if="errorHint" class="error-hint">{{ errorHint }}</div>
       </div>
     </div>
-    <a-tabs v-else class="resp-tabs" :lazy-load="true">
+    <a-tabs v-else class="resp-tabs" :lazy-load="true" :destroy-on-hide="true">
       <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
           <div class="merge-toolbar">
