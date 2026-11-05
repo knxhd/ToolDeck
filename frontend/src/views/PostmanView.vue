@@ -417,15 +417,32 @@ function onGlobalKeydown(e: KeyboardEvent) {
   const isSaveKey =
     (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey &&
     (e.code === 'KeyS' || e.key?.toLowerCase() === 's')
-  if (!isSaveKey) return
-  // 必须在捕获阶段拦下，否则浏览器会弹出「另存为网页」
-  e.preventDefault()
-  e.stopPropagation()
-  if (saveDialogOpen.value) return // 保存对话框已打开，避免覆盖等待中的流程
+  if (isSaveKey) {
+    // 必须在捕获阶段拦下，否则浏览器会弹出「另存为网页」
+    e.preventDefault()
+    e.stopPropagation()
+    if (saveDialogOpen.value) return // 保存对话框已打开，避免覆盖等待中的流程
+    const tab = wb.activeTab
+    if (!tab || tab.kind !== 'http') return
+    if (!tab.dirty) return
+    void saveTabFlow(tab)
+    return
+  }
+
+  // Ctrl+Enter / Cmd+Enter 发送请求（在弹窗、下拉框内不触发）
+  const isSendKey =
+    (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey &&
+    (e.code === 'Enter' || e.key === 'Enter')
+  if (!isSendKey) return
+  const target = e.target as HTMLElement | null
+  if (target) {
+    // 在弹窗里（arco-modal / arco-drawer）不触发
+    if (target.closest('.arco-modal, .arco-drawer, .arco-select-popup, .arco-dropdown')) return
+  }
   const tab = wb.activeTab
   if (!tab || tab.kind !== 'http') return
-  if (!tab.dirty) return
-  void saveTabFlow(tab)
+  e.preventDefault()
+  onSend()
 }
 
 /** URL 栏右侧保存按钮：手动保存当前请求（无修改时也会写回一次）。 */

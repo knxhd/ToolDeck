@@ -59,7 +59,7 @@
           <div v-if="auth.type === 'bearer'" class="auth-form">
             <div class="auth-row">
               <label>Token</label>
-              <a-input v-model="auth.token" placeholder="输入 Token，自动加 Authorization: Bearer <token>" />
+              <MaskedInput :model-value="auth.token || ''" @update:model-value="auth.token = $event" placeholder="输入 Token，自动加 Authorization: Bearer <token>" />
             </div>
           </div>
 
@@ -70,7 +70,7 @@
             </div>
             <div class="auth-row">
               <label>密码</label>
-              <a-input v-model="auth.password" type="password" placeholder="密码" />
+              <MaskedInput :model-value="auth.password || ''" @update:model-value="auth.password = $event" password placeholder="密码" />
             </div>
           </div>
 
@@ -81,7 +81,7 @@
             </div>
             <div class="auth-row">
               <label>值</label>
-              <a-input v-model="auth.value" placeholder="API Key" />
+              <MaskedInput :model-value="auth.value || ''" @update:model-value="auth.value = $event" placeholder="API Key" />
             </div>
             <div class="auth-row">
               <label>位置</label>
@@ -125,6 +125,7 @@ import PlaceholderEditor from '@/components/PlaceholderEditor.vue'
 import FormDataEditor from '@/components/FormDataEditor.vue'
 import { buildVarResolver } from '@/utils/varInfo'
 import DocumentEditor from '@/components/DocumentEditor.vue'
+import MaskedInput from '@/components/MaskedInput.vue'
 import BenchDrawer from '@/components/BenchDrawer.vue'
 import { buildQueryString, parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'

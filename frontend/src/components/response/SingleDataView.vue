@@ -17,6 +17,11 @@
           <template #icon><icon-search /></template>
         </a-button>
       </a-tooltip>
+      <a-tooltip content="下载响应" position="top">
+        <a-button size="mini" type="text" @click="downloadBody">
+          <template #icon><icon-download /></template>
+        </a-button>
+      </a-tooltip>
     </div>
     <div class="body-view">
       <MonacoEditor
@@ -74,6 +79,27 @@ function openFind() {
   const ed = monacoRef.value?.editor?.()
   ed?.focus()
   ed?.trigger('keyboard', 'actions.find', undefined)
+}
+
+function downloadBody() {
+  const text = props.data || ''
+  if (!text) {
+    toast.warning('响应为空')
+    return
+  }
+  const ext = formatType.value === 'json' ? 'json' : formatType.value === 'html' ? 'html' : 'txt'
+  const mime = formatType.value === 'json' ? 'application/json' : formatType.value === 'html' ? 'text/html' : 'text/plain'
+  const blob = new Blob([text], { type: `${mime};charset=utf-8` })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  a.href = url
+  a.download = `response-${ts}.${ext}`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  toast.success('已开始下载')
 }
 </script>
 

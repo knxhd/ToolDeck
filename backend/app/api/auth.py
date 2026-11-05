@@ -87,6 +87,19 @@ async def change_password(body: PasswordBody, user: dict = Depends(current_user)
     return {"ok": True}
 
 
+class VerifyPasswordBody(BaseModel):
+    password: str
+
+
+@router.post("/verify-password")
+async def verify_password(body: VerifyPasswordBody, user: dict = Depends(current_user)) -> dict:
+    """校验当前用户密码是否正确（用于解锁敏感字段）。"""
+    ok = auth.verify_login(user["username"], body.password)
+    if not ok:
+        raise HTTPException(status_code=400, detail="密码错误")
+    return {"ok": True}
+
+
 @router.post("/logout")
 async def logout(authorization: str | None = Header(default=None)) -> dict:
     if authorization and authorization.lower().startswith("bearer "):
