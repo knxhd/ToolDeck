@@ -166,6 +166,11 @@ onMounted(() => {
     fontSize: props.fontSize || settings.settings.fontSize || 14,
     tabSize: 2,
     wordWrap: 'on',
+    scrollbar: {
+      verticalScrollbarSize: 10,
+      horizontalScrollbarSize: 10,
+      useShadows: false,
+    },
   })
   editor.onDidChangeModelContent(() => {
     emit('update:modelValue', editor!.getValue())
@@ -327,6 +332,20 @@ body[arco-theme='dark'] .monaco-editor .monaco-var {
     background: rgba(242, 117, 111, 0.22);
     color: #f2756f !important;
   }
+}
+
+/* 统一 Monaco 滚动条样式，与全局 10px 滚动条一致 */
+.monaco-editor .monaco-scrollable-element > .scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+.monaco-editor .monaco-scrollable-element > .scrollbar > .slider {
+  border-radius: 5px !important;
+  border: 2px solid transparent !important;
+  background-clip: content-box !important;
+}
+.monaco-editor .monaco-scrollable-element > .scrollbar > .slider:hover {
+  background-clip: content-box !important;
 }
 </style>
 

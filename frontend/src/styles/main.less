@@ -94,15 +94,18 @@ button,
   scrollbar-color: var(--ui-border-strong) transparent;
 }
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--ui-border-strong);
-  border-radius: 3px;
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 
   &:hover {
     background: var(--color-text-4);
+    background-clip: content-box;
   }
 }
 ::-webkit-scrollbar-track {

@@ -385,8 +385,9 @@ watch(
       min-height: 0;
       display: flex;
       flex-direction: column;
-      overflow: auto;
-      /* 参数/请求头列表超高时在此滚动；Monaco fill 模式占满高度不触发 */
+      overflow: hidden;
+      padding: 0 16px;
+      /* 子组件自行处理滚动：KV 表格 .kv-rows overflow-y:auto，Monaco fill，DocEditor 内部滚动 */
     }
   }
 }

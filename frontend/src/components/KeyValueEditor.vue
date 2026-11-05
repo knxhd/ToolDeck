@@ -202,7 +202,7 @@ function remove(i: number) {
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-md);
     background: var(--ui-bg-panel);
-    overflow: hidden;
+    overflow: auto;
   }
 
   .kv-row {
