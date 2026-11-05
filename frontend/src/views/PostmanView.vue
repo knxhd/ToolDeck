@@ -75,7 +75,7 @@
                     :class="t.kind === 'websocket' ? 'm-ws' : t.kind === 'mcp' ? 'm-mcp' : 'm-' + t.request.method.toLowerCase()">
                     {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
                   </span>
-                  <span class="tab-title">{{ t.title }}</span>
+                  <span class="tab-title" :title="t.title">{{ t.title }}</span>
                   <span v-if="t.dirty" class="tab-dirty" title="有未保存的修改"></span>
                 </span>
               </template>
@@ -732,7 +732,17 @@ async function onLoadHistory(item: HttpCallRecord) {
   tab.request.headers = item.headers?.length ? JSON.parse(JSON.stringify(item.headers)) : [{ key: '', value: '', enabled: true }]
   tab.request.body_type = (item.body_type as typeof tab.request.body_type) || 'none'
   tab.request.body = item.body || ''
-  tab.title = `${item.method} ${item.url}`
+  tab.title = `${item.method} ${shortUrl(item.url)}`
+}
+
+/** 从完整 URL 中提取路径部分作为 tab 标题，去掉 host 和 query，CSS 负责截断。 */
+function shortUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    return u.pathname
+  } catch {
+    return url
+  }
 }
 
 // ── 标签页右键菜单 ──────────────────────────────────────────────
@@ -1031,6 +1041,13 @@ function statusClass(code: number) {
 
   :deep(.arco-tabs-close-icon) {
     color: var(--color-text-3);
+    flex-shrink: 0;
+    margin-left: 2px;
+  }
+
+  :deep(.arco-tabs-tab) {
+    max-width: 200px;
+    overflow: hidden;
   }
 
   // 新增标签页 + 按钮
@@ -1052,12 +1069,15 @@ function statusClass(code: number) {
     align-items: center;
     gap: 6px;
     min-width: 0;
+    max-width: 160px;
   }
 
   .tab-title {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
   }
 
   .tab-dirty {
