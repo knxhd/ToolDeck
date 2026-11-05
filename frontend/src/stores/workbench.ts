@@ -241,6 +241,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       const resolved = resolveRequest(tab.request, env.scopeVars)
 
       // 鉴权：按类型注入 header（环境变量同样会被插值）
+      // 后端会自动解析 __secret:xxx 引用，前端无需单独调 /api/secrets
       applyAuthHeaders(resolved, env.scopeVars)
 
       // 发送前提醒未定义的占位符（不阻断请求）：插值后仍残留的 {{var}} 即为未定义

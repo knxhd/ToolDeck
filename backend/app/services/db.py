@@ -167,6 +167,17 @@ def init_db() -> None:
             );
 
             CREATE INDEX IF NOT EXISTS idx_bench_jobs_user ON bench_jobs(user_id, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS secrets (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                value TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                UNIQUE(user_id, name),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_secrets_user ON secrets(user_id, name);
             """
         )
         # 为已存在但没有集合行的用户补一条空的个人空间

@@ -49,9 +49,10 @@ async def send(req: HttpRequest, user: dict = Depends(current_user)) -> dict:
 @router.post("/stream")
 async def stream(req: HttpRequest, user: dict = Depends(current_user)) -> StreamingResponse:
     """流式转发请求：先发响应头 meta，再逐块下发 body，最后 done。"""
-    headers = _kv_to_dict(req.headers)
-    params = _kv_to_dict(req.params)
-    content = None
+    from backend.app.services import secrets as svc_secrets
+    headers = {k: svc_secrets.resolve_refs(user["id"], v) for k, v in _kv_to_dict(req.headers).items()}
+    params = {k: svc_secrets.resolve_refs(user["id"], v) for k, v in _kv_to_dict(req.params).items()}
+    content = svc_secrets.resolve_refs(user["id"], req.body) if req.body else None
     form_data = None
     form_files = None
     form_error = ""
