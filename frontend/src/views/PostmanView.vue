@@ -49,12 +49,15 @@
           </a-button>
         </div>
         <div v-if="historyOpen" class="history-list">
-          <div v-for="(item, i) in history" :key="i" class="history-item" @click="onLoadHistory(item)">
+          <a-input v-model="historyFilter" size="mini" placeholder="搜索 URL…" allow-clear class="history-search">
+            <template #prefix><icon-search /></template>
+          </a-input>
+          <div v-for="(item, i) in filteredHistory" :key="i" class="history-item" @click="onLoadHistory(item)">
             <span class="method-pill" :class="'m-' + item.method.toLowerCase()">{{ item.method }}</span>
             <span class="u" :title="item.url">{{ item.url }}</span>
             <span class="status-pill" :class="statusClass(item.status_code)">{{ item.status_code || '—' }}</span>
           </div>
-          <div v-if="!history.length" class="history-empty">暂无历史</div>
+          <div v-if="!filteredHistory.length" class="history-empty">{{ history.length ? '无匹配结果' : '暂无历史' }}</div>
         </div>
       </div>
     </aside>
@@ -271,6 +274,12 @@ const userInitial = computed(() => {
 
 const history = ref<HttpCallRecord[]>([])
 const historyOpen = ref(false)
+const historyFilter = ref('')
+const filteredHistory = computed(() => {
+  const q = historyFilter.value.trim().toLowerCase()
+  if (!q) return history.value
+  return history.value.filter((h) => h.url.toLowerCase().includes(q))
+})
 
 // 布局状态
 const sidebarHidden = ref(false)
@@ -435,6 +444,27 @@ function onGlobalKeydown(e: KeyboardEvent) {
     if (!tab || tab.kind !== 'http') return
     if (!tab.dirty) return
     void saveTabFlow(tab)
+    return
+  }
+
+  // Ctrl+Tab 切下一个 tab，Ctrl+Shift+Tab 切上一个
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && e.code === 'Tab') {
+    e.preventDefault()
+    const idx = wb.tabs.findIndex((t) => t.id === wb.activeId)
+    if (idx < 0) return
+    const next = e.shiftKey ? idx - 1 : idx + 1
+    const target = wb.tabs[(next + wb.tabs.length) % wb.tabs.length]
+    if (target) wb.setActive(target.id)
+    return
+  }
+
+  // Ctrl+1~9 直接跳第 N 个 tab
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && /^Digit[1-9]$/.test(e.code)) {
+    const n = parseInt(e.code.replace('Digit', '')) - 1
+    if (wb.tabs[n]) {
+      e.preventDefault()
+      wb.setActive(wb.tabs[n].id)
+    }
     return
   }
 
@@ -952,6 +982,10 @@ function statusClass(code: number) {
   min-height: 0;
   overflow-y: auto;
   padding: 2px 6px 8px;
+}
+
+.history-search {
+  margin: 2px 2px 6px;
 }
 
 .history-empty {

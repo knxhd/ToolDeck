@@ -22,6 +22,11 @@
             <template #icon><icon-copy /></template>
           </a-button>
         </a-tooltip>
+        <a-tooltip content="清空响应" position="top">
+          <a-button size="mini" type="text" :disabled="!tab.body && !tab.status_code && !tab.stream_events.length" @click="clearResponse">
+            <template #icon><icon-delete /></template>
+          </a-button>
+        </a-tooltip>
       </div>
     </div>
     <div v-if="tab.error" class="error-box">
@@ -174,6 +179,18 @@ async function copyBody() {
   } catch {
     /* ignore */
   }
+}
+
+function clearResponse() {
+  const t = props.tab
+  t.body = ''
+  t.status_code = 0
+  t.status_text = ''
+  t.headers = {}
+  t.error = ''
+  t.elapsed_ms = 0
+  t.size_bytes = 0
+  t.stream_events = []
 }
 
 const mergeType = ref('')

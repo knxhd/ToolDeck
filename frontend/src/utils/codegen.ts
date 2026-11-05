@@ -140,6 +140,44 @@ function prepare(req: HttpRequestData): PreparedRequest {
     }
   }
 
+  // Auth 注入：用占位符代替真实密钥，避免泄露敏感信息
+  const auth = req.auth
+  if (auth && auth.type !== 'none') {
+    if (auth.type === 'bearer') {
+      const val = 'Bearer your_token'
+      const existing = findHeader(headers, 'Authorization')
+      if (existing) {
+        const idx = headers.findIndex(([k]) => k.toLowerCase() === 'authorization')
+        headers[idx] = ['Authorization', val]
+      } else {
+        headers.push(['Authorization', val])
+      }
+    } else if (auth.type === 'basic') {
+      const val = 'Basic base64(username:password)'
+      const existing = findHeader(headers, 'Authorization')
+      if (existing) {
+        const idx = headers.findIndex(([k]) => k.toLowerCase() === 'authorization')
+        headers[idx] = ['Authorization', val]
+      } else {
+        headers.push(['Authorization', val])
+      }
+    } else if (auth.type === 'apikey') {
+      const key = auth.key || 'X-API-Key'
+      if (auth.addTo === 'header') {
+        const existing = findHeader(headers, key)
+        if (existing) {
+          const idx = headers.findIndex(([k]) => k.toLowerCase() === key.toLowerCase())
+          headers[idx] = [key, 'your_api_key']
+        } else {
+          headers.push([key, 'your_api_key'])
+        }
+      } else {
+        const sep = url.includes('?') ? '&' : '?'
+        url = `${url}${sep}${encodeURIComponent(key)}=your_api_key`
+      }
+    }
+  }
+
   return { method, url, headers, bodyKind, body, form, parts }
 }
 
