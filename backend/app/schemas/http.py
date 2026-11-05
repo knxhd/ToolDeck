@@ -37,6 +37,9 @@ class HttpRequest(BaseModel):
     params: list[KeyValue] = Field(default_factory=list)
     body_type: BodyType = BodyType.NONE
     body: str = ""
+    timeout: int = 30          # 秒
+    follow_redirects: bool = False
+    verify_ssl: bool = True
 
 
 class HttpResponse(BaseModel):

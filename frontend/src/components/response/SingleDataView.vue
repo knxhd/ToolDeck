@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { toast } from '@/utils/feedback'
 import MonacoEditor from '@/components/MonacoEditor.vue'
 
@@ -51,10 +51,37 @@ const props = defineProps({
     type: String,
     default: 'json'
   },
+  contentType: {
+    type: String,
+    default: ''
+  },
 })
 
 const formatType = ref(props.defaultFormat)
 const monacoRef = ref<InstanceType<typeof MonacoEditor> | null>(null)
+
+// 根据 Content-Type 自动识别格式
+watch(
+  () => [props.data, props.contentType] as const,
+  ([body, ct]) => {
+    if (!body) return
+    const lower = (ct || '').toLowerCase()
+    if (lower.includes('json') || lower.includes('+json')) {
+      formatType.value = 'json'
+    } else if (lower.includes('html') || lower.includes('xml')) {
+      formatType.value = 'html'
+    } else {
+      // 未指定时尝试解析 JSON
+      try {
+        JSON.parse(body)
+        formatType.value = 'json'
+      } catch {
+        formatType.value = 'text'
+      }
+    }
+  },
+  { immediate: true },
+)
 
 const rendered = (raw: string) => {
   if (formatType.value !== 'json' || !raw) return raw || ''

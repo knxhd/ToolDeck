@@ -64,6 +64,14 @@
         <span class="form-label">预览</span>
         <div class="preview">The quick brown fox 敏捷的棕色狐狸 123</div>
       </div>
+      <div class="form-row form-row-top">
+        <span class="form-label">快捷键</span>
+        <div class="shortcut-list">
+          <div class="shortcut-row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span><span class="desc">发送请求</span></div>
+          <div class="shortcut-row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>S</kbd></span><span class="desc">保存请求</span></div>
+          <div class="shortcut-row"><span class="keys"><kbd>?</kbd></span><span class="desc">显示快捷键面板</span></div>
+        </div>
+      </div>
     </div>
     <template #footer>
       <a-button @click="onReset">恢复默认</a-button>
@@ -196,5 +204,39 @@ function onReset() {
   font-family: var(--app-font-family);
   font-size: var(--app-font-size);
   line-height: 1.5;
+}
+
+.shortcut-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  .keys {
+    display: inline-flex;
+    gap: 3px;
+    kbd {
+      padding: 2px 7px;
+      border: 1px solid var(--ui-border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: var(--ui-bg-panel);
+      font-family: var(--ui-font-mono);
+      font-size: 11.5px;
+      color: var(--color-text-1);
+    }
+  }
+  .desc {
+    color: var(--color-text-2);
+  }
 }
 </style>

@@ -40,6 +40,12 @@ export interface HttpRequestData {
   placeholders?: KeyValue[]
   /** 接口文档（Markdown），仅前端展示与随集合保存，不会提交给后端。 */
   docs?: string
+  /** 超时秒数（默认 30）。 */
+  timeout?: number
+  /** 跟随重定向（默认 false）。 */
+  follow_redirects?: boolean
+  /** 校验 SSL 证书（默认 true）。 */
+  verify_ssl?: boolean
 }
 
 /** 鉴权配置。 */

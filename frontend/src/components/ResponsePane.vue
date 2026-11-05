@@ -24,7 +24,14 @@
         </a-tooltip>
       </div>
     </div>
-    <div v-if="tab.error" class="error-box">{{ tab.error }}</div>
+    <div v-if="tab.error" class="error-box">
+      <div class="error-icon">⚠</div>
+      <div class="error-body">
+        <div class="error-title">{{ errorTitle }}</div>
+        <div class="error-msg">{{ tab.error }}</div>
+        <div v-if="errorHint" class="error-hint">{{ errorHint }}</div>
+      </div>
+    </div>
     <a-tabs v-else class="resp-tabs">
       <a-tab-pane key="body" title="Body" class="body-pane">
         <template v-if="contentTypeName && contentTypeName.includes('text/event-stream')">
@@ -85,7 +92,7 @@
             </div>
           </div>
         </template>
-        <SingleDataView v-else :data="tab.body" />
+        <SingleDataView v-else :data="tab.body" :content-type="contentTypeName" />
       </a-tab-pane>
       <a-tab-pane key="headers" title="Headers">
         <a-table :data="headerRows" :pagination="false" :scroll="{ y: 260 }" size="small">
@@ -131,6 +138,26 @@ const statusClass = computed(() => {
   if (c < 400) return 's3'
   if (c < 500) return 's4'
   return 's5'
+})
+
+const errorTitle = computed(() => {
+  const e = props.tab.error || ''
+  if (/超时|timeout/i.test(e)) return '请求超时'
+  if (/connect|连接|refused|getaddrinfo|name or service/i.test(e)) return '无法连接服务器'
+  if (/ssl|certificate|证书|verify/i.test(e)) return 'SSL 证书错误'
+  if (/5\d\d/.test(e)) return '服务器内部错误'
+  if (/4\d\d/.test(e)) return '请求被拒绝'
+  return '请求失败'
+})
+
+const errorHint = computed(() => {
+  const e = props.tab.error || ''
+  if (/超时|timeout/i.test(e)) return '提示：可点击请求栏齿轮图标调大超时时间（默认 30 秒），或检查目标服务是否响应缓慢。'
+  if (/connect|连接|refused|getaddrinfo|name or service/i.test(e)) return '提示：检查 URL 是否正确、目标服务是否启动、网络是否可达（内网需确认 VPN/代理）。'
+  if (/ssl|certificate|证书|verify/i.test(e)) return '提示：自签证书可在请求栏齿轮里关闭"校验 SSL 证书"。'
+  if (/5\d\d/.test(e)) return '提示：服务端内部错误，请检查接口日志或稍后重试。'
+  if (/4\d\d/.test(e)) return '提示：检查请求参数、Header、鉴权是否正确。'
+  return ''
 })
 
 function formatSize(bytes: number) {
@@ -240,17 +267,41 @@ const merged = computed(() => {
 
 .error-box {
   margin: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
   border: 1px solid rgba(220, 70, 64, 0.28);
   border-left: 3px solid var(--ui-accent-danger);
   border-radius: var(--ui-radius-md);
   background: var(--ui-status-5xx-bg);
-  color: var(--ui-accent-danger);
-  font-family: var(--ui-font-mono);
-  font-size: 12px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
+  font-size: 13px;
+  line-height: 1.5;
+
+  .error-icon {
+    font-size: 18px;
+    color: var(--ui-accent-danger);
+    flex-shrink: 0;
+  }
+  .error-title {
+    font-weight: 600;
+    color: var(--ui-accent-danger);
+    margin-bottom: 2px;
+  }
+  .error-msg {
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+    color: var(--color-text-2);
+    word-break: break-all;
+    white-space: pre-wrap;
+  }
+  .error-hint {
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: var(--ui-bg-subtle);
+    border-radius: var(--ui-radius-sm);
+    font-size: 12px;
+    color: var(--color-text-3);
+  }
 }
 
 .resp-tabs {

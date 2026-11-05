@@ -80,8 +80,17 @@ async def stream(req: HttpRequest, user: dict = Depends(current_user)) -> Stream
             yield json.dumps({"type": "error", "message": form_error}, ensure_ascii=False) + "\n"
             return
         try:
-            timeout = httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0)
-            async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+            timeout = httpx.Timeout(
+                connect=min(req.timeout, 30.0),
+                read=float(req.timeout),
+                write=30.0,
+                pool=10.0,
+            )
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                follow_redirects=req.follow_redirects,
+                verify=req.verify_ssl,
+            ) as client:
                 async with client.stream(
                     method=req.method.value,
                     url=req.url,

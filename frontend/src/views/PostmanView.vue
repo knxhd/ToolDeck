@@ -209,6 +209,15 @@
         <div class="ctx-item" @click="onCtxClone">克隆请求</div>
       </div>
     </Teleport>
+
+    <!-- 快捷键面板 -->
+      <a-modal v-model:visible="shortcutsOpen" title="快捷键" :footer="false" width="420px">
+        <div class="shortcut-list">
+          <div class="shortcut-row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span><span class="desc">发送请求</span></div>
+          <div class="shortcut-row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>S</kbd></span><span class="desc">保存请求</span></div>
+          <div class="shortcut-row"><span class="keys"><kbd>?</kbd></span><span class="desc">显示快捷键面板</span></div>
+        </div>
+      </a-modal>
   </div>
 </template>
 
@@ -443,7 +452,15 @@ function onGlobalKeydown(e: KeyboardEvent) {
   if (!tab || tab.kind !== 'http') return
   e.preventDefault()
   onSend()
+
+  // 按 ? 弹出快捷键面板
+  if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    shortcutsOpen.value = true
+  }
 }
+
+// 按 ? 弹出快捷键面板
+const shortcutsOpen = ref(false)
 
 /** URL 栏右侧保存按钮：手动保存当前请求（无修改时也会写回一次）。 */
 function manualSave() {
@@ -1296,6 +1313,35 @@ function statusClass(code: number) {
     height: 1px;
     margin: 4px 6px;
     background: var(--ui-border-soft);
+  }
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  .keys {
+    display: inline-flex;
+    gap: 3px;
+    kbd {
+      padding: 2px 7px;
+      border: 1px solid var(--ui-border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: var(--ui-bg-subtle);
+      font-family: var(--ui-font-mono);
+      font-size: 12px;
+      color: var(--color-text-1);
+    }
+  }
+  .desc {
+    color: var(--color-text-2);
   }
 }
 </style>

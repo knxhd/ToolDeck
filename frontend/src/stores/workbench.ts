@@ -23,6 +23,9 @@ const blankRequest = (): HttpRequestData => ({
   body_type: 'none',
   body: '',
   auth: { type: 'none', addTo: 'header' },
+  timeout: 30,
+  follow_redirects: false,
+  verify_ssl: true,
 })
 
 /**
@@ -110,6 +113,10 @@ function serializeTabs(tabs: OpenTab[], activeId: string | null): { activeId: st
       const out: PersistedTab = { id: t.id, title: t.title, kind: t.kind, dirty: t.dirty }
       if (t.nodeId) {
         out.nodeId = t.nodeId
+        // 集合 tab 有未保存修改时，也保存请求数据，刷新后恢复编辑中的状态
+        if (t.dirty) {
+          out.request = JSON.parse(JSON.stringify(t.request))
+        }
       } else {
         // 临时 tab：完整保存
         out.request = JSON.parse(JSON.stringify(t.request))
@@ -335,7 +342,13 @@ export const useWorkbenchStore = defineStore('workbench', () => {
           tab.mcp_headers = node.mcp_headers || {}
           tab.mcp_tool = node.mcp_tool || ''
           tab.mcp_args = node.mcp_args || '{}'
-        } else if (node.request) tab.request = JSON.parse(JSON.stringify(node.request))
+        } else if (node.request) {
+          tab.request = JSON.parse(JSON.stringify(node.request))
+        }
+        // 有未保存修改的快照时，恢复编辑中的内容
+        if (p.request) {
+          tab.request = JSON.parse(JSON.stringify(p.request))
+        }
       } else {
         // 临时 tab：用保存的请求数据
         if (p.request) tab.request = JSON.parse(JSON.stringify(p.request))
