@@ -30,6 +30,8 @@ interface Settings {
   accent: string
   /** 用户自定义配色（hex），仅在 accent === 'custom' 时生效。 */
   customAccent: string
+  /** 工作台 UI 缩放倍率（1.0 = 100%），Monaco 编辑器内容不受影响。 */
+  zoom: number
   /** 工作台最多同时打开的标签页数，超出时自动关闭最早的标签。 */
   maxTabs: number
 }
@@ -41,6 +43,7 @@ const DEFAULTS: Settings = {
   dark: false,
   accent: 'indigo',
   customAccent: '#4E5BA6',
+  zoom: 1,
   maxTabs: 10,
 }
 
@@ -67,6 +70,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const root = document.documentElement
     root.style.setProperty('--app-font-family', settings.value.fontFamily)
     root.style.setProperty('--app-font-size', settings.value.fontSize + 'px')
+    root.style.setProperty('--app-zoom', String(settings.value.zoom))
     const mode = themeMode(settings.value.theme)
     // dark 是 theme 的派生值，供 Monaco 等只关心明暗的地方使用
     settings.value.dark = mode === 'dark'

@@ -356,6 +356,8 @@ body[arco-theme='dark'] .monaco-editor .monaco-var {
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
   /* overflow: hidden; */
+  /* 抵消父级 --app-zoom，编辑器内容保持原始字号 */
+  zoom: calc(1 / var(--app-zoom, 1));
 
   &.is-fill {
     flex: 1;

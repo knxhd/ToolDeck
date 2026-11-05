@@ -15,6 +15,12 @@
         </a-select>
       </div>
       <div class="form-row">
+        <span class="form-label">缩放</span>
+        <a-input-number v-model="settings.zoom" :min="0.1" :max="5" :step="0.1" :precision="1"
+          mode="button" style="width: 132px" />
+        <span class="form-tip">UI 整体缩放，不影响代码编辑器</span>
+      </div>
+      <div class="form-row">
         <span class="form-label">主题</span>
         <a-select v-model="settings.theme" style="width: 100%">
           <a-optgroup label="浅色系">

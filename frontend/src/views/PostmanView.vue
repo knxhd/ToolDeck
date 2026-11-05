@@ -883,6 +883,7 @@ function statusClass(code: number) {
   color: var(--color-text-1);
   font-family: var(--app-font-family);
   font-size: var(--app-font-size);
+  zoom: var(--app-zoom, 1);
 }
 
 .sidebar {
