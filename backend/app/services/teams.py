@@ -117,6 +117,56 @@ def get_team(team_id: int) -> Optional[dict]:
     return dict(row) if row else None
 
 
+def rename_team(team_id: int, admin_id: int, name: str) -> dict:
+    """管理员修改团队名称。"""
+    if not is_admin(team_id, admin_id):
+        raise PermissionError("仅管理员可编辑团队")
+    name = name.strip()
+    if not _TEAM_NAME_RE.match(name):
+        raise ValueError("团队名 2-32 位，支持中英文、数字、下划线、短横")
+    with get_db() as conn:
+        try:
+            conn.execute("UPDATE teams SET name = ? WHERE id = ?", (name, team_id))
+        except Exception as e:
+            if "UNIQUE" in str(e):
+                raise ValueError("团队名已被占用")
+            raise
+    team = get_team(team_id)
+    if not team:
+        raise ValueError("团队不存在")
+    return team
+
+
+def delete_team(team_id: int, user_id: int) -> None:
+    """解散团队：仅创建者可操作，连同成员关系与团队集合一并删除。"""
+    team = get_team(team_id)
+    if not team:
+        raise ValueError("团队不存在")
+    if team["owner_id"] != user_id:
+        raise PermissionError("仅团队创建者可解散团队")
+    with get_db() as conn:
+        # 外键已配置 ON DELETE CASCADE，这里显式删除以防旧库未开启外键
+        conn.execute("DELETE FROM collections WHERE team_id = ?", (team_id,))
+        conn.execute("DELETE FROM team_members WHERE team_id = ?", (team_id,))
+        conn.execute("DELETE FROM teams WHERE id = ?", (team_id,))
+
+
+def leave_team(team_id: int, user_id: int) -> None:
+    """成员主动退出团队；创建者不能退出（只能解散）。"""
+    team = get_team(team_id)
+    if not team:
+        raise ValueError("团队不存在")
+    if team["owner_id"] == user_id:
+        raise ValueError("创建者不能退出团队，如不再使用请解散")
+    if not is_member(team_id, user_id):
+        raise ValueError("不是该团队成员")
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
+            (team_id, user_id),
+        )
+
+
 __all__ = [
     "create_team",
     "list_my_teams",
@@ -126,4 +176,7 @@ __all__ = [
     "add_member",
     "remove_member",
     "get_team",
+    "rename_team",
+    "delete_team",
+    "leave_team",
 ]

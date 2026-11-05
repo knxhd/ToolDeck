@@ -187,7 +187,13 @@
     <CollectionPlaceholdersDialog v-model:visible="phDialogOpen" />
     <SaveRequestDialog v-model:visible="saveDialogOpen" :tab="saveDialogTab" @saved="onRequestSaved" />
     <UserSelectDialog v-if="userDialogOpen" @done="onUserSelected" />
-    <TeamDialog v-if="teamDialogOpen" @close="teamDialogOpen = false" @select-team="onTeamSelected" />
+    <TeamDialog
+      v-if="teamDialogOpen"
+      :active-team-id="scopeMode === 'personal' ? null : Number(scopeMode)"
+      @close="teamDialogOpen = false"
+      @select-team="onTeamSelected"
+      @team-removed="onTeamRemoved"
+    />
 
     <!-- 标签页右键菜单 -->
     <Teleport to="body">
@@ -361,6 +367,13 @@ async function onTeamSelected(team: { id: number }) {
   teamDialogOpen.value = false
   scopeMode.value = String(team.id)
   await onScopeChange(scopeMode.value)
+}
+
+/** 当前所在团队被解散 / 退出后，回到个人空间。 */
+async function onTeamRemoved(teamId: number) {
+  if (scopeMode.value !== String(teamId)) return
+  scopeMode.value = 'personal'
+  await onScopeChange('personal')
 }
 
 /** 登录/注册成功后：加载当前用户数据。 */

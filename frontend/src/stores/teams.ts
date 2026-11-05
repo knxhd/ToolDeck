@@ -1,5 +1,5 @@
 /** 团队 store。 */
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -47,10 +47,46 @@ export const useTeamsStore = defineStore('teams', () => {
     members.value = members.value.filter((m) => m.id !== userId)
   }
 
+  /** 修改团队名称（管理员）。 */
+  async function renameTeam(teamId: number, name: string): Promise<Team> {
+    const res = await api.put<{ id: number; name: string; owner_id: number }>(`/api/teams/${teamId}`, { name })
+    const t = myTeams.value.find((x) => x.id === teamId)
+    if (t) t.name = res.name
+    return t ?? { ...res, role: 'admin' }
+  }
+
+  /** 解散团队（创建者）。 */
+  async function deleteTeam(teamId: number) {
+    await api.del(`/api/teams/${teamId}`)
+    myTeams.value = myTeams.value.filter((t) => t.id !== teamId)
+    members.value = []
+  }
+
+  /** 成员退出团队。 */
+  async function leaveTeam(teamId: number) {
+    await api.post(`/api/teams/${teamId}/leave`)
+    myTeams.value = myTeams.value.filter((t) => t.id !== teamId)
+    members.value = []
+  }
+
   function clear() {
     myTeams.value = []
     members.value = []
   }
 
-  return { myTeams, members, loadMyTeams, createTeam, loadMembers, invite, removeMember, clear }
+  return {
+    myTeams,
+    members,
+    loadMyTeams,
+    createTeam,
+    loadMembers,
+    invite,
+    removeMember,
+    renameTeam,
+    deleteTeam,
+    leaveTeam,
+    clear,
+  }
 })
+
+if (import.meta.hot) import.meta.hot.accept(acceptHMRUpdate(useTeamsStore, import.meta.hot))

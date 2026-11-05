@@ -18,6 +18,10 @@ class InviteBody(BaseModel):
     username: str
 
 
+class RenameTeamBody(BaseModel):
+    name: str
+
+
 @router.get("")
 async def list_teams(user: dict = Depends(current_user)) -> list[dict]:
     return teams.list_my_teams(user["id"])
@@ -29,7 +33,37 @@ async def create_team(body: CreateTeamBody, user: dict = Depends(current_user)) 
         tid = teams.create_team(body.name, user["id"])
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {"id": tid, "name": body.name.strip(), "role": "admin"}
+    return {"id": tid, "name": body.name.strip(), "owner_id": user["id"], "role": "admin"}
+
+
+@router.put("/{team_id}")
+async def rename_team(team_id: int, body: RenameTeamBody, user: dict = Depends(current_user)) -> dict:
+    try:
+        return teams.rename_team(team_id, user["id"], body.name)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.delete("/{team_id}")
+async def delete_team(team_id: int, user: dict = Depends(current_user)) -> dict:
+    try:
+        teams.delete_team(team_id, user["id"])
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"deleted": True}
+
+
+@router.post("/{team_id}/leave")
+async def leave_team(team_id: int, user: dict = Depends(current_user)) -> dict:
+    try:
+        teams.leave_team(team_id, user["id"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return {"left": True}
 
 
 @router.get("/{team_id}/members")
