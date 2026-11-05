@@ -49,12 +49,12 @@
       </a-tab-pane>
       <a-tab-pane key="auth" title="Auth">
         <div class="auth-pane">
-          <a-radio-group v-model="auth.type" type="button" size="small">
-            <a-radio value="none">无</a-radio>
-            <a-radio value="bearer">Bearer Token</a-radio>
-            <a-radio value="basic">Basic Auth</a-radio>
-            <a-radio value="apikey">API Key</a-radio>
-          </a-radio-group>
+          <a-select v-model="auth.type" size="small" style="width: 200px">
+            <a-option value="none">无</a-option>
+            <a-option value="bearer">Bearer Token</a-option>
+            <a-option value="basic">Basic Auth</a-option>
+            <a-option value="apikey">API Key</a-option>
+          </a-select>
 
           <div v-if="auth.type === 'bearer'" class="auth-form">
             <div class="auth-row">
