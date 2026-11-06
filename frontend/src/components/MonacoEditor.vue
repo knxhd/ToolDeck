@@ -267,11 +267,11 @@ watch(
 )
 
 watch(
-  () => [props.fontSize, settings.settings.fontSize, settings.settings.fontFamily],
-  ([fs, , ff]) => {
+  () => [props.fontSize, settings.settings.fontSize, settings.settings.fontFamily] as const,
+  ([propSize, settingSize, fontFamily]) => {
     editor?.updateOptions({
-      fontSize: fs || settings.settings.fontSize || 14,
-      fontFamily: ff || settings.settings.fontFamily,
+      fontSize: propSize || settingSize || 14,
+      fontFamily: fontFamily || undefined,
     })
   },
 )

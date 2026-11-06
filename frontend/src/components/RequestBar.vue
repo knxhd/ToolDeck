@@ -30,7 +30,7 @@
     </a-tooltip>
     <a-button v-if="!tab.streaming" type="primary" class="send-btn" @click="onSend">发送</a-button>
     <a-button v-else status="danger" type="secondary" class="send-btn" @click="$emit('cancel')">停止</a-button>
-    <a-button type="button" class="opts-btn" aria-label="请求设置" @click="showSettings = true">
+    <a-button class="opts-btn" html-type="button" aria-label="请求设置" @click="showSettings = true">
       <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
         <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" fill="none" stroke="currentColor" stroke-width="1.3" />
         <path
