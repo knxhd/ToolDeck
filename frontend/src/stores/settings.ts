@@ -7,16 +7,46 @@ import { applyAccent, themeMode, themePreset } from '@/utils/theme'
 const KEY = 'api-tool-settings'
 
 export const FONT_OPTIONS = [
-  { label: '系统默认', value: 'system-ui, -apple-system, “Segoe UI”, Roboto, “Helvetica Neue”, Arial, “PingFang SC”, “Microsoft YaHei”, sans-serif' },
-  { label: '等宽', value: 'ui-monospace, SFMono-Regular, Menlo, Consolas, “Liberation Mono”, monospace' },
-  { label: '微软雅黑', value: '”Microsoft YaHei”, sans-serif' },
-  { label: '宋体', value: 'SimSun, serif' },
+  {
+    label: '系统默认',
+    value: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif'
+  },
+  {
+    label: '思源黑体',
+    value: '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif'
+  },
+  {
+    label: '微软雅黑',
+    value: '"Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif'
+  },
+  {
+    label: '苹方',
+    value: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif'
+  },
+  {
+    label: '宋体',
+    value: 'SimSun, "Noto Serif SC", serif'
+  },
+  {
+    label: '楷体',
+    value: 'KaiTi, "Noto Serif SC", serif'
+  },
+  {
+    label: '仿宋_GB2312',
+    value: '"FangSong_GB2312", "Noto Serif SC", serif'
+  },
+  {
+    label: '等宽代码字体',
+    value: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono", monospace'
+  },
+  {
+    label: 'JetBrains Mono',
+    value: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono", monospace'
+  },
 ]
 
-export const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 18]
 
-/** UI 字体大小（绝对值 px），区别于编辑器字号。 */
-export const UI_FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 17, 18, 20]
+export const FONT_SIZE_OPTIONS = [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 26, 28, 30]
 
 /** 标签页数量上限的可选范围。 */
 export const MAX_TABS_MIN = 1

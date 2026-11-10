@@ -17,7 +17,7 @@
           <a-option v-for="o in FONT_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</a-option>
         </a-select>
         <a-select v-model="settings.uiFontSize" style="width: 100%">
-          <a-option v-for="s in UI_FONT_SIZE_OPTIONS" :key="s" :value="s">{{ s }} px</a-option>
+          <a-option v-for="s in FONT_SIZE_OPTIONS" :key="s" :value="s">{{ s }} px</a-option>
         </a-select>
       </div>
       <div class="form-row">
@@ -102,7 +102,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS, UI_FONT_SIZE_OPTIONS } from '@/stores/settings'
+import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
 import { ACCENT_PRESETS, DARK_THEMES, LIGHT_THEMES } from '@/utils/theme'
 
 defineProps<{ modelValue: boolean }>()
