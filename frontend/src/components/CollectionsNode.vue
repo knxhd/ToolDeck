@@ -203,7 +203,7 @@ function onChildExpand(id: string) { emit('expand', id) }
     padding: 3px 6px;
     border-radius: var(--ui-radius-sm);
     cursor: pointer;
-    font-size: 12.5px;
+    font-size: 0.86em;
     color: var(--color-text-1);
     transition: background-color 0.12s ease, color 0.12s ease;
 
