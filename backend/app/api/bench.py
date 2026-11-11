@@ -82,18 +82,24 @@ async def run(body: BenchRunBody, user: dict = Depends(current_user)) -> dict:
 
     job_row = bench_store.get_job(job_id, user["id"])
     tpl = BenchRequestTemplate(**body.request.model_dump())
-    task = asyncio.create_task(bench_store_run(job_row, tpl, body.env_vars))
+    columns = [c.model_dump() for c in body.columns]
+    task = asyncio.create_task(bench_store_run(job_row, tpl, body.env_vars, columns))
     _bg_tasks.add(task)
     task.add_done_callback(_bg_tasks.discard)
 
-    return {"job_id": job_id, "status": "running"}
+    return {"job_id": job_id, "status": "running", "columns": [c["title"] for c in columns]}
 
 
-async def bench_store_run(job_row: dict, tpl: BenchRequestTemplate, env_vars: dict | None = None) -> None:
+async def bench_store_run(
+    job_row: dict,
+    tpl: BenchRequestTemplate,
+    env_vars: dict | None = None,
+    columns: list | None = None,
+) -> None:
     """延迟导入执行器，避免循环依赖。"""
     from backend.app.services.bench_runner import run_job
 
-    await run_job(job_row, tpl, env_vars)
+    await run_job(job_row, tpl, env_vars, columns)
 
 
 @router.get("/jobs")

@@ -48,6 +48,41 @@
           </div>
         </div>
 
+        <div class="row">
+          <label class="label-inline">
+            自定义结果列
+            <a-tooltip position="right" content="固定指标列（序号/状态码/耗时等）始终保留，自定义列追加在其后">
+              <icon-question-circle class="tips-ico" />
+            </a-tooltip>
+          </label>
+          <div v-if="streaming" class="sys-col">
+            <span class="muted">系统默认列</span>
+            <a-tag color="gray">content（完整文本）</a-tag>
+          </div>
+          <div v-for="(c, i) in customCols" :key="i" class="col-row">
+            <a-input v-model="c.title" placeholder="表头名，如 total_tokens" allow-clear size="small" />
+            <a-input v-model="c.path" placeholder="取值路径，如 response.usage.total_tokens" allow-clear size="small" />
+            <a-button size="small" type="text" status="danger" title="删除该列" @click="removeCol(i)">
+              <template #icon><icon-delete /></template>
+            </a-button>
+          </div>
+          <a-button size="small" long @click="addCol">
+            <template #icon><icon-plus /></template>
+            添加提取列
+          </a-button>
+          <p class="hint muted">
+            路径示例：<code>response.data</code>、<code>response.data[0].id</code>、<code>data.items.0.name</code>（忽略
+            <code>response.</code> / <code>body.</code> 前缀）。<br />
+            <template v-if="streaming">
+              流式：每帧下发后，某列若还没取到值，就从该帧数据里提取，取到即定稿；帧内取不到值则跳过该帧。
+              全部帧都没取到值则该列留空。
+            </template>
+            <template v-else>
+              非流式：请求结束后从响应 JSON 里按路径取值；响应不是 JSON 时该列留空。
+            </template>
+          </p>
+        </div>
+
         <a-button type="primary" long :loading="starting" :disabled="!upload" @click="start">
           开始测试
         </a-button>
@@ -153,6 +188,8 @@ const name = ref('批量测试')
 const concurrency = ref(10)
 const streaming = ref(false)
 const upload = ref<{ upload_id: string; filename: string; columns: string[]; rows: number } | null>(null)
+/** 自定义结果列：{ 表头名, 取值路径 }，追加在固定指标列之后。 */
+const customCols = ref<Array<{ title: string; path: string }>>([])
 const starting = ref(false)
 const refreshing = ref(false)
 const jobs = ref<any[]>([])
@@ -169,6 +206,40 @@ const resolvedUrl = computed(() => {
 
 function close() {
   emit('update:visible', false)
+}
+
+function addCol() {
+  if (customCols.value.length >= 20) {
+    toast.error('最多 20 个自定义列')
+    return
+  }
+  customCols.value.push({ title: '', path: '' })
+}
+
+function removeCol(i: number) {
+  customCols.value.splice(i, 1)
+}
+
+/** 校验并收集自定义列；返回 null 表示校验失败（已弹提示）。 */
+function collectColumns(): Array<{ title: string; path: string }> | null {
+  const out: Array<{ title: string; path: string }> = []
+  const seen = new Set<string>()
+  for (let i = 0; i < customCols.value.length; i++) {
+    const title = customCols.value[i].title.trim()
+    const path = customCols.value[i].path.trim()
+    if (!title && !path) continue // 整行空着视为未填写
+    if (!title || !path) {
+      toast.error(`第 ${i + 1} 行：表头名与取值路径需同时填写`)
+      return null
+    }
+    if (seen.has(title)) {
+      toast.error(`表头名重复：${title}`)
+      return null
+    }
+    seen.add(title)
+    out.push({ title, path })
+  }
+  return out
 }
 
 function pickFile() {
@@ -207,6 +278,8 @@ async function onPick(e: Event) {
 async function start() {
   const up = upload.value
   if (!up) return
+  const columns = collectColumns()
+  if (columns === null) return
   starting.value = true
   try {
     await api.post('/api/bench/run', {
@@ -223,6 +296,7 @@ async function start() {
         body: props.request.body,
       },
       env_vars: { ...envStore.scopeVars },
+      columns,
     })
     upload.value = null
     toast.success('批量测试已在后台开始')
@@ -368,8 +442,25 @@ onBeforeUnmount(() => {
 .file-box { display: flex; flex-direction: column; gap: 8px; }
 .upload-info { display: flex; align-items: center; gap: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.hint { font-size: 0.86em; margin: 0; }
+.hint { font-size: 0.86em; margin: 0; line-height: 1.6; }
+.hint code {
+  font-family: var(--ui-font-mono, ui-monospace, monospace);
+  padding: 0 3px;
+  border-radius: var(--ui-radius-sm, 3px);
+  background: var(--ui-bg-subtle, rgba(0, 0, 0, 0.04));
+}
 .muted { color: var(--el-text-color-placeholder); font-size: 0.86em; }
+.label-inline { display: inline-flex; align-items: center; gap: 4px; }
+.tips-ico { color: var(--el-text-color-placeholder); cursor: help; }
+.sys-col { display: flex; align-items: center; gap: 6px; }
+.col-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  > :first-child { flex: 1; min-width: 0; }
+  > :nth-child(2) { flex: 1.5; min-width: 0; }
+  > :last-child { flex: none; }
+}
 
 .resolved-url {
   font-size: 0.86em;

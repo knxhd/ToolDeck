@@ -106,13 +106,114 @@ def _parse_openai_stream_line(line: str) -> str:
     return str(delta.get("content") or "")
 
 
+# ---------- 自定义结果列：取值路径解析 ----------
+
+_TOKEN_RE = re.compile(r"[^.\[\]]+")
+_ROOT_PREFIXES = ("response", "body", "result")
+
+
+def _split_path(path: str) -> list[str]:
+    """把 `response.data[0].name` 拆成 ['data','0','name']。
+
+    支持 `$` / `$.` / `response.` / `body.` / `result.` 前缀，点号与方括号可混用。
+    """
+    p = (path or "").strip()
+    if p.startswith("$"):
+        p = p[1:]
+    low = p.lower()
+    for pre in _ROOT_PREFIXES:
+        if low == pre:
+            return []
+        if low.startswith(pre + ".") or low.startswith(pre + "["):
+            p = p[len(pre):]
+            break
+    p = p.lstrip(".")
+    return [t.strip().strip("'\"") for t in _TOKEN_RE.findall(p) if t.strip()]
+
+
+def _to_text(value) -> str:
+    """把取到的值转成 CSV 单元格文本（容器类型转紧凑 JSON）。"""
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    except (TypeError, ValueError):
+        return str(value)
+
+
+def extract_value(obj, path: str) -> str:
+    """按点号/下标路径从已解析的 JSON 对象里取值；取不到返回 ''。"""
+    if obj is None:
+        return ""
+    tokens = _split_path(path)
+    if not tokens:
+        return _to_text(obj)
+    cur = obj
+    for tok in tokens:
+        if isinstance(cur, dict):
+            if tok not in cur:
+                return ""
+            cur = cur[tok]
+        elif isinstance(cur, list):
+            try:
+                idx = int(tok)
+            except (TypeError, ValueError):
+                return ""
+            if idx < -len(cur) or idx >= len(cur):
+                return ""
+            cur = cur[idx]
+        else:
+            return ""
+        if cur is None:
+            return ""
+    return _to_text(cur)
+
+
+def _load_json(text: str):
+    """宽松解析响应体为 JSON 对象；非 JSON 返回 None。"""
+    if not text:
+        return None
+    try:
+        return json.loads(text)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return None
+
+
+def _sse_payload(line: str):
+    """从一行 SSE 里取出 data 的 JSON 对象；非 JSON 帧返回 None。"""
+    line = (line or "").strip()
+    if not line:
+        return None
+    payload = line[5:].strip() if line.startswith("data:") else line
+    if not payload or payload == "[DONE]":
+        return None
+    if payload[:1] not in ("{", "["):
+        return None
+    try:
+        return json.loads(payload)
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
 async def _run_one(
     client: httpx.AsyncClient,
     tpl: BenchRequestTemplate,
     row: dict[str, str],
     streaming: bool,
+    columns: list[tuple[str, str]] | None = None,
 ) -> dict:
-    """跑单行数据，返回一条结果字典。瞬时连接错误自动重试 1 次。"""
+    """跑单行数据，返回一条结果字典。瞬时连接错误自动重试 1 次。
+
+    columns 为 [(表头, 取值路径)]：非流式从完整响应体提取；流式逐帧提取，
+    某列一旦取到非空值即定稿，后续帧不再覆盖。
+    """
+    columns = columns or []
     url = render(tpl.url, row)
     headers = _headers_dict(tpl.headers, row)
     params = _params_dict(tpl.params, row)
@@ -133,6 +234,7 @@ async def _run_one(
         "error": "",
         "text": "",
         "retried": False,
+        "extracted": {title: "" for title, _ in columns},
     }
     start = time.perf_counter()
 
@@ -148,6 +250,9 @@ async def _run_one(
     async def attempt() -> None:
         """单次尝试；网络异常直接抛出，HTTP 状态码不抛。"""
         ttft = None
+        # 重试时重置已提取的值，避免把上一次的半截结果留下来
+        found = {title: "" for title, _ in columns}
+        result["extracted"] = found
         if streaming:
             chunks: list[str] = []
             size = 0
@@ -162,6 +267,17 @@ async def _run_one(
                     if delta:
                         chunks.append(delta)
                         size += len(delta.encode("utf-8"))
+                    # 自定义列：帧数据为空则跳过；已有值的列不再覆盖
+                    if columns and any(not v for v in found.values()):
+                        frame = _sse_payload(line)
+                        if frame is None:
+                            continue
+                        for title, path in columns:
+                            if found[title]:
+                                continue
+                            val = extract_value(frame, path)
+                            if val:
+                                found[title] = val
             result["text"] = "".join(chunks)
             result["ttft_ms"] = int(ttft) if ttft is not None else ""
             result["size_bytes"] = size
@@ -174,6 +290,11 @@ async def _run_one(
             result["size_bytes"] = len(raw)
             result["text"] = raw.decode("utf-8", errors="replace")
             result["ttft_ms"] = ""
+            if columns:
+                obj = _load_json(result["text"])
+                if obj is not None:
+                    for title, path in columns:
+                        found[title] = extract_value(obj, path)
 
     last_err: Exception | None = None
     for attempt_idx in range(2):  # 首次 + 最多 1 次重试
@@ -212,9 +333,23 @@ def _read_csv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     return list(fields), rows
 
 
-async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = None) -> None:
-    """后台协程：跑完整个任务并回写状态/统计/CSV。job 为 DB 行字典。"""
+async def run_job(
+    job: dict,
+    tpl: BenchRequestTemplate,
+    env_vars: dict | None = None,
+    columns: list | None = None,
+) -> None:
+    """后台协程：跑完整个任务并回写状态/统计/CSV。job 为 DB 行字典。
+
+    columns 为自定义结果列（BenchColumn 或 {title, path}），会在固定指标列之后追加。
+    """
     env_vars = env_vars or {}
+    sorted_columns: list[tuple[str, str]] = []
+    for c in columns or []:
+        title = str(getattr(c, "title", None) or (c.get("title") if isinstance(c, dict) else "") or "").strip()
+        path = str(getattr(c, "path", None) or (c.get("path") if isinstance(c, dict) else "") or "").strip()
+        if title and path:
+            sorted_columns.append((title, path))
     user_id = job["user_id"]
     job_id = job["id"]
     upload = Path(job["params_path"])
@@ -239,13 +374,16 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
     latencies: list[int] = []
     ttfts: list[int] = []
 
-    # CSV 写出（带 BOM）
+    # CSV 写出（带 BOM）；固定指标列之后追加自定义列
     out_f = open(result, "w", encoding="utf-8-sig", newline="")
     writer = csv.writer(out_f)
-    header = ["序号", "状态码", "是否成功", "总耗时ms", "首帧耗时ms", "响应字节数", "是否重试", "错误信息", "响应原文/完整文本"]
-    writer.writerow(header)
-
     streaming = bool(job["streaming"])
+    text_col = "content" if streaming else "响应原文"
+    header = [
+        "序号", "状态码", "是否成功", "总耗时ms", "首帧耗时ms",
+        "响应字节数", "是否重试", "错误信息", text_col,
+    ] + [title for title, _ in sorted_columns]
+    writer.writerow(header)
 
     async def bounded(idx_row: tuple[int, dict]) -> None:
         nonlocal done, success, fail
@@ -256,13 +394,13 @@ async def run_job(job: dict, tpl: BenchRequestTemplate, env_vars: dict | None = 
             if bench_store.is_cancelled(job_id):
                 return
             merged = {**env_vars, **row}
-            r = await _run_one(client, tpl, merged, streaming)
+            r = await _run_one(client, tpl, merged, streaming, sorted_columns)
         writer.writerow([
             idx + 1, r["status"], "成功" if r["ok"] else "失败",
             r["total_ms"], r["ttft_ms"], r["size_bytes"],
             "是" if r.get("retried") else "",
             r["error"], r["text"],
-        ])
+        ] + [r["extracted"].get(title, "") for title, _ in sorted_columns])
         out_f.flush()
         done += 1
         if r["ok"]:

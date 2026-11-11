@@ -1,7 +1,26 @@
 """批量/压测任务的 Pydantic 模型。"""
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class BenchColumn(BaseModel):
+    """自定义结果列：CSV 表头 + 取值路径。
+
+    path 支持 `response.data`、`response.data[0].name`、`data.items.0.id` 等写法，
+    解析时忽略 `response.` / `body.` / `$` 前缀，按点号与下标逐层取值。
+    """
+
+    title: str = Field(min_length=1, max_length=64, description="CSV 表头文字")
+    path: str = Field(min_length=1, max_length=200, description="取值路径")
+
+    @model_validator(mode="after")
+    def _trim(self) -> "BenchColumn":
+        self.title = self.title.strip()
+        self.path = self.path.strip()
+        if not self.title or not self.path:
+            raise ValueError("表头名与取值路径都不能为空")
+        return self
 
 
 class BenchRequestTemplate(BaseModel):
@@ -25,6 +44,17 @@ class BenchRunBody(BaseModel):
     request: BenchRequestTemplate
     # 当前环境/集合变量：CSV 列没覆盖的占位符用它兜底（如 {{host}}）
     env_vars: dict[str, str] = Field(default_factory=dict)
+    # 自定义结果列：在固定指标列之后追加；流式模式下 content 为系统默认列
+    columns: list[BenchColumn] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def _unique_titles(self) -> "BenchRunBody":
+        seen: set[str] = set()
+        for c in self.columns:
+            if c.title in seen:
+                raise ValueError(f"自定义表头重复：{c.title}")
+            seen.add(c.title)
+        return self
 
 
 class JobSummary(BaseModel):
