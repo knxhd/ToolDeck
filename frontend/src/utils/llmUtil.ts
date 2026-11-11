@@ -5,6 +5,15 @@
 export interface MergedSseResult {
     content: string
     reasoning: string
+    /** token 用量；协议未返回时为 undefined */
+    usage: TokenUsage
+}
+
+/** token 用量：OpenAI 用 prompt/completion，Qwen 用 input/output，统一到这里。 */
+export interface TokenUsage {
+    input?: number
+    output?: number
+    total?: number
 }
 
 /**
@@ -14,12 +23,12 @@ export interface MergedSseResult {
  * 一个 chunk 里可能有 0 / 1 / 多帧完整数据，也可能末尾带半截 JSON（流式尚未结束）。
  */
 export const parseMessages = (message: string, type: string): MergedSseResult => {
-    const result: MergedSseResult = { content: '', reasoning: '' }
+    const result: MergedSseResult = { content: '', reasoning: '', usage: {} }
     if (!message) {
         return result
     }
     if (message === '\n') {
-        return { content: '\n', reasoning: '' }
+        return { content: '\n', reasoning: '', usage: {} }
     }
 
     // 把所有行里能识别出的 JSON 行收集起来，逐个尝试 parse。
@@ -38,7 +47,9 @@ export const parseMessages = (message: string, type: string): MergedSseResult =>
         if (!body) {
             continue
         }
-        let part: MergedSseResult | null = null
+        // 用量帧可能没有任何 delta（如 OpenAI 末帧只带 usage），单独先收集
+        result.usage = mergeUsage(result.usage, pickUsage(body))
+        let part: TextPart | null = null
         if (type === 'OpenAi') {
             part = openAiParser(body)
         } else if (type === 'Qwen') {
@@ -51,6 +62,27 @@ export const parseMessages = (message: string, type: string): MergedSseResult =>
     }
     return result
 }
+
+/** 取帧里的 token 用量：OpenAI(usage.prompt_tokens/…) 与 Qwen(usage.input_tokens/… 或 output.usage) 都兼容。 */
+const pickUsage = (body: any): TokenUsage => {
+    const src = body?.usage ?? body?.output?.usage ?? body?.data?.usage
+    if (!src || typeof src !== 'object') {
+        return {}
+    }
+    const num = (v: any): number | undefined =>
+        typeof v === 'number' && Number.isFinite(v) ? v : undefined
+    return {
+        input: num(src.prompt_tokens ?? src.input_tokens),
+        output: num(src.completion_tokens ?? src.output_tokens),
+        total: num(src.total_tokens),
+    }
+}
+
+const mergeUsage = (prev: TokenUsage, next: TokenUsage): TokenUsage => ({
+    input: next.input ?? prev.input,
+    output: next.output ?? prev.output,
+    total: next.total ?? prev.total,
+})
 
 /**
  * 从 content / reasoning_content 这类字段中取出文本。
@@ -79,7 +111,10 @@ const pickReasoning = (source: any): string => pickText(
     source?.reasoning_content ?? source?.reasoning ?? source?.reasoning_text,
 )
 
-const openAiParser = (body: any): MergedSseResult => {
+/** 单帧解析出的正文片段（用量由 pickUsage 单独处理）。 */
+type TextPart = { content: string; reasoning: string }
+
+const openAiParser = (body: any): TextPart => {
     // 流式为 choices[0].delta，非流式为 choices[0].message，两者字段一致
     const delta = body?.choices?.[0]?.delta ?? body?.choices?.[0]?.message
     if (!delta) {
@@ -91,7 +126,7 @@ const openAiParser = (body: any): MergedSseResult => {
     }
 }
 
-const qwenParser = (body: any): MergedSseResult => {
+const qwenParser = (body: any): TextPart => {
     // Qwen / Qwen3: {"output":{"choices":[{"message":{"content": [...] 或 "...", "reasoning_content": "..."}}]}}
     const message = body?.output?.choices?.[0]?.message
         ?? body?.output?.choices?.[0]?.delta

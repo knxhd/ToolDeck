@@ -17,8 +17,12 @@
         发送请求后在此查看响应
       </span>
       <div class="meta-actions">
-        <a-button size="mini" type="text" :disabled="!tab.body" @click="copyBody">
+        <a-button size="mini" type="text" :disabled="!hasContent" title="复制响应内容（流式复制合并后的正文或原始帧）"
+          @click="copyBody">
           <template #icon><icon-copy /></template>
+        </a-button>
+        <a-button size="mini" type="text" :disabled="!hasContent" :title="downloadTip" @click="downloadResponse">
+          <template #icon><icon-download /></template>
         </a-button>
         <a-button size="mini" type="text" :disabled="!tab.body && !tab.status_code && !tab.stream_events.length"
           @click="clearResponse">
@@ -47,6 +51,21 @@
           </div>
           <div class="stream-layout">
             <div v-if="mergeType" class="merge-view">
+              <div class="usage-strip">
+                <span class="usage-title">Token 用量</span>
+                <span v-if="usage.input != null" class="usage-cell">
+                  输入 <b>{{ formatNum(usage.input) }}</b>
+                </span>
+                <span v-if="usage.output != null" class="usage-cell">
+                  输出 <b>{{ formatNum(usage.output) }}</b>
+                </span>
+                <span v-if="usageTotal != null" class="usage-cell">
+                  合计 <b>{{ formatNum(usageTotal) }}</b>
+                </span>
+                <span v-if="!hasUsage" class="usage-empty">
+                  响应未返回 usage（OpenAI 流式需请求参数 stream_options.include_usage=true）
+                </span>
+              </div>
               <div v-if="merged.reasoning" class="reasoning-block">
                 <div class="reasoning-header" @click="reasoningOpen = !reasoningOpen">
                   <span class="reasoning-title">
@@ -113,6 +132,7 @@ import { computed, ref, watch } from 'vue'
 import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 import { parseMessages } from '@/utils/llmUtil'
+import { toast } from '@/utils/feedback'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -126,6 +146,13 @@ const contentTypeName = computed(() => {
   const headers = props.tab.headers || {}
   return headers['content-type'] || ''
 })
+
+/** 实际收到的数据块（meta/done/error 是前端自己补的事件，不算帧）。 */
+const chunkFrames = computed(() => props.tab.stream_events.filter((e) => e.type === 'chunk'))
+// 是否按 SSE 视图展示：只看响应头，非流式响应同样会累积 chunk，不能拿 chunk 数量判断
+const isSseView = computed(() => contentTypeName.value.includes('text/event-stream'))
+const hasContent = computed(() => !!props.tab.body || chunkFrames.value.length > 0)
+const downloadTip = computed(() => (isSseView.value ? '下载全部帧（JSONL）' : '下载响应内容'))
 
 // 流式到达时自动选中最新一帧
 watch(
@@ -169,13 +196,145 @@ function formatSize(bytes: number) {
 }
 
 async function copyBody() {
-  const text = props.tab.body || ''
-  try {
-    await navigator.clipboard.writeText(text)
-    // 简单提示：用 title 变更即可，避免引入 toast
-  } catch {
-    /* ignore */
+  const text = copyPayload()
+  if (!text) {
+    toast.warning('没有可复制的内容')
+    return
   }
+  const ok = await writeClipboard(text)
+  if (ok) {
+    toast.success(props.tab.streaming ? '已复制当前已接收的内容' : '已复制响应内容')
+  } else {
+    toast.error('复制失败：浏览器不允许访问剪贴板，请手动选中复制')
+  }
+}
+
+/** 复制内容：流式优先复制合并后的正文，未选择合并格式时复制原始帧文本；非流式复制响应体。 */
+function copyPayload(): string {
+  if (isSseView.value) {
+    if (mergeType.value && (merged.value.content || merged.value.reasoning)) {
+      return merged.value.content || merged.value.reasoning
+    }
+    return frameText()
+  }
+  return props.tab.body || ''
+}
+
+/** 把所有 chunk 原样拼起来，还原完整 SSE 文本。 */
+function frameText(): string {
+  return props.tab.stream_events.filter((e) => e.type === 'chunk').map((e) => e.data).join('')
+}
+
+/** 写剪贴板：优先 Clipboard API，非安全上下文（http 局域网等）退到 execCommand。 */
+async function writeClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text)
+      return true
+    } catch {
+      /* 落到下面的兜底 */
+    }
+  }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.top = '-9999px'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    ta.setSelectionRange(0, ta.value.length)
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    return ok
+  } catch {
+    return false
+  }
+}
+
+function downloadResponse() {
+  if (isSseView.value) {
+    downloadFrames()
+    return
+  }
+  const text = props.tab.body || ''
+  const ext = /json/.test(contentTypeName.value)
+    ? 'json'
+    : /html/.test(contentTypeName.value)
+      ? 'html'
+      : 'txt'
+  saveFile(text, `${safeName()}-${stamp()}.${ext}`, 'text/plain;charset=utf-8')
+  toast.success('已下载响应内容')
+}
+
+/**
+ * 把所有 SSE 帧导出为 JSONL：一行一个帧对象
+ * `{"index":1,"time":"18:01:50.676","data":{...}}`，帧数据能解析成 JSON 的直接内联，否则原样作为字符串。
+ */
+function downloadFrames() {
+  const records = buildFrameRecords()
+  if (!records.length) {
+    toast.warning('暂无可下载的帧')
+    return
+  }
+  const jsonl = records.map((r) => JSON.stringify(r)).join('\n') + '\n'
+  saveFile(jsonl, `frames-${safeName()}-${stamp()}.jsonl`, 'application/x-ndjson;charset=utf-8')
+  toast.success(`已下载 ${records.length} 个帧（JSONL）`)
+}
+
+function buildFrameRecords(): Array<Record<string, unknown>> {
+  const records: Array<Record<string, unknown>> = []
+  let buf = ''
+  let bufTime = ''
+  const emit = (line: string, time: string) => {
+    const text = line.trim()
+    if (!text) return
+    // 跳过 SSE 的非数据行（event:/id:/retry:/注释）
+    if (/^(event|id|retry):/.test(text) || text.startsWith(':')) return
+    const payload = text.startsWith('data:') ? text.slice(5).trim() : text
+    if (!payload || payload === '[DONE]') return
+    let value: unknown = payload
+    try {
+      value = JSON.parse(payload)
+    } catch {
+      /* 非 JSON 帧原样保留 */
+    }
+    records.push({ index: records.length + 1, time, data: value })
+  }
+
+  for (const ev of props.tab.stream_events) {
+    if (ev.type !== 'chunk') continue
+    if (!buf) bufTime = ev.time
+    buf += ev.data
+    const lines = buf.split('\n')
+    buf = lines.pop() ?? ''
+    for (const line of lines) emit(line, bufTime)
+  }
+  // 流结束时最后一行可能没有换行符
+  if (buf) emit(buf, bufTime)
+  return records
+}
+
+function safeName(): string {
+  const raw = (props.tab.title || 'response').replace(/[\\/:*?"<>|\s]+/g, '_')
+  return raw.slice(0, 40) || 'response'
+}
+
+function stamp(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+}
+
+function saveFile(content: string, filename: string, mime: string) {
+  const blob = new Blob([content], { type: mime })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 function clearResponse() {
@@ -196,7 +355,7 @@ const reasoningOpen = ref(true)
 // 合并结果：正文 + 思考过程（reasoning_content），两者分别渲染
 const merged = computed(() => {
   if (!mergeType.value) {
-    return { content: '', reasoning: '' }
+    return { content: '', reasoning: '', usage: {} }
   }
   try {
     // 把所有 chunk 拼成完整字节流，再逐行解析：
@@ -206,9 +365,25 @@ const merged = computed(() => {
   } catch (error) {
     console.error(error)
     mergeType.value = ''
-    return { content: '', reasoning: '' }
+    return { content: '', reasoning: '', usage: {} }
   }
 })
+
+/** token 用量：OpenAI 的 prompt/completion 与 Qwen 的 input/output 已在解析层归一。 */
+const usage = computed(() => merged.value.usage)
+const usageTotal = computed(() => {
+  const u = usage.value
+  if (u.total != null) return u.total
+  if (u.input != null && u.output != null) return u.input + u.output
+  return undefined
+})
+const hasUsage = computed(
+  () => usage.value.input != null || usage.value.output != null || usageTotal.value != null,
+)
+
+function formatNum(n: number) {
+  return n.toLocaleString('zh-CN')
+}
 </script>
 
 <style scoped lang="less">
@@ -458,6 +633,37 @@ const merged = computed(() => {
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+/* Token 用量：合并视图顶部一行，弱化但数字醒目 */
+.usage-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 8px 0 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--ui-border-soft);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-subtle);
+  font-size: 0.82em;
+  color: var(--color-text-3);
+  font-variant-numeric: tabular-nums;
+
+  .usage-title {
+    font-weight: 600;
+    color: var(--color-text-2);
+  }
+
+  .usage-cell b {
+    color: var(--color-text-1);
+    font-weight: 600;
+  }
+
+  .usage-empty {
+    color: var(--color-text-4);
+    font-size: 0.95em;
+  }
 }
 
 /* 思考过程（reasoning_content）：弱化样式，与正文区分 */
