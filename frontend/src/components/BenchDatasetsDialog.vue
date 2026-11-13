@@ -70,23 +70,53 @@
   <!-- 内容预览（独立根节点，避免与上面的管理弹框嵌套导致不渲染） -->
   <a-modal
     :visible="previewOpen"
-    :title="`预览 · ${preview.name || ''}`"
-    width="1080px"
+    fullscreen
     :footer="false"
+    :mask-closable="true"
     class="ds-preview-modal"
     @cancel="previewOpen = false"
   >
-    <div class="ds-preview">
-      <div class="muted ds-preview-tip">
-        共 {{ preview.rows }} 行 · {{ preview.columns.length }} 列，当前只显示前 {{ preview.preview.length }} 行。
+    <template #title>
+      <div class="pv-title">
+        <icon-file />
+        <span class="pv-name" :title="preview.name">{{ preview.name || '测试集预览' }}</span>
+        <a-tag size="small" color="arcoblue">{{ preview.rows }} 行</a-tag>
+        <a-tag size="small">{{ preview.columns.length }} 列</a-tag>
+        <a-tag v-if="previewLoading" size="small" color="orange">加载中…</a-tag>
       </div>
-      <a-spin :loading="previewLoading" style="width: 100%">
+    </template>
+
+    <div class="ds-preview">
+      <div class="pv-toolbar">
+        <span class="pv-tip">
+          仅显示前 {{ preview.preview.length }} 行（共 {{ preview.rows }} 行），完整内容请下载 CSV。
+        </span>
+        <div class="pv-toolbar-right">
+          <a-input
+            v-model="previewFilter"
+            size="small"
+            allow-clear
+            placeholder="在预览数据中搜索…"
+            style="width: 240px"
+          >
+            <template #prefix><icon-search /></template>
+          </a-input>
+          <a-button size="small" :disabled="!previewSource" @click="downloadPreview">
+            <template #icon><icon-download /></template>
+            下载 CSV
+          </a-button>
+        </div>
+      </div>
+
+      <a-spin :loading="previewLoading" class="pv-body">
         <a-table
-          :data="preview.preview"
+          :data="previewRows"
           :pagination="false"
-          size="mini"
-          :scroll="{ x: '100%', y: 420 }"
+          size="small"
+          stripe
+          :scroll="{ x: '100%', y: tableHeight }"
           :bordered="false"
+          class="pv-table"
         >
           <template #columns>
             <a-table-column
@@ -94,10 +124,20 @@
               :key="c"
               :title="c"
               :data-index="c"
-              :width="180"
+              :width="colWidth"
               ellipsis
               tooltip
             />
+            <a-table-column v-if="!preview.columns.length" title="内容">
+              <template #cell>
+                <span class="pv-placeholder">{{ previewLoading ? '加载中…' : '暂无数据' }}</span>
+              </template>
+            </a-table-column>
+          </template>
+          <template #empty>
+            <div class="pv-placeholder">
+              {{ previewLoading ? '加载中…' : previewFilter ? '没有匹配的行' : '暂无数据' }}
+            </div>
           </template>
         </a-table>
       </a-spin>
@@ -106,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 import { api, getToken } from '@/api/client'
 import { toast, promptInput } from '@/utils/feedback'
@@ -134,6 +174,39 @@ const preview = ref<{ name: string; columns: string[]; rows: number; preview: Ar
   rows: 0,
   preview: [],
 })
+
+/** 当前预览对应的测试集（用于弹框内「下载 CSV」）。 */
+const previewSource = ref<BenchDataset | null>(null)
+const previewFilter = ref('')
+
+const previewRows = computed(() => {
+  const q = previewFilter.value.trim().toLowerCase()
+  const rows = preview.value.preview
+  if (!q) return rows
+  return rows.filter((r) => Object.values(r).some((v) => String(v ?? '').toLowerCase().includes(q)))
+})
+
+/** 预览表格列宽：列少时铺满，列多时收窄并横向滚动。 */
+const colWidth = computed(() => {
+  const n = Math.max(1, preview.value.columns.length)
+  const usable = Math.max(640, window.innerWidth * 0.86)
+  return Math.max(180, Math.min(460, Math.floor(usable / n)))
+})
+
+/** 预览表格高度：全屏弹框内填满剩余空间，跟随窗口变化。 */
+const viewportH = ref(window.innerHeight)
+/** 头部标题栏 + 工具条 + 内边距的占位高度。 */
+const CHROME_H = 210
+const tableHeight = computed(() => Math.max(240, viewportH.value - CHROME_H))
+function onResize() {
+  viewportH.value = window.innerHeight
+}
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
+
+function downloadPreview() {
+  if (previewSource.value) void download(previewSource.value)
+}
 
 /** 极简 CSV 解析：支持引号包裹、字段内逗号、转义引号、CRLF。 */
 function parseCsv(text: string): string[][] {
@@ -261,6 +334,8 @@ async function onPick(e: Event) {
 
 async function openPreview(ds: BenchDataset) {
   // 先开弹框再取数：点击立即有反馈，加载态在弹框内显示
+  previewSource.value = ds
+  previewFilter.value = ''
   preview.value = { name: ds.name, columns: [], rows: ds.rows, preview: [] }
   previewOpen.value = true
   previewLoading.value = true
@@ -386,12 +461,94 @@ function remove(ds: BenchDataset) {
 .ds-preview {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  min-height: 440px;
+  gap: 14px;
+  height: 100%;
+  min-height: 0;
+}
 
-  .ds-preview-tip {
+/* 预览弹框标题行 */
+.pv-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  > .pv-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--color-text-1);
+  }
+}
+
+.pv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 4px 12px;
+  border-bottom: 1px solid var(--ui-border-soft);
+
+  .pv-tip {
+    flex: 1;
+    min-width: 0;
     font-size: 0.86em;
     color: var(--color-text-3);
+    line-height: 1.5;
   }
+
+  .pv-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+}
+
+/* 预览表格：放宽行高与内边距，避免过密 */
+.pv-body {
+  display: block;
+  width: 100%;
+}
+
+.pv-table {
+  :deep(.arco-table-th) {
+    background: var(--ui-bg-subtle) !important;
+  }
+
+  :deep(.arco-table-th .arco-table-cell) {
+    padding: 10px 16px;
+    font-weight: 600;
+    color: var(--color-text-2);
+    white-space: nowrap;
+  }
+
+  :deep(.arco-table-td .arco-table-cell) {
+    padding: 10px 16px;
+    line-height: 1.65;
+    color: var(--color-text-1);
+  }
+
+  :deep(.arco-table-tr:hover .arco-table-td) {
+    background: var(--ui-bg-hover);
+  }
+}
+
+.pv-placeholder {
+  display: block;
+  padding: 32px 0;
+  text-align: center;
+  font-size: 0.9em;
+  color: var(--color-text-3);
+}
+</style>
+
+<style lang="less">
+/* 全屏预览弹框：去掉圆角，避免四角露出遮罩 */
+.ds-preview-modal,
+.ds-preview-modal .arco-modal {
+  border-radius: 0;
 }
 </style>
