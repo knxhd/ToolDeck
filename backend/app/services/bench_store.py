@@ -25,10 +25,12 @@ MAX_FILE_BYTES = 10 * 1024 * 1024  # 10MB
 
 _BENCH_ROOT = CONFIG_DIR / "benchmark"
 _STAGING_DIR = _BENCH_ROOT / "_staging"
+_DATASETS_DIR = _BENCH_ROOT / "_datasets"
 
 
 def _ensure_dirs() -> None:
     _STAGING_DIR.mkdir(parents=True, exist_ok=True)
+    _DATASETS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def timestamp() -> str:
@@ -47,6 +49,10 @@ def new_upload_id() -> str:
 
 
 def new_job_id() -> str:
+    return uuid.uuid4().hex[:12]
+
+
+def new_dataset_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
@@ -87,6 +93,87 @@ def import_staging_to_params(upload_id: str, params_path: Path) -> None:
     shutil.move(str(staging_path(upload_id)), str(params_path))
 
 
+# ---------- 测试集（可复用的 CSV） ----------
+
+def dataset_path(dataset_id: str) -> Path:
+    _ensure_dirs()
+    return _DATASETS_DIR / f"{dataset_id}.csv"
+
+
+def save_dataset_file(dataset_id: str, raw: bytes) -> Path:
+    p = dataset_path(dataset_id)
+    p.write_bytes(raw)
+    return p
+
+
+def delete_dataset_file(dataset_id: str) -> None:
+    dataset_path(dataset_id).unlink(missing_ok=True)
+
+
+def copy_dataset_to_params(dataset_id: str, params_path: Path) -> None:
+    """把测试集文件复制成任务的参数文件（测试集本身保留，可反复使用）。"""
+    src = dataset_path(dataset_id)
+    if not src.exists():
+        raise FileNotFoundError(f"测试集文件不存在：{dataset_id}")
+    shutil.copyfile(str(src), str(params_path))
+
+
+def _dataset_to_dict(row) -> dict:
+    d = dict(row)
+    try:
+        d["columns"] = json.loads(d.get("columns_json") or "[]")
+    except json.JSONDecodeError:
+        d["columns"] = []
+    d.pop("columns_json", None)
+    # 不把服务端绝对路径返回给前端
+    d.pop("path", None)
+    return d
+
+
+def insert_dataset(fields: dict) -> None:
+    cols = ", ".join(fields.keys())
+    ph = ", ".join(f":{k}" for k in fields.keys())
+    with get_db() as conn:
+        conn.execute(f"INSERT INTO bench_datasets ({cols}) VALUES ({ph})", fields)
+
+
+def list_datasets(user_id: int) -> list[dict]:
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT * FROM bench_datasets WHERE user_id=? ORDER BY created_at DESC",
+            (user_id,),
+        ).fetchall()
+    return [_dataset_to_dict(r) for r in rows]
+
+
+def get_dataset(dataset_id: str, user_id: int) -> dict | None:
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT * FROM bench_datasets WHERE id=? AND user_id=?", (dataset_id, user_id)
+        ).fetchone()
+    return _dataset_to_dict(row) if row else None
+
+
+def rename_dataset(dataset_id: str, user_id: int, name: str) -> bool:
+    with get_db() as conn:
+        cur = conn.execute(
+            "UPDATE bench_datasets SET name=? WHERE id=? AND user_id=?",
+            (name, dataset_id, user_id),
+        )
+        return cur.rowcount > 0
+
+
+def delete_dataset(dataset_id: str, user_id: int) -> bool:
+    with get_db() as conn:
+        cur = conn.execute(
+            "DELETE FROM bench_datasets WHERE id=? AND user_id=?", (dataset_id, user_id)
+        )
+        deleted = cur.rowcount > 0
+    if deleted:
+        delete_dataset_file(dataset_id)
+    return deleted
+
+
 # ---------- 任务记录（SQLite） ----------
 
 def insert_job(fields: dict) -> None:
@@ -112,12 +199,16 @@ def _row_to_dict(row) -> dict:
     return d
 
 
-def list_jobs(user_id: int) -> list[dict]:
+def list_jobs(user_id: int, scope_key: str | None = None) -> list[dict]:
+    """列出任务记录；scope_key 非空时只返回该接口下的任务。"""
+    sql = "SELECT * FROM bench_jobs WHERE user_id=?"
+    args: list = [user_id]
+    if scope_key:
+        sql += " AND scope_key=?"
+        args.append(scope_key)
+    sql += " ORDER BY created_at DESC LIMIT 200"
     with get_db() as conn:
-        rows = conn.execute(
-            "SELECT * FROM bench_jobs WHERE user_id=? ORDER BY created_at DESC LIMIT 200",
-            (user_id,),
-        ).fetchall()
+        rows = conn.execute(sql, tuple(args)).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
@@ -181,12 +272,22 @@ __all__ = [
     "timestamp",
     "new_upload_id",
     "new_job_id",
+    "new_dataset_id",
     "staging_path",
     "save_staging",
     "read_staging",
     "delete_staging",
     "create_job_folder",
     "import_staging_to_params",
+    "dataset_path",
+    "save_dataset_file",
+    "delete_dataset_file",
+    "copy_dataset_to_params",
+    "insert_dataset",
+    "list_datasets",
+    "get_dataset",
+    "rename_dataset",
+    "delete_dataset",
     "insert_job",
     "list_jobs",
     "get_job",

@@ -38,7 +38,9 @@ class BenchRunBody(BaseModel):
     """发起一次批量测试。"""
 
     name: str = "批量测试"
-    upload_id: str
+    # 数据来源二选一：测试集（推荐，可复用）或一次性上传（upload_id）
+    upload_id: str = ""
+    dataset_id: str = ""
     concurrency: int = Field(default=10, ge=1, le=100)
     streaming: bool = False
     request: BenchRequestTemplate
@@ -46,6 +48,8 @@ class BenchRunBody(BaseModel):
     env_vars: dict[str, str] = Field(default_factory=dict)
     # 自定义结果列：在固定指标列之后追加；流式模式下 content 为系统默认列
     columns: list[BenchColumn] = Field(default_factory=list, max_length=20)
+    # 所属接口标识（node:<节点id> 或 req:<METHOD>:<url>），用于任务记录按接口隔离
+    scope_key: str = Field(default="", max_length=200)
 
     @model_validator(mode="after")
     def _unique_titles(self) -> "BenchRunBody":
@@ -54,6 +58,8 @@ class BenchRunBody(BaseModel):
             if c.title in seen:
                 raise ValueError(f"自定义表头重复：{c.title}")
             seen.add(c.title)
+        if not self.dataset_id.strip() and not self.upload_id.strip():
+            raise ValueError("请选择测试集或先上传数据文件")
         return self
 
 

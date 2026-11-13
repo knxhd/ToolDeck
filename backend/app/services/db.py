@@ -155,6 +155,8 @@ def init_db() -> None:
                 concurrency INTEGER NOT NULL DEFAULT 10,
                 streaming INTEGER NOT NULL DEFAULT 0,
                 columns_json TEXT NOT NULL DEFAULT '[]',
+                -- 所属接口标识：node:<集合节点id> 或 req:<METHOD>:<url>，用于按接口过滤任务记录
+                scope_key TEXT NOT NULL DEFAULT '',
                 -- 参数文件 / 结果文件的绝对路径
                 params_path TEXT NOT NULL DEFAULT '',
                 result_path TEXT NOT NULL DEFAULT '',
@@ -167,6 +169,20 @@ def init_db() -> None:
             );
 
             CREATE INDEX IF NOT EXISTS idx_bench_jobs_user ON bench_jobs(user_id, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS bench_datasets (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                -- CSV 表头（占位符列名）与数据行数
+                columns_json TEXT NOT NULL DEFAULT '[]',
+                rows INTEGER NOT NULL DEFAULT 0,
+                -- 测试集文件绝对路径
+                path TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_bench_datasets_user ON bench_datasets(user_id, created_at DESC);
 
             CREATE TABLE IF NOT EXISTS secrets (
                 id TEXT PRIMARY KEY,
@@ -191,6 +207,11 @@ def init_db() -> None:
         user_cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
         if user_cols and "avatar" not in user_cols:
             conn.execute("ALTER TABLE users ADD COLUMN avatar TEXT NOT NULL DEFAULT ''")
+
+        # 迁移：旧版 bench_jobs 没有 scope_key 列（老记录留空，只在"全部接口"视图里可见）
+        bench_cols = [r[1] for r in conn.execute("PRAGMA table_info(bench_jobs)").fetchall()]
+        if bench_cols and "scope_key" not in bench_cols:
+            conn.execute("ALTER TABLE bench_jobs ADD COLUMN scope_key TEXT NOT NULL DEFAULT ''")
 
 
 __all__ = ["DB_PATH", "get_db", "init_db"]

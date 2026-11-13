@@ -35,6 +35,13 @@
       <div class="side-collections">
         <CollectionsTree @open="onOpenNode" />
       </div>
+      <div class="side-menu">
+        <div class="side-menu-item" title="管理批量测试用的测试集（CSV 数据）" @click="datasetsOpen = true">
+          <icon-storage />
+          <span class="menu-label">测试集</span>
+          <span v-if="datasetCount" class="menu-count">{{ datasetCount }}</span>
+        </div>
+      </div>
       <div class="side-section" :class="historyOpen ? 'open' : 'closed'">
         <div class="section-header" @click="historyOpen = !historyOpen">
           <icon-down v-if="historyOpen" />
@@ -63,6 +70,8 @@
     </aside>
     <!-- 侧边栏拖拽条 -->
     <div v-if="!sidebarHidden" class="splitter v-splitter" @mousedown="startSidebarDrag" />
+
+    <BenchDatasetsDialog v-model:visible="datasetsOpen" />
 
     <!-- 右侧：标签页 + 工作区 -->
     <section class="workbench">
@@ -242,6 +251,7 @@ import CollectionPlaceholdersDialog from '@/components/CollectionPlaceholdersDia
 import SaveRequestDialog from '@/components/SaveRequestDialog.vue'
 import UserSelectDialog from '@/components/UserSelectDialog.vue'
 import TeamDialog from '@/components/TeamDialog.vue'
+import BenchDatasetsDialog from '@/components/BenchDatasetsDialog.vue'
 import { useCollectionsStore } from '@/stores/collections'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useEnvironmentsStore } from '@/stores/environments'
@@ -293,6 +303,9 @@ const envDialogOpen = ref(false)
 const phDialogOpen = ref(false)
 const userDialogOpen = ref(false)
 const teamDialogOpen = ref(false)
+const datasetsOpen = ref(false)
+/** 测试集数量（侧边栏菜单角标）；打开/关闭管理弹框时刷新。 */
+const datasetCount = ref(0)
 /** 数据是否已加载（用户已选名后）。 */
 const dataReady = ref(false)
 /** 左侧空间切换：'personal' 或 team_id 字符串。 */
@@ -360,11 +373,27 @@ async function loadUserData() {
   // 先同步服务端最新用户信息（昵称 / 头像）
   void user.refresh()
   await Promise.all([collections.load(), http.loadHistory(), teams.loadMyTeams()])
+  void refreshDatasetCount()
   history.value = http.history
   // 集合树加载完后，恢复上次打开的 tabs（nodeId 类型需要从树里重新取节点数据）
   wb.restore()
   dataReady.value = true
 }
+
+/** 刷新测试集数量角标（失败静默，不影响主流程）。 */
+async function refreshDatasetCount() {
+  try {
+    const list = await api.get<unknown[]>('/api/bench/datasets')
+    datasetCount.value = list.length
+  } catch {
+    datasetCount.value = 0
+  }
+}
+
+// 管理弹框关闭时同步角标（弹框里可能新建或删除了测试集）
+watch(datasetsOpen, (v) => {
+  if (!v) void refreshDatasetCount()
+})
 
 /** 切换个人/团队空间：清空 tabs，重新加载对应集合。 */
 async function onScopeChange(v: string) {
@@ -929,6 +958,51 @@ function statusClass(code: number) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.side-menu {
+  flex-shrink: 0;
+  border-top: 1px solid var(--ui-border-soft);
+  padding: 2px 4px;
+}
+
+.side-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--ui-radius-sm);
+  font-size: 0.86em;
+  font-weight: 600;
+  color: var(--color-text-2);
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--ui-bg-hover);
+    color: rgb(var(--primary-6));
+  }
+
+  .menu-label {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .menu-count {
+    flex-shrink: 0;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--ui-bg-subtle);
+    color: var(--color-text-3);
+    font-size: 0.92em;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+  }
 }
 
 .side-section {

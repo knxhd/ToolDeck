@@ -112,7 +112,7 @@
       <!-- 批量测试：放在标签栏左侧末尾，点击只打开抽屉，不切换当前标签 -->
       <a-tab-pane :key="BENCH_KEY" title="批量测试" />
     </a-tabs>
-    <BenchDrawer v-model:visible="benchOpen" :request="tab.request" />
+    <BenchDrawer v-model:visible="benchOpen" :request="tab.request" :scope-key="benchScope" />
   </div>
 </template>
 
@@ -134,6 +134,16 @@ import type { AuthConfig, BodyType, DocMode, FormDataItem, KeyValue, OpenTab } f
 const props = defineProps<{ tab: OpenTab }>()
 
 const benchOpen = ref(false)
+
+/**
+ * 批量测试的任务记录按接口隔离：已保存的接口用集合节点 id；
+ * 未保存的临时请求用 方法+URL 指纹兜底（同一临时请求多次测试归到一起）。
+ */
+const benchScope = computed(() => {
+  if (props.tab.nodeId) return `node:${props.tab.nodeId}`
+  const r = props.tab.request
+  return `req:${r.method}:${r.url || ''}`
+})
 
 const bodyOptions: Array<{ value: BodyType; label: string }> = [
   { value: 'none', label: 'None' },

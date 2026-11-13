@@ -15,24 +15,54 @@
         </div>
 
         <div class="row">
-          <label>数据文件</label>
-          <div class="file-box">
-            <input ref="fileInput" type="file" accept=".csv,text/csv" style="display: none" @change="onPick" />
-            <a-button long @click="pickFile">
-              <template #icon><icon-upload /></template>
-              上传 CSV（首行表头为占位符名）
+          <label class="label-inline">
+            测试集
+            <a-tooltip position="right" content="测试集是保存下来的 CSV 数据，上传一次即可反复压测，不用每次重新上传">
+              <icon-question-circle class="tips-ico" />
+            </a-tooltip>
+          </label>
+          <input ref="fileInput" type="file" accept=".csv,text/csv" style="display: none" @change="onPick" />
+          <div class="ds-pick">
+            <a-select
+              v-model="datasetId"
+              placeholder="选择测试集"
+              :loading="dsLoading"
+              allow-search
+              allow-clear
+              style="flex: 1; min-width: 0"
+            >
+              <a-option v-for="d in datasets" :key="d.id" :value="d.id">
+                {{ d.name }}（{{ d.rows }} 行）
+              </a-option>
+              <template #empty>还没有测试集，点右侧「新建」上传 CSV</template>
+            </a-select>
+            <a-button title="上传 CSV 新建测试集" @click="pickFile">
+              <template #icon><icon-plus /></template>
+              新建
             </a-button>
-            <div v-if="upload" class="upload-info">
-              <a-tag color="green">{{ upload.filename }}</a-tag>
-              <span class="muted">{{ upload.rows }} 行</span>
-            </div>
+            <a-button :disabled="!currentDataset" title="下载测试集原始 CSV" @click="downloadDataset">
+              <template #icon><icon-download /></template>
+            </a-button>
+            <a-button
+              :disabled="!currentDataset"
+              status="danger"
+              title="删除测试集"
+              @click="removeDataset"
+            >
+              <template #icon><icon-delete /></template>
+            </a-button>
+          </div>
+          <div v-if="currentDataset" class="upload-info">
+            <a-tag color="green">{{ currentDataset.name }}</a-tag>
+            <span class="muted">{{ currentDataset.rows }} 行 · {{ currentDataset.columns.length }} 列</span>
+            <a-button size="mini" type="text" @click="renameDataset">重命名</a-button>
           </div>
         </div>
 
-        <div v-if="upload" class="row">
+        <div v-if="currentDataset" class="row">
           <label>占位符列</label>
           <div class="chips">
-            <a-tag v-for="c in upload.columns" :key="c" color="arcoblue">{{ c }}</a-tag>
+            <a-tag v-for="c in currentDataset.columns" :key="c" color="arcoblue">{{ c }}</a-tag>
           </div>
         </div>
 
@@ -83,14 +113,16 @@
           </p>
         </div>
 
-        <a-button type="primary" long :loading="starting" :disabled="!upload" @click="start">
+        <a-button type="primary" long :loading="starting" :disabled="!currentDataset" @click="start">
           开始测试
         </a-button>
         <div v-if="resolvedUrl" class="resolved-url" :title="resolvedUrl">
           <span class="muted">将请求：</span>
           <b>{{ method }}</b> {{ resolvedUrl }}
         </div>
-        <p v-if="!upload" class="hint muted">先上传 CSV；CSV 每一行会替换模板里与表头同名的占位符，并发起一次请求。</p>
+        <p v-if="!currentDataset" class="hint muted">
+          先选择一个测试集，或点「新建」上传 CSV 保存为测试集；测试集每一行会替换模板里与表头同名的占位符，并发起一次请求。
+        </p>
       </section>
 
       <a-divider>
@@ -99,12 +131,16 @@
           <a-button size="mini" type="text" :loading="refreshing" @click="refresh" title="刷新进度">
             <template #icon><icon-refresh /></template>刷新
           </a-button>
+          <a-switch v-model="showAll" size="small" @change="loadJobs" />
+          <span class="muted">全部接口</span>
         </span>
       </a-divider>
 
       <!-- 任务列表 -->
       <section class="jobs">
-        <div v-if="!jobs.length" class="empty muted">暂无任务</div>
+        <div v-if="!jobs.length" class="empty muted">
+          {{ showAll ? '暂无任务' : '本接口暂无任务记录' }}
+        </div>
         <div v-for="j in jobs" :key="j.id" class="job-card">
           <div class="job-head">
             <span class="job-name">{{ j.name }}</span>
@@ -174,22 +210,40 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Modal } from '@arco-design/web-vue'
 import { api, getToken } from '@/api/client'
-import { toast } from '@/utils/feedback'
+import { toast, promptInput } from '@/utils/feedback'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { renderVars } from '@/utils/env'
 import type { HttpRequestData } from '@/api/types'
 
-const props = defineProps<{ visible: boolean; request: HttpRequestData }>()
+const props = defineProps<{ visible: boolean; request: HttpRequestData; scopeKey?: string }>()
 const emit = defineEmits<{ 'update:visible': [v: boolean] }>()
 
 const envStore = useEnvironmentsStore()
 
+/** 测试集：上传一次保存下来，后续批量测试直接选择，不用重复上传。 */
+interface BenchDataset {
+  id: string
+  name: string
+  rows: number
+  columns: string[]
+  created_at?: string
+}
+
+const LAST_DATASET_KEY = 'api-tool.bench.dataset'
+
 const name = ref('批量测试')
 const concurrency = ref(10)
 const streaming = ref(false)
-const upload = ref<{ upload_id: string; filename: string; columns: string[]; rows: number } | null>(null)
+const datasets = ref<BenchDataset[]>([])
+const datasetId = ref('')
+const dsLoading = ref(false)
+const currentDataset = computed(
+  () => datasets.value.find((d) => d.id === datasetId.value) || null,
+)
 /** 自定义结果列：{ 表头名, 取值路径 }，追加在固定指标列之后。 */
 const customCols = ref<Array<{ title: string; path: string }>>([])
+/** 任务记录是否显示所有接口（默认只看当前接口）。 */
+const showAll = ref(false)
 const starting = ref(false)
 const refreshing = ref(false)
 const jobs = ref<any[]>([])
@@ -246,6 +300,7 @@ function pickFile() {
   fileInput.value?.click()
 }
 
+/** 上传 CSV 并保存为新的测试集（名称默认取文件名，可改）。 */
 async function onPick(e: Event) {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
@@ -255,36 +310,122 @@ async function onPick(e: Event) {
     toast.error('文件超过 10MB')
     return
   }
+  const defaultName = file.name.replace(/\.csv$/i, '') || '测试集'
+  const dsName = await promptInput('新建测试集', defaultName)
+  if (dsName === null) return
+
   const fd = new FormData()
   fd.append('file', file)
+  fd.append('name', dsName.trim() || defaultName)
   try {
-    const res = await fetch('/api/bench/upload', {
+    const res = await fetch('/api/bench/datasets', {
       method: 'POST',
       headers: { Authorization: `Bearer ${getToken()}` },
       body: fd,
     })
     if (!res.ok) {
       const d = await res.json().catch(() => ({}))
-      throw new Error(d.detail || '上传失败')
+      throw new Error(d.detail || '创建测试集失败')
     }
-    const info = await res.json()
-    upload.value = info
-    toast.success(`已上传：${info.rows} 行数据`)
+    const info: BenchDataset = await res.json()
+    await loadDatasets(info.id)
+    datasetId.value = info.id
+    rememberDataset(info.id)
+    toast.success(`测试集已保存：${info.name}（${info.rows} 行）`)
   } catch (err: any) {
-    toast.error(err.message || '上传失败')
+    toast.error(err.message || '创建测试集失败')
   }
 }
 
+function rememberDataset(id: string) {
+  if (id) localStorage.setItem(LAST_DATASET_KEY, id)
+}
+
+/** 拉取测试集列表；preferId 指定要选中的集，否则优先选上次用过的。 */
+async function loadDatasets(preferId?: string) {
+  dsLoading.value = true
+  try {
+    datasets.value = await api.get<BenchDataset[]>('/api/bench/datasets')
+  } catch {
+    datasets.value = []
+  } finally {
+    dsLoading.value = false
+  }
+  const wanted = preferId || datasetId.value || localStorage.getItem(LAST_DATASET_KEY) || ''
+  if (wanted && datasets.value.some((d) => d.id === wanted)) {
+    datasetId.value = wanted
+  } else {
+    datasetId.value = datasets.value[0]?.id || ''
+  }
+}
+
+async function renameDataset() {
+  const ds = currentDataset.value
+  if (!ds) return
+  const newName = await promptInput('重命名测试集', ds.name)
+  if (newName === null) return
+  const trimmed = newName.trim()
+  if (!trimmed || trimmed === ds.name) return
+  try {
+    await api.put(`/api/bench/datasets/${ds.id}`, { name: trimmed })
+    ds.name = trimmed
+    toast.success('已重命名')
+  } catch (err: any) {
+    toast.error(err.message || '重命名失败')
+  }
+}
+
+async function downloadDataset() {
+  const ds = currentDataset.value
+  if (!ds) return
+  try {
+    const res = await fetch(`/api/bench/datasets/${ds.id}/csv`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
+    if (!res.ok) throw new Error('下载测试集失败')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${ds.name}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (err: any) {
+    toast.error(err.message || '下载失败')
+  }
+}
+
+function removeDataset() {
+  const ds = currentDataset.value
+  if (!ds) return
+  Modal.warning({
+    title: `删除测试集「${ds.name}」？`,
+    content: '只删除测试集文件，已跑过的任务记录与结果不受影响。',
+    okText: '删除',
+    okButtonProps: { status: 'danger' },
+    cancelText: '取消',
+    hideCancel: false,
+    onOk: async () => {
+      await api.del(`/api/bench/datasets/${ds.id}`)
+      toast.success('测试集已删除')
+      await loadDatasets()
+      rememberDataset(datasetId.value)
+    },
+  })
+}
+
 async function start() {
-  const up = upload.value
-  if (!up) return
+  if (!currentDataset.value) {
+    toast.error('请先选择或新建测试集')
+    return
+  }
   const columns = collectColumns()
   if (columns === null) return
   starting.value = true
   try {
     await api.post('/api/bench/run', {
       name: name.value,
-      upload_id: up.upload_id,
+      dataset_id: datasetId.value,
       concurrency: concurrency.value,
       streaming: streaming.value,
       request: {
@@ -297,8 +438,8 @@ async function start() {
       },
       env_vars: { ...envStore.scopeVars },
       columns,
+      scope_key: props.scopeKey || '',
     })
-    upload.value = null
     toast.success('批量测试已在后台开始')
     await loadJobs()
   } catch (err: any) {
@@ -309,8 +450,10 @@ async function start() {
 }
 
 async function loadJobs() {
+  const key = showAll.value ? '' : (props.scopeKey || '')
+  const qs = key ? `?scope_key=${encodeURIComponent(key)}` : ''
   try {
-    jobs.value = await api.get<any[]>('/api/bench/jobs')
+    jobs.value = await api.get<any[]>(`/api/bench/jobs${qs}`)
   } catch {
     /* ignore */
   }
@@ -407,7 +550,29 @@ watch(jobs, (list) => {
   }
 })
 
-onMounted(loadJobs)
+// 打开抽屉时刷新任务记录与测试集；切换标签页导致所属接口变化时重取记录
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) {
+      loadJobs()
+      loadDatasets()
+    }
+  },
+)
+watch(
+  () => props.scopeKey,
+  () => {
+    if (props.visible) loadJobs()
+  },
+)
+// 记住最近使用的测试集，下次打开抽屉自动选中
+watch(datasetId, (v) => rememberDataset(v))
+
+onMounted(() => {
+  loadJobs()
+  loadDatasets()
+})
 onBeforeUnmount(() => {
   if (timer) clearInterval(timer)
 })
@@ -439,7 +604,11 @@ onBeforeUnmount(() => {
     > div { flex: 1; display: flex; flex-direction: column; gap: 6px; }
   }
 }
-.file-box { display: flex; flex-direction: column; gap: 8px; }
+.ds-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .upload-info { display: flex; align-items: center; gap: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hint { font-size: 0.86em; margin: 0; line-height: 1.6; }
