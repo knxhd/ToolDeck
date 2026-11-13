@@ -333,15 +333,55 @@ def _read_csv_rows(path: Path) -> tuple[list[str], list[dict[str, str]]]:
     return list(fields), rows
 
 
+def build_result_header(
+    fields: list[str],
+    streaming: bool,
+    custom_titles: list[str],
+    input_columns: list[str] | None = None,
+) -> tuple[list[str], list[str]]:
+    """结果 CSV 表头：选中的测试集输入列 → 固定指标列 → 自定义列。
+
+    input_columns 为空/None 时不写输入列；只保留测试集里真实存在的列，顺序按测试集原顺序。
+    返回 (表头, 实际写入的输入列原名)。
+    """
+    text_col = "content" if streaming else "响应原文"
+    metric_header = [
+        "序号", "状态码", "是否成功", "总耗时ms", "首帧耗时ms",
+        "响应字节数", "是否重试", "错误信息", text_col,
+    ]
+    wanted = {str(c).strip() for c in (input_columns or []) if str(c).strip()}
+    picked = [f for f in fields if f in wanted]
+
+    taken = set(metric_header)
+    # 自定义列名与指标列重名时加「（提取）」后缀，保证按列名取值不串
+    safe_customs: list[str] = []
+    for t in custom_titles:
+        name = t
+        if name in taken:
+            name = f"{name}（提取）"
+        taken.add(name)
+        safe_customs.append(name)
+    input_headers: list[str] = []
+    for f in picked:
+        name = (f or "列").strip() or "列"
+        if name in taken:
+            name = f"{name}（输入）"
+        taken.add(name)
+        input_headers.append(name)
+    return input_headers + metric_header + safe_customs, picked
+
+
 async def run_job(
     job: dict,
     tpl: BenchRequestTemplate,
     env_vars: dict | None = None,
     columns: list | None = None,
+    input_columns: list[str] | None = None,
 ) -> None:
     """后台协程：跑完整个任务并回写状态/统计/CSV。job 为 DB 行字典。
 
-    columns 为自定义结果列（BenchColumn 或 {title, path}），会在固定指标列之后追加。
+    columns 为自定义结果列（BenchColumn 或 {title, path}），会在固定指标列之后追加；
+    input_columns 为要一并写进结果 CSV 的测试集输入列（只写用户勾选的那些）。
     """
     env_vars = env_vars or {}
     sorted_columns: list[tuple[str, str]] = []
@@ -374,15 +414,12 @@ async def run_job(
     latencies: list[int] = []
     ttfts: list[int] = []
 
-    # CSV 写出（带 BOM）；固定指标列之后追加自定义列
+    # CSV 写出（带 BOM）：测试集输入列 → 固定指标列 → 自定义列，便于直接对照「输入 → 输出」
     out_f = open(result, "w", encoding="utf-8-sig", newline="")
     writer = csv.writer(out_f)
     streaming = bool(job["streaming"])
-    text_col = "content" if streaming else "响应原文"
-    header = [
-        "序号", "状态码", "是否成功", "总耗时ms", "首帧耗时ms",
-        "响应字节数", "是否重试", "错误信息", text_col,
-    ] + [title for title, _ in sorted_columns]
+    custom_titles = [title for title, _ in sorted_columns]
+    header, picked_inputs = build_result_header(fields, streaming, custom_titles, input_columns)
     writer.writerow(header)
 
     async def bounded(idx_row: tuple[int, dict]) -> None:
@@ -395,12 +432,16 @@ async def run_job(
                 return
             merged = {**env_vars, **row}
             r = await _run_one(client, tpl, merged, streaming, sorted_columns)
-        writer.writerow([
-            idx + 1, r["status"], "成功" if r["ok"] else "失败",
-            r["total_ms"], r["ttft_ms"], r["size_bytes"],
-            "是" if r.get("retried") else "",
-            r["error"], r["text"],
-        ] + [r["extracted"].get(title, "") for title, _ in sorted_columns])
+        writer.writerow(
+            [row.get(f, "") for f in picked_inputs]
+            + [
+                idx + 1, r["status"], "成功" if r["ok"] else "失败",
+                r["total_ms"], r["ttft_ms"], r["size_bytes"],
+                "是" if r.get("retried") else "",
+                r["error"], r["text"],
+            ]
+            + [r["extracted"].get(title, "") for title, _ in sorted_columns]
+        )
         out_f.flush()
         done += 1
         if r["ok"]:

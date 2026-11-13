@@ -48,6 +48,8 @@ class BenchRunBody(BaseModel):
     env_vars: dict[str, str] = Field(default_factory=dict)
     # 自定义结果列：在固定指标列之后追加；流式模式下 content 为系统默认列
     columns: list[BenchColumn] = Field(default_factory=list, max_length=20)
+    # 要一并写入结果 CSV 的测试集输入列（原列名）；空列表表示不写输入列
+    input_columns: list[str] = Field(default_factory=list, max_length=50)
     # 所属接口标识（node:<节点id> 或 req:<METHOD>:<url>），用于任务记录按接口隔离
     scope_key: str = Field(default="", max_length=200)
 

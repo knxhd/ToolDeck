@@ -60,6 +60,8 @@ export interface BenchConfig {
   streaming?: boolean
   /** 自定义结果列（CSV 追加列） */
   columns?: Array<{ title: string; path: string }>
+  /** 要写进结果 CSV 的测试集输入列（原列名，只写勾选的） */
+  input_cols?: string[]
   /** 任务名称前缀 */
   name?: string
 }

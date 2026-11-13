@@ -60,10 +60,32 @@
         </div>
 
         <div v-if="currentDataset" class="row">
-          <label>占位符列</label>
+          <label class="label-inline">
+            输入列
+            <a-tooltip
+              position="right"
+              content="测试集的列名，用于替换请求里的 {{占位符}}。勾选的列会一并写进结果 CSV，便于对照「输入 → 输出」；不影响请求本身。"
+            >
+              <icon-question-circle class="tips-ico" />
+            </a-tooltip>
+          </label>
           <div class="chips">
-            <a-tag v-for="c in currentDataset.columns" :key="c" color="arcoblue">{{ c }}</a-tag>
+            <a-tag
+              v-for="c in currentDataset.columns"
+              :key="c"
+              :color="inputCols.includes(c) ? 'arcoblue' : 'gray'"
+              class="chip-toggle"
+              @click="toggleInputCol(c)"
+            >
+              <icon-check v-if="inputCols.includes(c)" class="chip-ck" />{{ c }}
+            </a-tag>
+            <a-button size="mini" type="text" @click="selectAllInputCols">全选</a-button>
+            <a-button size="mini" type="text" @click="clearInputCols">清空</a-button>
           </div>
+          <p class="hint muted">
+            共 {{ currentDataset.columns.length }} 列，已勾选 {{ inputCols.length }} 列写入结果 CSV
+            <template v-if="!inputCols.length">（不勾选则只保留指标列与自定义列）</template>。
+          </p>
         </div>
 
         <div class="row two">
@@ -81,7 +103,24 @@
         <div class="row">
           <label class="label-inline">
             自定义结果列
-            <a-tooltip position="right" content="固定指标列（序号/状态码/耗时等）始终保留，自定义列追加在其后">
+            <a-tooltip position="right" :content-style="{ maxWidth: '400px', lineHeight: '1.65' }">
+              <template #content>
+                <div class="tips-body">
+                  <p>固定指标列（序号/状态码/耗时等）始终保留；自定义列追加在其后。</p>
+                  <p>
+                    结果 CSV 列顺序：勾选的输入列（{{ inputCols.length }} 列）→ 指标列 → 自定义列，可直接对照「输入
+                    → 输出」。
+                  </p>
+                  <p>
+                    路径示例：<code>response.data</code>、<code>response.data[0].id</code>、<code>data.items.0.name</code>（忽略
+                    <code>response.</code> / <code>body.</code> 前缀）。
+                  </p>
+                  <p v-if="streaming">
+                    流式：每帧下发后，某列若还没取到值，就从该帧数据里提取，取到即定稿；帧内取不到值则跳过该帧。全部帧都没取到值则该列留空。
+                  </p>
+                  <p v-else>非流式：请求结束后从响应 JSON 里按路径取值；响应不是 JSON 时该列留空。</p>
+                </div>
+              </template>
               <icon-question-circle class="tips-ico" />
             </a-tooltip>
           </label>
@@ -100,17 +139,6 @@
             <template #icon><icon-plus /></template>
             添加提取列
           </a-button>
-          <p class="hint muted">
-            路径示例：<code>response.data</code>、<code>response.data[0].id</code>、<code>data.items.0.name</code>（忽略
-            <code>response.</code> / <code>body.</code> 前缀）。<br />
-            <template v-if="streaming">
-              流式：每帧下发后，某列若还没取到值，就从该帧数据里提取，取到即定稿；帧内取不到值则跳过该帧。
-              全部帧都没取到值则该列留空。
-            </template>
-            <template v-else>
-              非流式：请求结束后从响应 JSON 里按路径取值；响应不是 JSON 时该列留空。
-            </template>
-          </p>
         </div>
 
         <a-button type="primary" long :loading="starting" :disabled="!currentDataset" @click="start">
@@ -233,7 +261,7 @@ import { Modal } from '@arco-design/web-vue'
 import { api, getToken } from '@/api/client'
 import { toast, promptInput } from '@/utils/feedback'
 import { useEnvironmentsStore } from '@/stores/environments'
-import { renderVars } from '@/utils/env'
+import { PLACEHOLDER_SOURCE, renderVars } from '@/utils/env'
 import type { HttpRequestData } from '@/api/types'
 
 const props = defineProps<{ visible: boolean; request: HttpRequestData; scopeKey?: string }>()
@@ -265,6 +293,8 @@ const currentDataset = computed(
 )
 /** 自定义结果列：{ 表头名, 取值路径 }，追加在固定指标列之后。 */
 const customCols = ref<Array<{ title: string; path: string }>>([])
+/** 要写进结果 CSV 的测试集输入列（原列名）；只写勾选的，避免 10 列数据集把结果撑爆。 */
+const inputCols = ref<string[]>([])
 /** 任务记录是否显示所有接口（默认只看当前接口）。 */
 const showAll = ref(false)
 const starting = ref(false)
@@ -280,6 +310,7 @@ interface BenchCfg {
   concurrency?: number
   streaming?: boolean
   columns?: Array<{ title: string; path: string }>
+  input_cols?: string[]
   name?: string
 }
 
@@ -308,6 +339,7 @@ function applyConfig() {
   concurrency.value = cfg.concurrency ?? 10
   streaming.value = cfg.streaming ?? false
   customCols.value = (cfg.columns || []).map((c) => ({ title: c.title, path: c.path }))
+  inputCols.value = [...(cfg.input_cols || [])]
   if (cfg.dataset_id) datasetId.value = cfg.dataset_id
   cfgReady = true
 }
@@ -319,6 +351,7 @@ function persistConfig() {
     concurrency: concurrency.value,
     streaming: streaming.value,
     columns: customCols.value.map((c) => ({ title: c.title, path: c.path })),
+    input_cols: [...inputCols.value],
     dataset_id: datasetId.value,
   }
   const cur = props.request.bench
@@ -335,6 +368,51 @@ function persistConfig() {
 applyConfig()
 
 const method = computed(() => props.request.method)
+
+/** 模板里实际引用的占位符名（不含 $ 内置变量），用于给「输入列」做默认勾选。 */
+const usedVars = computed<Set<string>>(() => {
+  const names = new Set<string>()
+  const re = new RegExp(PLACEHOLDER_SOURCE, 'g')
+  const scan = (text?: string) => {
+    if (!text) return
+    re.lastIndex = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text))) {
+      const n = m[1]
+      if (n && !n.startsWith('$')) names.add(n)
+    }
+  }
+  const r = props.request
+  scan(r.url)
+  for (const kv of r.headers || []) if (kv.enabled) scan(kv.value)
+  for (const kv of r.params || []) if (kv.enabled) scan(kv.value)
+  scan(r.body)
+  return names
+})
+
+function toggleInputCol(col: string) {
+  inputCols.value = inputCols.value.includes(col)
+    ? inputCols.value.filter((c) => c !== col)
+    : [...inputCols.value, col]
+}
+
+function selectAllInputCols() {
+  inputCols.value = [...(currentDataset.value?.columns || [])]
+}
+
+function clearInputCols() {
+  inputCols.value = []
+}
+
+/** 切换测试集：只保留新测试集里有的列；一列都没选时按模板占位符自动勾选。 */
+watch(
+  () => currentDataset.value?.id,
+  () => {
+    const cols = currentDataset.value?.columns || []
+    const kept = inputCols.value.filter((c) => cols.includes(c))
+    inputCols.value = kept.length ? kept : cols.filter((c) => usedVars.value.has(c))
+  },
+)
 // 用当前环境变量解析后的真实 URL（内置占位符无法在前端完全还原，未解析的原样保留）
 const resolvedUrl = computed(() => {
   const url = props.request.url || ''
@@ -525,6 +603,7 @@ async function start() {
       },
       env_vars: { ...envStore.scopeVars },
       columns,
+      input_columns: [...inputCols.value],
       scope_key: props.scopeKey || '',
     })
     toast.success('批量测试已在后台开始')
@@ -712,7 +791,7 @@ watch(datasetId, (v) => rememberDataset(v))
 
 // 配置变化即时落盘（本地缓存 + 接口对象），开始测试/关闭抽屉都不会丢
 watch(
-  [name, concurrency, streaming, customCols, datasetId],
+  [name, concurrency, streaming, customCols, datasetId, inputCols],
   () => {
     if (cfgReady) persistConfig()
   },
@@ -760,7 +839,28 @@ onBeforeUnmount(() => {
   gap: 6px;
 }
 .upload-info { display: flex; align-items: center; gap: 8px; }
-.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+/* 「自定义结果列」tooltip 内容：四段说明收进 ? 图标，面板上不再占高度 */
+.tips-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.95em;
+  line-height: 1.65;
+
+  p { margin: 0; }
+
+  code {
+    font-family: var(--ui-font-mono, ui-monospace, monospace);
+    padding: 0 3px;
+    border-radius: var(--ui-radius-sm, 3px);
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+/* 输入列 chips：点击切换是否写进结果 CSV */
+.chip-toggle { cursor: pointer; user-select: none; transition: opacity 0.12s ease; }
+.chip-toggle:hover { opacity: 0.82; }
+.chip-ck { margin-right: 2px; font-size: 0.86em; vertical-align: -1px; }
 .hint { font-size: 0.86em; margin: 0; line-height: 1.6; }
 .hint code {
   font-family: var(--ui-font-mono, ui-monospace, monospace);
