@@ -46,6 +46,22 @@ export interface HttpRequestData {
   follow_redirects?: boolean
   /** 校验 SSL 证书（默认 true）。 */
   verify_ssl?: boolean
+  /** 批量测试配置：随接口一起保存，切回该接口时自动恢复。 */
+  bench?: BenchConfig
+}
+
+/** 批量测试（压测）配置。 */
+export interface BenchConfig {
+  /** 选用的测试集 id */
+  dataset_id?: string
+  /** 并发数 */
+  concurrency?: number
+  /** 是否按 SSE 流式统计 */
+  streaming?: boolean
+  /** 自定义结果列（CSV 追加列） */
+  columns?: Array<{ title: string; path: string }>
+  /** 任务名称前缀 */
+  name?: string
 }
 
 /** 鉴权配置。 */

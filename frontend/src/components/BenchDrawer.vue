@@ -250,6 +250,67 @@ const jobs = ref<any[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 let timer: number | null = null
 
+/* ---------------- 配置随接口保存 / 打开时自动恢复 ---------------- */
+
+interface BenchCfg {
+  dataset_id?: string
+  concurrency?: number
+  streaming?: boolean
+  columns?: Array<{ title: string; path: string }>
+  name?: string
+}
+
+const CFG_KEY = 'api-tool.bench.cfg'
+/** 每个接口（scope）一份本地缓存，接口没保存时也不会丢配置。 */
+function cfgStorageKey() {
+  return `${CFG_KEY}:${props.scopeKey || 'default'}`
+}
+
+function readLocalCfg(): BenchCfg | null {
+  try {
+    const raw = localStorage.getItem(cfgStorageKey())
+    return raw ? (JSON.parse(raw) as BenchCfg) : null
+  } catch {
+    return null
+  }
+}
+
+let cfgReady = false
+
+/** 打开抽屉 / 切换到别的接口时恢复配置：优先本地缓存（最近一次编辑），其次接口里保存的配置。 */
+function applyConfig() {
+  cfgReady = false
+  const cfg = readLocalCfg() || props.request.bench || {}
+  name.value = cfg.name || '批量测试'
+  concurrency.value = cfg.concurrency ?? 10
+  streaming.value = cfg.streaming ?? false
+  customCols.value = (cfg.columns || []).map((c) => ({ title: c.title, path: c.path }))
+  if (cfg.dataset_id) datasetId.value = cfg.dataset_id
+  cfgReady = true
+}
+
+/** 配置变化：写回接口请求对象（保存接口时一起入库）并缓存到本地。 */
+function persistConfig() {
+  const cfg: BenchCfg = {
+    name: name.value,
+    concurrency: concurrency.value,
+    streaming: streaming.value,
+    columns: customCols.value.map((c) => ({ title: c.title, path: c.path })),
+    dataset_id: datasetId.value,
+  }
+  const cur = props.request.bench
+  if (!cur || JSON.stringify(cur) !== JSON.stringify(cfg)) {
+    props.request.bench = cfg
+  }
+  try {
+    localStorage.setItem(cfgStorageKey(), JSON.stringify(cfg))
+  } catch {
+    /* 本地缓存失败不影响主流程 */
+  }
+}
+
+applyConfig()
+
 const method = computed(() => props.request.method)
 // 用当前环境变量解析后的真实 URL（内置占位符无法在前端完全还原，未解析的原样保留）
 const resolvedUrl = computed(() => {
@@ -421,6 +482,9 @@ async function start() {
   }
   const columns = collectColumns()
   if (columns === null) return
+  // 开始测试前兜底落盘一次：确保这些配置随接口一起保存
+  cfgReady = true
+  persistConfig()
   starting.value = true
   try {
     await api.post('/api/bench/run', {
@@ -566,8 +630,22 @@ watch(
     if (props.visible) loadJobs()
   },
 )
+// 同一标签页换了接口对象（重新打开某个节点）时，恢复该接口的配置
+watch(
+  () => props.request,
+  () => applyConfig(),
+)
 // 记住最近使用的测试集，下次打开抽屉自动选中
 watch(datasetId, (v) => rememberDataset(v))
+
+// 配置变化即时落盘（本地缓存 + 接口对象），开始测试/关闭抽屉都不会丢
+watch(
+  [name, concurrency, streaming, customCols, datasetId],
+  () => {
+    if (cfgReady) persistConfig()
+  },
+  { deep: true },
+)
 
 onMounted(() => {
   loadJobs()
