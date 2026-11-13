@@ -32,15 +32,20 @@
           <template #icon><icon-team /></template>
         </a-button>
       </div>
+      <!-- 测试集：与 Collections 并列的资源库入口 -->
+      <div class="side-lib">
+        <div class="side-lib-row" title="管理测试集（上传、查看、下载、重命名）" @click="datasetsOpen = true">
+          <svg class="lib-ico" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M2.9 3.6h10.2v8.8H2.9z" />
+            <path d="M2.9 6.4h10.2" />
+            <path d="M6.6 6.4v6" />
+          </svg>
+          <span class="lib-title">测试集</span>
+          <span class="lib-action">管理</span>
+        </div>
+      </div>
       <div class="side-collections">
         <CollectionsTree @open="onOpenNode" />
-      </div>
-      <div class="side-menu">
-        <div class="side-menu-item" title="管理批量测试用的测试集（CSV 数据）" @click="datasetsOpen = true">
-          <icon-storage />
-          <span class="menu-label">测试集</span>
-          <span v-if="datasetCount" class="menu-count">{{ datasetCount }}</span>
-        </div>
       </div>
       <div class="side-section" :class="historyOpen ? 'open' : 'closed'">
         <div class="section-header" @click="historyOpen = !historyOpen">
@@ -304,8 +309,6 @@ const phDialogOpen = ref(false)
 const userDialogOpen = ref(false)
 const teamDialogOpen = ref(false)
 const datasetsOpen = ref(false)
-/** 测试集数量（侧边栏菜单角标）；打开/关闭管理弹框时刷新。 */
-const datasetCount = ref(0)
 /** 数据是否已加载（用户已选名后）。 */
 const dataReady = ref(false)
 /** 左侧空间切换：'personal' 或 team_id 字符串。 */
@@ -373,27 +376,11 @@ async function loadUserData() {
   // 先同步服务端最新用户信息（昵称 / 头像）
   void user.refresh()
   await Promise.all([collections.load(), http.loadHistory(), teams.loadMyTeams()])
-  void refreshDatasetCount()
   history.value = http.history
   // 集合树加载完后，恢复上次打开的 tabs（nodeId 类型需要从树里重新取节点数据）
   wb.restore()
   dataReady.value = true
 }
-
-/** 刷新测试集数量角标（失败静默，不影响主流程）。 */
-async function refreshDatasetCount() {
-  try {
-    const list = await api.get<unknown[]>('/api/bench/datasets')
-    datasetCount.value = list.length
-  } catch {
-    datasetCount.value = 0
-  }
-}
-
-// 管理弹框关闭时同步角标（弹框里可能新建或删除了测试集）
-watch(datasetsOpen, (v) => {
-  if (!v) void refreshDatasetCount()
-})
 
 /** 切换个人/团队空间：清空 tabs，重新加载对应集合。 */
 async function onScopeChange(v: string) {
@@ -960,48 +947,58 @@ function statusClass(code: number) {
   overflow: hidden;
 }
 
-.side-menu {
+/* 测试集：与 Collections 标题行同高、同基线，作为并列的资源库入口 */
+.side-lib {
   flex-shrink: 0;
-  border-top: 1px solid var(--ui-border-soft);
-  padding: 2px 4px;
 }
 
-.side-menu-item {
+.side-lib-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  padding: 0 8px;
-  border-radius: var(--ui-radius-sm);
+  height: 34px;
+  padding: 0 8px 0 10px;
+  border-bottom: 1px solid var(--ui-border-soft);
   font-size: 0.86em;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--color-text-2);
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.15s ease;
 
   &:hover {
     background: var(--ui-bg-hover);
-    color: rgb(var(--primary-6));
+
+    .lib-action {
+      color: rgb(var(--primary-6));
+    }
   }
 
-  .menu-label {
+  .lib-ico {
+    display: block;
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    color: var(--color-text-3);
+  }
+
+  .lib-title {
     flex: 1;
     min-width: 0;
   }
 
-  .menu-count {
+  .lib-action {
     flex-shrink: 0;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    border-radius: 9px;
-    background: var(--ui-bg-subtle);
-    color: var(--color-text-3);
     font-size: 0.92em;
-    font-weight: 600;
-    line-height: 18px;
-    text-align: center;
+    font-weight: 500;
+    color: var(--color-text-3);
+    transition: color 0.15s ease;
   }
 }
 

@@ -147,6 +147,13 @@
             <a-tag :color="statusColor(j.status)">{{ statusText(j.status) }}</a-tag>
           </div>
 
+          <div v-if="j.dataset_id" class="job-ds">
+            <icon-file class="ds-ico" />
+            <span class="ds-name" :title="j.dataset_name">{{ j.dataset_name || '测试集' }}</span>
+            <a-tag v-if="dsState(j) === 'changed'" size="small" color="orange">数据已变更</a-tag>
+            <a-tag v-else-if="dsState(j) === 'missing'" size="small">测试集已删除</a-tag>
+          </div>
+
           <div
             v-if="j.status === 'running' || j.status === 'cancelled'"
             class="bar-wrap"
@@ -186,9 +193,10 @@
               size="mini"
               type="text"
               status="warning"
+              :disabled="isCancelling(j)"
               @click="cancel(j)"
             >
-              <template #icon><icon-stop /></template>取消
+              <template #icon><icon-stop /></template>{{ isCancelling(j) ? '取消中…' : '取消' }}
             </a-button>
             <a-button size="mini" type="text" :disabled="j.status === 'running'" @click="download(j, 'csv', 'result')">
               <template #icon><icon-download /></template>下载结果
@@ -196,9 +204,22 @@
             <a-button size="mini" type="text" @click="download(j, 'params', 'params')">
               <template #icon><icon-upload /></template>下载参数
             </a-button>
-            <a-button size="mini" type="text" status="danger" @click="remove(j)">
+            <a-button
+              size="mini"
+              type="text"
+              status="danger"
+              :disabled="!canDelete(j)"
+              :title="canDelete(j) ? '删除该任务记录' : '任务执行中，需先取消并等待结束后才能删除'"
+              @click="remove(j)"
+            >
               <template #icon><icon-delete /></template>删除
             </a-button>
+          </div>
+
+          <!-- 取消中遮罩：任务在收尾前既不显示可删除状态，也挡住误操作 -->
+          <div v-if="isCancelling(j)" class="job-mask">
+            <icon-loading class="spin" />
+            <span>正在取消，等待当前请求结束后收尾…</span>
           </div>
         </div>
       </section>
@@ -227,6 +248,8 @@ interface BenchDataset {
   rows: number
   columns: string[]
   created_at?: string
+  /** 内容哈希，用于对比任务记录快照与当前测试集是否一致 */
+  hash?: string
 }
 
 const LAST_DATASET_KEY = 'api-tool.bench.dataset'
@@ -534,14 +557,38 @@ async function refresh() {
   }
 }
 
+/** 已点取消、等待收尾的任务（显示遮罩，期间禁止删除）。 */
+const cancellingIds = ref<Record<string, boolean>>({})
+
+function isCancelling(j: any): boolean {
+  return !!cancellingIds.value[j.id]
+}
+
+/** 执行中（含取消收尾中）不允许删除任务记录。 */
+function canDelete(j: any): boolean {
+  return j.status !== 'running' && !isCancelling(j)
+}
+
 async function cancel(j: any) {
+  if (isCancelling(j)) return
+  cancellingIds.value[j.id] = true
   try {
     await api.post(`/api/bench/jobs/${j.id}/cancel`, {})
-    toast.success('已发送取消请求')
+    toast.success('已发送取消请求，等待当前请求结束…')
     await loadJobs()
   } catch (err: any) {
+    delete cancellingIds.value[j.id]
     toast.error(err.message || '取消失败')
+    return
   }
+  // 兜底：60 秒仍未结束就撤掉遮罩，避免一直卡住（此时仍不可删除，由后端 409 兜底）
+  window.setTimeout(() => {
+    const still = (jobs.value as any[]).find((x) => x.id === j.id)
+    if (still && still.status === 'running' && cancellingIds.value[j.id]) {
+      delete cancellingIds.value[j.id]
+      toast.warning('取消请求已发送，但任务仍在执行（可能正在等待请求超时）')
+    }
+  }, 60_000)
 }
 
 function openReport(j: any) {
@@ -560,6 +607,16 @@ function openReport(j: any) {
       setTimeout(() => URL.revokeObjectURL(u), 60_000)
     })
     .catch((err) => toast.error(err.message || '打开报告失败'))
+}
+
+/** 任务记录的测试集快照与当前测试集是否一致。 */
+function dsState(j: any): 'same' | 'changed' | 'missing' | 'none' {
+  if (!j.dataset_id) return 'none'
+  const cur = datasets.value.find((d) => d.id === j.dataset_id)
+  if (!cur) return 'missing'
+  // 老记录没有哈希，不做变更判断，避免误报
+  if (!j.dataset_hash || !cur.hash) return 'same'
+  return cur.hash === j.dataset_hash ? 'same' : 'changed'
 }
 
 function statusText(s: string) {
@@ -588,6 +645,10 @@ async function download(j: any, kind: 'csv' | 'params', label: string) {
 }
 
 function remove(j: any) {
+  if (!canDelete(j)) {
+    toast.error('任务正在执行，请先取消并等待结束后再删除')
+    return
+  }
   Modal.warning({
     title: '删除该任务？',
     content: `将删除任务「${j.name}」及其参数/结果 CSV 文件，此操作不可恢复。`,
@@ -596,7 +657,13 @@ function remove(j: any) {
     cancelText: '取消',
     hideCancel: false,
     onOk: async () => {
-      await api.del(`/api/bench/jobs/${j.id}`)
+      try {
+        await api.del(`/api/bench/jobs/${j.id}`)
+      } catch (err: any) {
+        toast.error(err.message || '删除失败')
+        await loadJobs()
+        return
+      }
       jobs.value = jobs.value.filter((x) => x.id !== j.id)
       toast.success('已删除')
     },
@@ -605,6 +672,11 @@ function remove(j: any) {
 
 // 有运行中任务时轮询
 watch(jobs, (list) => {
+  // 任务已收尾（不再是 running）就清掉「取消中」遮罩
+  for (const id of Object.keys(cancellingIds.value)) {
+    const j = (list as any[]).find((x) => x.id === id)
+    if (!j || j.status !== 'running') delete cancellingIds.value[id]
+  }
   const running = list.some((j) => j.status === 'running')
   if (running && !timer) {
     timer = window.setInterval(loadJobs, 2000)
@@ -725,6 +797,7 @@ onBeforeUnmount(() => {
 
 .jobs { display: flex; flex-direction: column; gap: 10px; }
 .job-card {
+  position: relative;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: var(--radius-md);
   padding: 10px 12px;
@@ -732,8 +805,42 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 6px;
 }
+
+/* 取消中：半透明遮罩 + 转圈，挡住删除等操作 */
+.job-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: inherit;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(1.5px);
+  font-size: 0.86em;
+  color: var(--color-text-2);
+  cursor: progress;
+
+  .spin {
+    color: var(--el-color-warning, #ff7d00);
+    animation: job-spin 1s linear infinite;
+  }
+}
+
+@keyframes job-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 .job-head { display: flex; align-items: center; justify-content: space-between; }
 .job-name { font-weight: 600; }
+.job-ds {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.86em; color: var(--el-text-color-secondary);
+  .ds-ico { color: var(--color-text-3); flex-shrink: 0; }
+  .ds-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+}
 .job-meta {
   display: flex; flex-wrap: wrap; gap: 12px;
   font-size: 0.86em; color: var(--el-text-color-secondary);

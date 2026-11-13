@@ -176,8 +176,10 @@ async def run(body: BenchRunBody, user: dict = Depends(current_user)) -> dict:
     upload_id = body.upload_id.strip()
 
     # 校验数据来源：优先测试集，其次一次性上传
+    ds_row: dict | None = None
     if dataset_id:
-        if not bench_store.get_dataset(dataset_id, user["id"]):
+        ds_row = bench_store.get_dataset(dataset_id, user["id"])
+        if not ds_row:
             raise HTTPException(status_code=404, detail="测试集不存在")
     elif not bench_store.staging_path(upload_id).exists():
         raise HTTPException(status_code=404, detail="数据文件不存在，请重新上传")
@@ -205,6 +207,12 @@ async def run(body: BenchRunBody, user: dict = Depends(current_user)) -> dict:
         "result_path": str(result_path),
         "scope_key": body.scope_key.strip()[:200],
     }
+    # 记录数据来源快照：任务卡上可显示用的是哪个测试集、以及之后测试集是否被改过
+    if ds_row:
+        fields["dataset_id"] = dataset_id
+        fields["dataset_name"] = str(ds_row.get("name") or "")[:100]
+        # 用实际复制的快照文件算哈希，代表这次真正跑的数据版本
+        fields["dataset_hash"] = bench_store.file_hash(params_path)
     bench_store.insert_job(fields)
 
     job_row = bench_store.get_job(job_id, user["id"])
@@ -306,6 +314,12 @@ async def download_report(job_id: str, user: dict = Depends(current_user)) -> Fi
 
 @router.delete("/jobs/{job_id}")
 async def remove_job(job_id: str, user: dict = Depends(current_user)) -> dict:
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    # 执行中（含已点取消但尚未收尾）禁止删除：任务目录/结果文件仍在被写入
+    if job.get("status") == "running":
+        raise HTTPException(status_code=409, detail="任务正在执行中，请先取消并等待其结束后再删除")
     ok = bench_store.delete_job(job_id, user["id"])
     if not ok:
         raise HTTPException(status_code=404, detail="任务不存在")

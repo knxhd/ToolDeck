@@ -157,6 +157,10 @@ def init_db() -> None:
                 columns_json TEXT NOT NULL DEFAULT '[]',
                 -- 所属接口标识：node:<集合节点id> 或 req:<METHOD>:<url>，用于按接口过滤任务记录
                 scope_key TEXT NOT NULL DEFAULT '',
+                -- 数据来源快照（测试集 id / 名称 / 内容哈希），用于追踪历史用的是哪一版测试集
+                dataset_id TEXT NOT NULL DEFAULT '',
+                dataset_name TEXT NOT NULL DEFAULT '',
+                dataset_hash TEXT NOT NULL DEFAULT '',
                 -- 参数文件 / 结果文件的绝对路径
                 params_path TEXT NOT NULL DEFAULT '',
                 result_path TEXT NOT NULL DEFAULT '',
@@ -212,6 +216,14 @@ def init_db() -> None:
         bench_cols = [r[1] for r in conn.execute("PRAGMA table_info(bench_jobs)").fetchall()]
         if bench_cols and "scope_key" not in bench_cols:
             conn.execute("ALTER TABLE bench_jobs ADD COLUMN scope_key TEXT NOT NULL DEFAULT ''")
+
+        # 迁移：旧版 bench_jobs 没有测试集快照信息（dataset_id / dataset_name / dataset_hash）
+        if bench_cols:
+            for col in ("dataset_id", "dataset_name", "dataset_hash"):
+                if col not in bench_cols:
+                    conn.execute(
+                        f"ALTER TABLE bench_jobs ADD COLUMN {col} TEXT NOT NULL DEFAULT ''"
+                    )
 
 
 __all__ = ["DB_PATH", "get_db", "init_db"]

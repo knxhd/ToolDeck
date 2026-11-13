@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -118,6 +119,18 @@ def copy_dataset_to_params(dataset_id: str, params_path: Path) -> None:
     shutil.copyfile(str(src), str(params_path))
 
 
+def file_hash(path: Path) -> str:
+    """文件内容 sha256（取前 16 位）；读取失败返回空串。"""
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(128 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()[:16]
+    except OSError:
+        return ""
+
+
 def _dataset_to_dict(row) -> dict:
     d = dict(row)
     try:
@@ -125,6 +138,8 @@ def _dataset_to_dict(row) -> dict:
     except json.JSONDecodeError:
         d["columns"] = []
     d.pop("columns_json", None)
+    # 内容哈希：用于判断任务记录快照与当前测试集是否一致
+    d["hash"] = file_hash(Path(d.get("path") or "")) if d.get("path") else ""
     # 不把服务端绝对路径返回给前端
     d.pop("path", None)
     return d
