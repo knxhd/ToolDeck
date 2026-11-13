@@ -2,8 +2,8 @@
   <div class="kv-editor" :class="{ 'is-bulk-capable': bulk }">
     <!-- 文本批量编辑模式：每行一条 key:value，// 开头表示禁用 -->
     <template v-if="bulk && bulkMode">
-      <MonacoEditor class="kv-bulk-editor" :model-value="bulkText" language="plaintext" fill
-        :var-resolver="varResolver" @update:model-value="onBulkInput" />
+      <MonacoEditor class="kv-bulk-editor" :model-value="bulkText" language="plaintext" fill :var-resolver="varResolver"
+        @update:model-value="onBulkInput" />
     </template>
 
     <!-- 表格模式：与 Form Data 保持一致的表头 + 固定列宽，保证各行垂直对齐 -->
@@ -17,11 +17,8 @@
         </div>
         <div v-for="(item, i) in rows" :key="i" class="kv-row">
           <span class="kv-col-check">
-            <a-checkbox
-              :model-value="item.enabled"
-              :disabled="!item.key && !item.value"
-              @change="onToggle(i, $event)"
-            />
+            <a-checkbox :model-value="item.enabled" :disabled="!item.key && !item.value"
+              @change="onToggle(i, $event)" />
           </span>
           <span class="kv-col-key">
             <a-input :model-value="item.key" placeholder="Key" size="small" @input="onKey(i, $event)" />
@@ -29,8 +26,15 @@
           <span class="kv-col-value">
             <a-input :model-value="item.value" placeholder="Value" size="small" @input="onValue(i, $event)" />
           </span>
-          <!-- 操作列恒定占位，空尾行不显示按钮但保留宽度，避免列错位 -->
+          <!-- 操作列恒定占位：查看按钮槽位始终保留，保证各行「删除」图标垂直对齐 -->
           <span class="kv-col-op">
+            <span class="op-slot">
+              <a-tooltip v-if="isLong(item.value)" content="查看完整内容（可编辑、可格式化）" position="top">
+                <a-button size="small" type="text" @click="openExpand(i)">
+                  <template #icon><icon-eye /></template>
+                </a-button>
+              </a-tooltip>
+            </span>
             <a-button v-if="item.key || item.value" size="small" status="danger" type="text" @click="remove(i)">
               <template #icon><icon-delete /></template>
             </a-button>
@@ -45,13 +49,31 @@
         {{ bulkMode ? 'Key/Value Edit' : 'Bulk Edit' }}
       </a-button>
     </div>
+
+    <!-- 长值查看/编辑弹框：单行输入框放不下的内容（JSON、长 ID 列表等）在这里完整显示 -->
+    <a-modal v-model:visible="expandOpen" :title="`查看内容 · ${expandKey || '（无 Key）'}`" width="760px" :footer="false"
+      class="kv-expand-modal">
+      <div class="kv-expand">
+        <div class="kv-expand-meta">
+          <span class="muted">共 {{ expandText.length }} 个字符</span>
+          <a-button size="mini" type="text" @click="formatExpand">格式化</a-button>
+          <a-button size="mini" type="text" @click="copyExpand">复制</a-button>
+        </div>
+        <a-textarea v-model="expandText" class="kv-expand-text" placeholder="（空）" />
+        <div class="kv-expand-foot">
+          <a-button size="small" @click="expandOpen = false">取消</a-button>
+          <a-button size="small" type="primary" @click="saveExpand">保存</a-button>
+        </div>
+      </div>
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
+import { toast } from '@/utils/feedback'
 import type { KeyValue } from '@/api/types'
 import type { VarResolver } from '@/utils/varInfo'
 
@@ -171,6 +193,70 @@ function remove(i: number) {
   rows.value = next
   emit('update:modelValue', clone(next))
 }
+
+// ---- 长值查看 / 编辑 ----
+/** 单行输入框里读不全的值（JSON、长 ID 列表等），超过该长度才显示「查看」按钮。 */
+const LONG_THRESHOLD = 40
+function isLong(v: string | undefined): boolean {
+  return (v || '').length > LONG_THRESHOLD
+}
+
+const expandOpen = ref(false)
+const expandIndex = ref(-1)
+const expandText = ref('')
+const expandKey = computed(() => rows.value[expandIndex.value]?.key || '')
+/** 打开弹框时该行的 Key，保存前校验，避免外部改动导致写错行。 */
+const expandKeySnapshot = ref('')
+
+function openExpand(i: number) {
+  expandIndex.value = i
+  expandText.value = rows.value[i]?.value || ''
+  expandKeySnapshot.value = rows.value[i]?.key || ''
+  expandOpen.value = true
+}
+
+function saveExpand() {
+  const i = expandIndex.value
+  const row = rows.value[i]
+  if (i < 0 || !row || (row.key || '') !== expandKeySnapshot.value) {
+    expandOpen.value = false
+    toast.error('该行内容已被外部修改，请重新打开后再保存')
+    return
+  }
+  row.value = expandText.value
+  syncAndCommit()
+  expandOpen.value = false
+  toast.success('已更新该行内容')
+}
+
+/** 合法 JSON 才格式化，避免把纯文本/含占位符的内容改坏。 */
+function formatExpand() {
+  const text = expandText.value.trim()
+  if (!text) return
+  try {
+    expandText.value = JSON.stringify(JSON.parse(text), null, 2)
+  } catch {
+
+  }
+}
+
+async function copyExpand() {
+  const text = expandText.value
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('已复制到剪贴板')
+  } catch {
+    const ta = document.createElement('textarea')
+    ta.value = text
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(ta)
+    ok ? toast.success('已复制到剪贴板') : toast.error('复制失败')
+  }
+}
 </script>
 
 <style lang="less" scoped>
@@ -267,11 +353,21 @@ function remove(i: number) {
   }
 
   .kv-col-op {
-    width: 26px;
+    width: 48px;
     flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
+    gap: 2px;
+
+    /* 查看按钮的槽位：有无按钮都占同样的宽度，删除图标才能逐行对齐 */
+    .op-slot {
+      width: 22px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
     :deep(.arco-btn) {
       width: 22px;
@@ -315,5 +411,55 @@ function remove(i: number) {
     color: var(--color-text-3);
     font-size: 11.5px;
   }
+}
+
+/* 长值弹框 */
+.kv-expand {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kv-expand-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .muted {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.86em;
+    color: var(--color-text-3);
+  }
+
+  :deep(.arco-btn) {
+    height: 24px;
+    padding: 0 8px;
+    border-radius: var(--ui-radius-sm);
+    color: var(--color-text-2);
+    font-size: 0.86em;
+
+    &:hover {
+      background: var(--ui-bg-hover);
+      color: rgb(var(--primary-6));
+    }
+  }
+}
+
+.kv-expand-text {
+  height: 320px;
+  resize: vertical;
+  font-family: var(--ui-font-mono);
+  font-size: 0.86em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.kv-expand-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
 }
 </style>
