@@ -201,10 +201,10 @@ async function copyBody() {
     toast.warning('没有可复制的内容')
     return
   }
-  const ok = await writeClipboard(text)
-  if (ok) {
+  try {
+    await copyText(text)
     toast.success(props.tab.streaming ? '已复制当前已接收的内容' : '已复制响应内容')
-  } else {
+  } catch (error) {
     toast.error('复制失败：浏览器不允许访问剪贴板，请手动选中复制')
   }
 }
@@ -223,18 +223,6 @@ function copyPayload(): string {
 /** 把所有 chunk 原样拼起来，还原完整 SSE 文本。 */
 function frameText(): string {
   return props.tab.stream_events.filter((e) => e.type === 'chunk').map((e) => e.data).join('')
-}
-
-/** 写剪贴板：优先 Clipboard API，非安全上下文（http 局域网等）退到 execCommand。 */
-async function writeClipboard(text: string): Promise<boolean> {
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await copyText(text)
-      return true
-    } catch {
-      return false
-    }
-  }
 }
 
 function downloadResponse() {
