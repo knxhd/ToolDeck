@@ -99,6 +99,7 @@ import KeyValueEditor from '@/components/KeyValueEditor.vue'
 import { useHttpStore } from '@/stores/http'
 import { confirmDialog } from '@/utils/feedback'
 import type { HttpMethod, KeyValue } from '@/api/types'
+import { formatSize } from '@/utils/commonUtil'
 
 const store = useHttpStore()
 const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
@@ -164,11 +165,6 @@ function statusTagType(code: number) {
   return 'red'
 }
 
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
 </script>
 
 <style lang="less" scoped>

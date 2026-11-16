@@ -132,7 +132,7 @@ import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 import { parseMessages } from '@/utils/llmUtil'
 import { toast } from '@/utils/feedback'
-import { copyText } from '@/utils/commonUtil'
+import { copyText, formatSize } from '@/utils/commonUtil'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -188,12 +188,6 @@ const errorHint = computed(() => {
   if (/4\d\d/.test(e)) return '提示：检查请求参数、Header、鉴权是否正确。'
   return ''
 })
-
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
 
 async function copyBody() {
   const text = copyPayload()
