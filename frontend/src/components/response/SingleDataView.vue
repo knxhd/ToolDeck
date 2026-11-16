@@ -82,7 +82,7 @@ const rendered = (raw: string) => {
 async function copyBody() {
   const text = props.data || ''
   try {
-    await copyText(refText.value)
+    await copyText(text)
     toast.success('已复制')
   } catch {
     toast.error('复制失败')

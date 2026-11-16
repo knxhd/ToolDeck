@@ -229,7 +229,7 @@ function frameText(): string {
 async function writeClipboard(text: string): Promise<boolean> {
   if (navigator.clipboard && window.isSecureContext) {
     try {
-      await copyText(refText.value)
+      await copyText(text)
       return true
     } catch {
       return false

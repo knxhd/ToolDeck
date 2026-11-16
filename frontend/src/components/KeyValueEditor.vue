@@ -244,7 +244,7 @@ function formatExpand() {
 async function copyExpand() {
   const text = expandText.value
   try {
-    await copyText(expandText.value)
+    await copyText(text)
     toast.success('已复制到剪贴板')
   } catch {
     toast.error('复制失败')
