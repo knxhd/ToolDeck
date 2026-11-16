@@ -64,13 +64,14 @@ function applyAuthHeaders(req: HttpRequestData, vars: Record<string, string>) {
   }
 }
 
-function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
+function blankTab(kind: 'http' | 'websocket' | 'mcp' | 'doc' = 'http'): OpenTab {
   return {
     id: uid(),
-    title: kind === 'websocket' ? 'WebSocket' : kind === 'mcp' ? 'MCP' : 'New Request',
+    title: kind === 'websocket' ? 'WebSocket' : kind === 'mcp' ? 'MCP' : kind === 'doc' ? '文档' : 'New Request',
     kind,
     dirty: false,
     request: blankRequest(),
+    doc: '',
     ws_url: 'wss://',
     mcp_url: '',
     mcp_headers: {},
@@ -94,11 +95,13 @@ function blankTab(kind: 'http' | 'websocket' | 'mcp' = 'http'): OpenTab {
 interface PersistedTab {
   id: string
   title: string
-  kind: 'http' | 'websocket' | 'mcp'
+  kind: 'http' | 'websocket' | 'mcp' | 'doc'
   nodeId?: string
   dirty?: boolean
   /** 临时 tab（无 nodeId）才存完整请求数据 */
   request?: HttpRequestData
+  /** doc 标签：有未保存修改时存文档快照 */
+  doc?: string
   ws_url?: string
   mcp_url?: string
   mcp_headers?: Record<string, string>
@@ -116,6 +119,7 @@ function serializeTabs(tabs: OpenTab[], activeId: string | null): { activeId: st
         // 集合 tab 有未保存修改时，也保存请求数据，刷新后恢复编辑中的状态
         if (t.dirty) {
           out.request = JSON.parse(JSON.stringify(t.request))
+          if (t.kind === 'doc') out.doc = t.doc
         }
       } else {
         // 临时 tab：完整保存
@@ -184,13 +188,28 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     setActive(tab.id)
   }
 
+  /** 打开集合 / 文件夹的公共文档标签（Markdown）。 */
+  function openDocFromNode(node: CollectionNode) {
+    const existing = tabs.value.find((t) => t.nodeId === node.id && t.kind === 'doc')
+    if (existing) {
+      setActive(existing.id)
+      return
+    }
+    const tab = blankTab('doc')
+    tab.nodeId = node.id
+    tab.title = `${node.name} · 文档`
+    tab.doc = node.docs || ''
+    tabs.value.push(tab)
+    setActive(tab.id)
+  }
+
   /**
    * 克隆请求标签：复制请求/连接配置为新标签（不带 nodeId，视为未保存），
    * 插入到原标签右侧并激活。数量上限由调用方（ensureRoom）负责。
    */
   function cloneTab(id: string) {
     const src = tabs.value.find((t) => t.id === id)
-    if (!src) return
+    if (!src || src.kind === 'doc') return
     const tab = blankTab(src.kind)
     tab.title = `${src.title.replace(/ 副本$/, '')} 副本`
     tab.dirty = true
@@ -333,21 +352,30 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       if (p.nodeId) {
         // 节点类型：从集合树重新加载
         const node = collections.findNode(p.nodeId)
-        if (!node || node.type !== 'request') continue // 节点已删，丢弃
-        tab.nodeId = node.id
-        tab.title = node.name
-        if (node.kind === 'websocket') tab.ws_url = node.ws_url || 'wss://'
-        else if (node.kind === 'mcp') {
-          tab.mcp_url = node.mcp_url || ''
-          tab.mcp_headers = node.mcp_headers || {}
-          tab.mcp_tool = node.mcp_tool || ''
-          tab.mcp_args = node.mcp_args || '{}'
-        } else if (node.request) {
-          tab.request = JSON.parse(JSON.stringify(node.request))
-        }
-        // 有未保存修改的快照时，恢复编辑中的内容
-        if (p.request) {
-          tab.request = JSON.parse(JSON.stringify(p.request))
+        if (!node) continue
+        if (p.kind === 'doc') {
+          // 集合 / 文件夹文档标签
+          if (node.type === 'request') continue
+          tab.nodeId = node.id
+          tab.title = `${node.name} · 文档`
+          tab.doc = p.doc ?? node.docs ?? ''
+        } else {
+          if (node.type !== 'request') continue // 节点已删，丢弃
+          tab.nodeId = node.id
+          tab.title = node.name
+          if (node.kind === 'websocket') tab.ws_url = node.ws_url || 'wss://'
+          else if (node.kind === 'mcp') {
+            tab.mcp_url = node.mcp_url || ''
+            tab.mcp_headers = node.mcp_headers || {}
+            tab.mcp_tool = node.mcp_tool || ''
+            tab.mcp_args = node.mcp_args || '{}'
+          } else if (node.request) {
+            tab.request = JSON.parse(JSON.stringify(node.request))
+          }
+          // 有未保存修改的快照时，恢复编辑中的内容
+          if (p.request) {
+            tab.request = JSON.parse(JSON.stringify(p.request))
+          }
         }
       } else {
         // 临时 tab：用保存的请求数据
@@ -396,6 +424,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     setActive,
     openBlank,
     openFromNode,
+    openDocFromNode,
     closeTab,
     cloneTab,
     send,

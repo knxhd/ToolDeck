@@ -22,6 +22,10 @@
             <a-doption value="__export__">export</a-doption>
           </template>
         </a-dropdown>
+        <a-button v-if="node.type !== 'request'" size="mini" type="text" title="公共文档（Markdown）"
+          @click="emit('openDoc', node)">
+          <template #icon><icon-book /></template>
+        </a-button>
         <a-button size="mini" type="text" shape="circle" title="重命名" @click="emit('rename', node)">
           <template #icon><icon-edit /></template>
         </a-button>
@@ -33,7 +37,7 @@
     <div v-if="expanded.has(node.id)" class="node-children">
       <CollectionsNode v-for="child in node.children" :key="child.id" :node="child" :depth="depth + 1"
         :expanded="expanded" @toggle="onChildToggle" @open="onChildOpen" @add-child="onChildAdd" @rename="onChildRename"
-        @remove="onChildRemove" @export="onChildExport" @expand="onChildExpand" />
+        @remove="onChildRemove" @export="onChildExport" @expand="onChildExpand" @open-doc="onChildDoc" />
     </div>
   </div>
 </template>
@@ -61,6 +65,7 @@ const emit = defineEmits<{
   remove: [node: CollectionNode]
   export: [node: CollectionNode]
   expand: [id: string]
+  openDoc: [node: CollectionNode]
 }>()
 
 const collections = useCollectionsStore()
@@ -179,6 +184,7 @@ function onChildRename(n: CollectionNode) { emit('rename', n) }
 function onChildRemove(n: CollectionNode) { emit('remove', n) }
 function onChildExport(n: CollectionNode) { emit('export', n) }
 function onChildExpand(id: string) { emit('expand', id) }
+function onChildDoc(n: CollectionNode) { emit('openDoc', n) }
 </script>
 
 <style lang="less" scoped>

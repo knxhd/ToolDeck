@@ -51,6 +51,7 @@
           @remove="onRemove"
           @export="onExportNode"
           @expand="onExpand"
+          @open-doc="onOpenDoc"
         />
       </template>
       <a-empty v-if="!collections.tree.length" description="暂无集合，点击 + 新建" style="padding: 16px 0" />
@@ -77,7 +78,7 @@ import { confirmDialog, promptInput, toast } from '@/utils/feedback'
 import type { CollectionNode } from '@/api/types'
 import NodeRow from './CollectionsNode.vue'
 
-const emit = defineEmits<{ open: [node: CollectionNode] }>()
+const emit = defineEmits<{ open: [node: CollectionNode]; openDoc: [node: CollectionNode] }>()
 
 const collections = useCollectionsStore()
 const wb = useWorkbenchStore()
@@ -113,6 +114,10 @@ async function onAddChild(payload: { parentId: string; kind: string }) {
     if (node) emit('open', node)
   }
   if (!expanded.value.has(parentId)) toggle(parentId)
+}
+
+function onOpenDoc(node: CollectionNode) {
+  emit('openDoc', node)
 }
 
 async function onRename(node: CollectionNode) {

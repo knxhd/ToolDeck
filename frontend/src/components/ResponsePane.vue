@@ -227,13 +227,11 @@ function frameText(): string {
 
 /** 写剪贴板：优先 Clipboard API，非安全上下文（http 局域网等）退到 execCommand。 */
 async function writeClipboard(text: string): Promise<boolean> {
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await copyText(refText.value)
-      return true
-    } catch {
-      return false
-    }
+  try {
+    await copyText(text)
+    return true
+  } catch {
+    return false
   }
 }
 

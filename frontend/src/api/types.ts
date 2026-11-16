@@ -144,17 +144,22 @@ export interface CollectionNode {
   activeEnvId?: string | null
   /** 仅 collection 节点：集合级占位符，集合内所有请求可用 {{key}} 引用 */
   placeholders?: KeyValue[]
+  /** 集合 / 文件夹公共文档（Markdown），对整个节点生效 */
+  docs?: string
 }
 
 /** 工作台中一个打开的标签页。 */
 export interface OpenTab {
   id: string
   title: string
-  kind: 'http' | 'websocket' | 'mcp'
+  /** http / websocket / mcp 为请求标签；doc 为集合 / 文件夹公共文档标签 */
+  kind: 'http' | 'websocket' | 'mcp' | 'doc'
   nodeId?: string
-  /** 是否有未保存的修改（仅 HTTP）。 */
+  /** 是否有未保存的修改（仅 HTTP / 文档标签跟踪）。 */
   dirty?: boolean
   request: HttpRequestData
+  /** doc 标签：编辑中的 Markdown 文档内容 */
+  doc?: string
   ws_url: string
   // MCP 请求态
   mcp_url: string

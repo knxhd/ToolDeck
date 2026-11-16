@@ -45,7 +45,7 @@
         </div>
       </div>
       <div class="side-collections">
-        <CollectionsTree @open="onOpenNode" />
+        <CollectionsTree @open="onOpenNode" @open-doc="onOpenDoc" />
       </div>
       <div class="side-section" :class="historyOpen ? 'open' : 'closed'">
         <div class="section-header" @click="historyOpen = !historyOpen">
@@ -88,7 +88,8 @@
             <a-tab-pane v-for="t in wb.tabs" :key="t.id" :closable="true">
               <template #title>
                 <span class="tab-title-wrap" @contextmenu.prevent="onTabContextMenu($event, t)">
-                  <span class="method-pill"
+                  <icon-book v-if="t.kind === 'doc'" class="doc-pill" />
+                  <span v-else class="method-pill"
                     :class="t.kind === 'websocket' ? 'm-ws' : t.kind === 'mcp' ? 'm-mcp' : 'm-' + t.request.method.toLowerCase()">
                     {{ t.kind === 'websocket' ? 'WS' : t.kind === 'mcp' ? 'MCP' : t.request.method }}
                   </span>
@@ -179,6 +180,7 @@
             </div>
           </div>
         </template>
+        <CollectionDocPane v-else-if="wb.activeTab.kind === 'doc'" :tab="wb.activeTab" />
         <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp" />
         <WebSocketPane v-else :tab="wb.activeTab" />
       </div>
@@ -223,7 +225,7 @@
         <div class="ctx-item" :class="{ disabled: wb.tabs.length <= 1 }" @click="onCtxCloseOthers">关闭其他</div>
         <div class="ctx-item" :class="{ disabled: !wb.tabs.length }" @click="onCtxCloseAll">关闭所有</div>
         <div class="ctx-divider"></div>
-        <div class="ctx-item" @click="onCtxClone">克隆请求</div>
+        <div v-if="ctxTab && ctxTab.kind !== 'doc'" class="ctx-item" @click="onCtxClone">克隆请求</div>
       </div>
     </Teleport>
 
@@ -248,6 +250,7 @@ import RequestPane from '@/components/RequestPane.vue'
 import ResponsePane from '@/components/ResponsePane.vue'
 import WebSocketPane from '@/components/WebSocketPane.vue'
 import McpPane from '@/components/McpPane.vue'
+import CollectionDocPane from '@/components/CollectionDocPane.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import ProfileDialog from '@/components/ProfileDialog.vue'
 import PasswordDialog from '@/components/PasswordDialog.vue'
@@ -457,7 +460,7 @@ function onGlobalKeydown(e: KeyboardEvent) {
     e.stopPropagation()
     if (saveDialogOpen.value) return // 保存对话框已打开，避免覆盖等待中的流程
     const tab = wb.activeTab
-    if (!tab || tab.kind !== 'http') return
+    if (!tab || (tab.kind !== 'http' && tab.kind !== 'doc')) return
     if (!tab.dirty) return
     void saveTabFlow(tab)
     return
@@ -550,10 +553,12 @@ async function saveTabFlow(t: OpenTab): Promise<boolean> {
         node.mcp_headers = t.mcp_headers
         node.mcp_tool = t.mcp_tool
         node.mcp_args = t.mcp_args
+      } else if (t.kind === 'doc') {
+        node.docs = t.doc ?? ''
       } else {
         node.request = JSON.parse(JSON.stringify(t.request))
       }
-      node.name = t.title
+      if (t.kind !== 'doc') node.name = t.title
       await collections.persist()
       t.dirty = false
       if (wb.activeTab?.id === t.id && t.kind === 'http') requestSnapshot = JSON.stringify(t.request)
@@ -703,6 +708,14 @@ async function onOpenNode(node: CollectionNode) {
   wb.openFromNode(node)
 }
 
+/** 打开集合 / 文件夹的公共文档标签。 */
+async function onOpenDoc(node: CollectionNode) {
+  if (!wb.tabs.some((t) => t.nodeId === node.id && t.kind === 'doc')) {
+    if (!(await ensureRoom())) return
+  }
+  wb.openDocFromNode(node)
+}
+
 /** 点击「+」新建标签。 */
 async function onAddTab() {
   if (!(await ensureRoom())) return
@@ -812,6 +825,7 @@ function shortUrl(url: string): string {
 const ctxMenu = reactive({ visible: false, x: 0, y: 0, tabId: '' })
 /** 右键目标标签当前的下标（-1 表示已不存在）。 */
 const ctxIndex = computed(() => wb.tabs.findIndex((t) => t.id === ctxMenu.tabId))
+const ctxTab = computed(() => wb.tabs.find((t) => t.id === ctxMenu.tabId))
 
 function onTabContextMenu(e: MouseEvent, t: OpenTab) {
   ctxMenu.tabId = t.id
@@ -858,7 +872,7 @@ function onCtxCloseAll() {
 async function onCtxClone() {
   closeCtxMenu()
   const t = wb.tabs.find((x) => x.id === ctxMenu.tabId)
-  if (!t) return
+  if (!t || t.kind === 'doc') return
   if (!(await ensureRoom())) return
   wb.cloneTab(t.id)
 }
@@ -1193,6 +1207,13 @@ function statusClass(code: number) {
     gap: 6px;
     min-width: 0;
     max-width: 160px;
+  }
+
+  .doc-pill {
+    flex-shrink: 0;
+    width: 14px;
+    height: 14px;
+    color: var(--color-text-3);
   }
 
   .tab-title {
