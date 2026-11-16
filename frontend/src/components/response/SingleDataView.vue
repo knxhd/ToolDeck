@@ -26,6 +26,8 @@
 import { ref, watch } from 'vue'
 import { toast } from '@/utils/feedback'
 import MonacoEditor from '@/components/MonacoEditor.vue'
+import { copyText } from '@/utils/commonUtil'
+
 
 const props = defineProps({
   data: {
@@ -80,7 +82,7 @@ const rendered = (raw: string) => {
 async function copyBody() {
   const text = props.data || ''
   try {
-    await navigator.clipboard.writeText(text)
+    await copyText(refText.value)
     toast.success('已复制')
   } catch {
     toast.error('复制失败')

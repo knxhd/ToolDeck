@@ -76,6 +76,7 @@ import MonacoEditor from '@/components/MonacoEditor.vue'
 import { toast } from '@/utils/feedback'
 import type { KeyValue } from '@/api/types'
 import type { VarResolver } from '@/utils/varInfo'
+import { copyText } from '@/utils/commonUtil'
 
 /** bulk：是否提供「Bulk Edit」文本批量编辑切换（默认关闭）；varResolver：批量编辑时高亮占位符。 */
 const props = defineProps<{ modelValue: KeyValue[]; bulk?: boolean; varResolver?: VarResolver }>()
@@ -243,18 +244,10 @@ function formatExpand() {
 async function copyExpand() {
   const text = expandText.value
   try {
-    await navigator.clipboard.writeText(text)
+    await copyText(expandText.value)
     toast.success('已复制到剪贴板')
   } catch {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    const ok = document.execCommand('copy')
-    document.body.removeChild(ta)
-    ok ? toast.success('已复制到剪贴板') : toast.error('复制失败')
+    toast.error('复制失败')
   }
 }
 </script>

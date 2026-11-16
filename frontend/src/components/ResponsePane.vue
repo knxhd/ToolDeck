@@ -17,8 +17,7 @@
         发送请求后在此查看响应
       </span>
       <div class="meta-actions">
-        <a-button size="mini" type="text" :disabled="!hasContent" title="复制响应内容（流式复制合并后的正文或原始帧）"
-          @click="copyBody">
+        <a-button size="mini" type="text" :disabled="!hasContent" title="复制响应内容（流式复制合并后的正文或原始帧）" @click="copyBody">
           <template #icon><icon-copy /></template>
         </a-button>
         <a-button size="mini" type="text" :disabled="!hasContent" :title="downloadTip" @click="downloadResponse">
@@ -133,6 +132,7 @@ import SingleDataView from '@/components/response/SingleDataView.vue';
 import type { OpenTab } from '@/api/types'
 import { parseMessages } from '@/utils/llmUtil'
 import { toast } from '@/utils/feedback'
+import { copyText } from '@/utils/commonUtil'
 
 const props = defineProps<{ tab: OpenTab }>()
 
@@ -229,27 +229,11 @@ function frameText(): string {
 async function writeClipboard(text: string): Promise<boolean> {
   if (navigator.clipboard && window.isSecureContext) {
     try {
-      await navigator.clipboard.writeText(text)
+      await copyText(refText.value)
       return true
     } catch {
-      /* 落到下面的兜底 */
+      return false
     }
-  }
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = text
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'fixed'
-    ta.style.top = '-9999px'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    ta.setSelectionRange(0, ta.value.length)
-    const ok = document.execCommand('copy')
-    document.body.removeChild(ta)
-    return ok
-  } catch {
-    return false
   }
 }
 
