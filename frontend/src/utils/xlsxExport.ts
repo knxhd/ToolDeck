@@ -42,6 +42,8 @@ export interface XlsxExportOptions {
   defaultSize?: number
   /** 按（行下标, 列下标）返回该单元格的追加样式 */
   cellStyle?: (rowIndex: number, colIndex: number) => XlsxCellStyle | null | undefined
+  /** 按列下标返回表头的样式（覆盖默认的加粗浅灰底） */
+  headerStyle?: (colIndex: number) => XlsxCellStyle | null | undefined
 }
 
 const HEADER_FILL = 'FFF2F3F5'
@@ -72,7 +74,7 @@ function pxToPt(px?: number): number | undefined {
 }
 
 export async function exportRowsToXlsx(opts: XlsxExportOptions): Promise<void> {
-  const { columns, rows, fileName, defaultFont, defaultSize, cellStyle } = opts
+  const { columns, rows, fileName, defaultFont, defaultSize, cellStyle, headerStyle } = opts
   const wb = new ExcelJS.Workbook()
   wb.creator = 'api-tool'
   // 不写冻结窗格：WPS 会把冻结分界线渲染成绿色粗线，看起来像表格里多了一道边框
@@ -89,12 +91,26 @@ export async function exportRowsToXlsx(opts: XlsxExportOptions): Promise<void> {
 
   const header = ws.addRow(columns.map((c) => c.label))
   header.height = 20
-  header.eachCell((cell) => {
-    const font: Partial<ExcelJS.Font> = { bold: true, size: headerPt }
-    if (defaultFont) font.name = defaultFont
+  header.eachCell((cell, colNumber) => {
+    const st = headerStyle?.(colNumber - 1) || null
+    const font: Partial<ExcelJS.Font> = { bold: st?.bold ?? true, size: pxToPt(st?.fontSize || baseSize + 2) ?? headerPt }
+    const name = st?.font || defaultFont
+    if (name) font.name = name
+    if (st?.italic) font.italic = true
+    if (st?.underline) font.underline = true
+    if (st?.strike) font.strike = true
+    const color = toArgb(st?.color)
+    if (color) font.color = { argb: color }
     cell.font = font
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: HEADER_FILL } }
-    cell.alignment = { vertical: 'middle' }
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: toArgb(st?.bg) || HEADER_FILL },
+    }
+    cell.alignment = {
+      vertical: st?.valign || 'middle',
+      horizontal: st?.halign || undefined,
+    }
     cell.border = {
       bottom: { style: 'thin', color: { argb: 'FFD9D9D9' } },
     }

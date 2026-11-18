@@ -169,7 +169,7 @@
     <div class="br-editbar">
       <input class="br-name-box" :value="nameBoxText" readonly :placeholder="'名称框'" title="当前单元格 / 选区" />
       <span class="br-editbar-sep"></span>
-      <input class="br-edit-input" :value="barValue" :disabled="!activeCell"
+      <input class="br-edit-input" :value="barValue" :disabled="!activeCell || isHeaderRow(activeCell.rowNo)"
         :placeholder="activeCell ? '' : '点击单元格后可在这里直接编辑内容'" @input="onBarInput" @keydown.enter.prevent />
     </div>
 
@@ -196,18 +196,26 @@
             </div>
           </div>
           <div class="br-colhead">
-            <div class="br-corner">1</div>
+            <div class="br-corner br-corner-row" :class="{ 'is-on': selRows.includes(HEADER_ROW) }"
+              title="点击选中整行表头" @click.stop="onHeaderRowClick">
+              1
+            </div>
             <div class="br-head-main">
               <div class="br-head-row">
-                <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
-                  :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
-                  @click="openColumnPanel(c, $event)" @contextmenu.prevent.stop="openCtx($event, 'col', c)">
+                <div v-for="c in displayColumns" :key="c.key" class="br-th"
+                  :style="{ width: c.width + 'px', ...cellCss(HEADER_ROW, c.key) }"
+                  :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key), 'in-sel': isInSel(HEADER_ROW, c.key) }"
+                  @click="onHeaderCellClick(c, $event)" @dblclick="openColumnPanel(c, $event)"
+                  @contextmenu.prevent.stop="openCtx($event, 'col', c)">
                   <input v-if="c.blank" class="br-th-edit" :value="blankColLabel(c.key)" @mousedown.stop @click.stop
-                    @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
+                    @dblclick.stop @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
                   <span v-else class="br-th-name" :title="c.label">{{ c.label }}</span>
                   <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
                   <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
-                  <icon-filter v-if="hasFilter(c.key)" class="br-th-flag is-active" />
+                  <button type="button" class="br-th-btn" title="筛选 / 排序"
+                    @click.stop="openColumnPanel(c, $event)">
+                    <icon-filter :class="{ 'is-active': hasFilter(c.key) }" />
+                  </button>
                   <span class="br-resize" @mousedown="startResize($event, c.key, c.width)" @click.stop></span>
                 </div>
               </div>
@@ -932,9 +940,11 @@ function cellFmtKey(rowNo: number, colKey: string): string {
 
 /** 单元格最终样式：整表默认 + 单元格自身的覆盖 */
 function cellCss(rowNo: number, colKey: string): Record<string, string> {
-  const f = formats.value[cellFmtKey(rowNo, colKey)]
+  const head = isHeaderRow(rowNo)
+  const f = fmtAt(rowNo, colKey)
   const out: Record<string, string> = {}
   if (f?.bold) out.fontWeight = '600'
+  else if (head) out.fontWeight = '500'
   if (f?.italic) out.fontStyle = 'italic'
   const deco = [f?.underline ? 'underline' : '', f?.strike ? 'line-through' : ''].filter(Boolean).join(' ')
   if (deco) out.textDecoration = deco
@@ -942,7 +952,7 @@ function cellCss(rowNo: number, colKey: string): Record<string, string> {
   if (f?.bg) out.background = f.bg
   const fam = f?.font || defaultFont.value
   if (fam) out.fontFamily = fam
-  out.fontSize = `${f?.size || defaultSize.value}px`
+  out.fontSize = `${f?.size || (head ? 12 : defaultSize.value)}px`
   if (f?.halign) {
     out.justifyContent = f.halign === 'left' ? 'flex-start' : f.halign === 'center' ? 'center' : 'flex-end'
     out.textAlign = f.halign
@@ -959,11 +969,11 @@ const selCells = computed<CellPos[]>(() => {
   const b = selFocus.value
   if (!a || !b) return []
   const cols = displayColumns.value.map((c) => c.key)
-  const vr = visibleRows.value
+  const nos = selRowNos.value
   let ci1 = cols.indexOf(a.colKey)
   let ci2 = cols.indexOf(b.colKey)
-  let ri1 = vr.findIndex((r) => r.rowNo === a.rowNo)
-  let ri2 = vr.findIndex((r) => r.rowNo === b.rowNo)
+  let ri1 = nos.indexOf(a.rowNo)
+  let ri2 = nos.indexOf(b.rowNo)
   if (ci1 < 0 || ci2 < 0 || ri1 < 0 || ri2 < 0) return []
   if (ri1 > ri2) [ri1, ri2] = [ri2, ri1]
   if (ci1 > ci2) [ci1, ci2] = [ci2, ci1]
@@ -972,7 +982,7 @@ const selCells = computed<CellPos[]>(() => {
   }
   const out: CellPos[] = []
   for (let r = ri1; r <= ri2; r++) {
-    for (let c = ci1; c <= ci2; c++) out.push({ rowNo: vr[r].rowNo, colKey: cols[c] })
+    for (let c = ci1; c <= ci2; c++) out.push({ rowNo: nos[r], colKey: cols[c] })
   }
   return out
 })
@@ -992,7 +1002,6 @@ function colLetter(index: number): string {
 const nameBoxText = computed(() => {
   if (selAll.value) return '全选'
   const cols = displayColumns.value
-  const vr = visibleRows.value
   if (selCols.value.length) {
     const idxs = selCols.value
       .map((k) => cols.findIndex((c) => c.key === k))
@@ -1003,18 +1012,18 @@ const nameBoxText = computed(() => {
     const b = colLetter(idxs[idxs.length - 1])
     if (selRows.value.length) {
       const ris = selRows.value
-        .map((no) => vr.findIndex((r) => r.rowNo === no))
+        .map((no) => selRowNos.value.indexOf(no))
         .filter((i) => i >= 0)
         .sort((x, y) => x - y)
       const ra = ris.length ? ris[0] + 1 : 1
-      const rb = ris.length ? ris[ris.length - 1] + 1 : vr.length
+      const rb = ris.length ? ris[ris.length - 1] + 1 : selRowNos.value.length
       return `${a}${ra}:${b}${rb}`
     }
     return idxs.length === 1 ? `${a}列` : `${a}:${b} 列`
   }
   if (selRows.value.length) {
     const ris = selRows.value
-      .map((no) => vr.findIndex((r) => r.rowNo === no))
+      .map((no) => selRowNos.value.indexOf(no))
       .filter((i) => i >= 0)
       .sort((x, y) => x - y)
     if (!ris.length) return ''
@@ -1025,7 +1034,7 @@ const nameBoxText = computed(() => {
   const a = selAnchor.value
   if (!a) return ''
   const colIdxOf = (k: string) => cols.findIndex((c) => c.key === k)
-  const rowIdxOf = (no: number) => vr.findIndex((r) => r.rowNo === no)
+  const rowIdxOf = (no: number) => selRowNos.value.indexOf(no)
   const ai = colIdxOf(a.colKey)
   if (ai < 0) return ''
   const ar = rowIdxOf(a.rowNo)
@@ -1049,6 +1058,11 @@ const targetCells = computed<CellPos[]>(() => {
   if (selAll.value) {
     const out: CellPos[] = []
     const cols = displayColumns.value
+    // 全选包含表头行
+    for (const c of cols) {
+      if (out.length >= 4000) return out
+      out.push({ rowNo: HEADER_ROW, colKey: c.key })
+    }
     for (const r of visibleRows.value) {
       for (const c of cols) {
         if (out.length >= 4000) return out
@@ -1062,12 +1076,15 @@ const targetCells = computed<CellPos[]>(() => {
       ? displayColumns.value.filter((c) => selCols.value.includes(c.key))
       : displayColumns.value
     const rowSet = selRows.value.length ? new Set(selRows.value) : null
-    const rows = rowSet ? visibleRows.value.filter((r) => rowSet.has(r.rowNo)) : visibleRows.value
+    // 只选整列时，表头一起算进去；选了整行则按行处理
+    const rowNos: number[] = rowSet
+      ? visibleRows.value.filter((r) => rowSet.has(r.rowNo)).map((r) => r.rowNo)
+      : [HEADER_ROW, ...visibleRows.value.map((r) => r.rowNo)]
     const out: CellPos[] = []
-    for (const r of rows) {
+    for (const no of rowNos) {
       for (const c of cols) {
         if (out.length >= 4000) return out
-        out.push({ rowNo: r.rowNo, colKey: c.key })
+        out.push({ rowNo: no, colKey: c.key })
       }
     }
     return out
@@ -1087,21 +1104,38 @@ const activeCell = ref<CellPos | null>(null)
 const barValue = computed(() => {
   const cur = activeCell.value
   if (!cur) return ''
-  const row = rowByNo.value.get(cur.rowNo)
   const col = colByKey.value.get(cur.colKey)
-  return col ? cellText(row, col) : ''
+  if (!col) return ''
+  if (isHeaderRow(cur.rowNo)) return col.label
+  return cellText(rowByNo.value.get(cur.rowNo), col)
 })
 
 /** 编辑栏输入：直接写进 cells 的改写表，单元格同步显示 */
 function onBarInput(ev: Event) {
   const cur = activeCell.value
-  if (!cur) return
+  if (!cur || isHeaderRow(cur.rowNo)) return
   const v = (ev.target as HTMLInputElement).value
   const key = editKey(cur.rowNo, cur.colKey)
   if (v === originalText(cur.rowNo, cur.colKey)) delete edits.value[key]
   else edits.value[key] = v
   scheduleSaveView()
 }
+
+/** 表头当成第 0 行参与选区与格式设置，样式单独存（key = 列 key） */
+const HEADER_ROW = 0
+const headerFmt = ref<Record<string, CellFmt>>({})
+
+function isHeaderRow(rowNo: number): boolean {
+  return rowNo === HEADER_ROW
+}
+
+/** 取某格的格式：表头走 headerFmt，数据格走 formats */
+function fmtAt(rowNo: number, colKey: string): CellFmt | undefined {
+  return isHeaderRow(rowNo) ? headerFmt.value[colKey] : formats.value[cellFmtKey(rowNo, colKey)]
+}
+
+/** 选区行序列：表头在最前，后面是可见数据行 */
+const selRowNos = computed<number[]>(() => [HEADER_ROW, ...visibleRows.value.map((r) => r.rowNo)])
 
 /** 行号 / 列 key 到渲染对象的索引，供状态栏取显示值（含标注、空白列）。 */
 const rowByNo = computed(() => new Map(visibleRows.value.map((r) => [r.rowNo, r])))
@@ -1210,6 +1244,9 @@ const selRect = computed<SelRect | null>(() => {
     return { left: GUTTER_W, top: 0, width: totalWidth.value, height: vr.length * h }
   }
 
+  // 只选了表头行：表头用底色高亮，不在数据区画外框
+  if (!selCols.value.length && selRows.value.length && selRows.value.every((no) => no === HEADER_ROW)) return null
+
   if (selCols.value.length || selRows.value.length) {
     let ci1 = 0
     let ci2 = cols.length - 1
@@ -1226,11 +1263,13 @@ const selRect = computed<SelRect | null>(() => {
     let ri2 = vr.length - 1
     if (selRows.value.length) {
       const rowSet = new Set(selRows.value)
-      const firstIdx = vr.findIndex((r) => rowSet.has(r.rowNo))
-      const lastIdx = vr.length - 1 - [...vr].reverse().findIndex((r) => rowSet.has(r.rowNo))
-      if (firstIdx < 0) return null
-      ri1 = firstIdx
-      ri2 = lastIdx
+      // 数据行下标（表头不算），跳掉表头后取首尾
+      const idxs = vr
+        .map((r, i) => (rowSet.has(r.rowNo) ? i : -1))
+        .filter((i) => i >= 0)
+      if (!idxs.length) return null
+      ri1 = idxs[0]
+      ri2 = idxs[idxs.length - 1]
     }
     const { left, width } = columnsRange(ci1, ci2)
     return { left, width, top: ri1 * h, height: (ri2 - ri1 + 1) * h }
@@ -1241,14 +1280,45 @@ const selRect = computed<SelRect | null>(() => {
   if (!a || !b) return null
   let ci1 = cols.findIndex((c) => c.key === a.colKey)
   let ci2 = cols.findIndex((c) => c.key === b.colKey)
-  let ri1 = vr.findIndex((r) => r.rowNo === a.rowNo)
-  let ri2 = vr.findIndex((r) => r.rowNo === b.rowNo)
-  if (ci1 < 0 || ci2 < 0 || ri1 < 0 || ri2 < 0) return null
+  // 表头是第 0 行，选区外框只画在数据行内（表头用底色高亮）
+  const nos = selRowNos.value
+  let ri1 = nos.indexOf(a.rowNo) - 1
+  let ri2 = nos.indexOf(b.rowNo) - 1
+  if (ci1 < 0 || ci2 < 0 || ri1 < -1 || ri2 < -1) return null
+  if (ri1 < 0 && ri2 < 0) return null
   if (ci1 > ci2) [ci1, ci2] = [ci2, ci1]
   if (ri1 > ri2) [ri1, ri2] = [ri2, ri1]
   const { left, width } = columnsRange(ci1, ci2)
   return { left, width, top: ri1 * h, height: (ri2 - ri1 + 1) * h }
 })
+
+/** 点表头行号（1）：整行表头选中／取消 */
+function onHeaderRowClick() {
+  window.getSelection()?.removeAllRanges()
+  selAll.value = false
+  selCols.value = []
+  selAnchor.value = null
+  selFocus.value = null
+  if (selRows.value.length === 1 && selRows.value[0] === HEADER_ROW) selRows.value = []
+  else selRows.value = [HEADER_ROW]
+  activeCell.value = null
+}
+
+/** 点击表头单元格：像普通单元格一样选中（Shift 可扩选出一整行表头） */
+function onHeaderCellClick(c: { key: string }, ev?: MouseEvent) {
+  window.getSelection()?.removeAllRanges()
+  const pos: CellPos = { rowNo: HEADER_ROW, colKey: c.key }
+  if (ev?.shiftKey && selAnchor.value) {
+    selFocus.value = pos
+  } else {
+    selAnchor.value = pos
+    selFocus.value = pos
+  }
+  selCols.value = []
+  selRows.value = []
+  selAll.value = false
+  activeCell.value = pos
+}
 
 function onColClick(c: { key: string }, ev?: MouseEvent) {
   window.getSelection()?.removeAllRanges()
@@ -1681,9 +1751,12 @@ function ctxClearFormat() {
 
 function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
   if (!targetCells.value.length) return
-  const map: Record<string, CellFmt> = { ...formats.value }
+  const dataMap: Record<string, CellFmt> = { ...formats.value }
+  const headMap: Record<string, CellFmt> = { ...headerFmt.value }
   for (const p of targetCells.value) {
-    const k = cellFmtKey(p.rowNo, p.colKey)
+    const head = isHeaderRow(p.rowNo)
+    const map = head ? headMap : dataMap
+    const k = head ? p.colKey : cellFmtKey(p.rowNo, p.colKey)
     const cur: CellFmt = { ...(map[k] || {}) }
     if (onlyIf && !onlyIf(cur)) continue
     for (const [field, value] of Object.entries(patch)) {
@@ -1694,15 +1767,16 @@ function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
     if (Object.keys(cur).length) map[k] = cur
     else delete map[k]
   }
-  formats.value = map
+  formats.value = dataMap
+  headerFmt.value = headMap
 }
 
 type TextStyleField = 'bold' | 'italic' | 'underline' | 'strike'
 
 /** 选区是否全部应用了该字形（用于按钮高亮） */
 function allHaveStyle(field: TextStyleField): boolean {
-  return targetCells.value.length > 0
-    && targetCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.[field])
+  if (!targetCells.value.length) return false
+  return targetCells.value.every((p) => !!fmtAt(p.rowNo, p.colKey)?.[field])
 }
 
 /** 加粗 / 斜体 / 下划线 / 删除线：已全部应用时再点一次取消 */
@@ -1743,20 +1817,18 @@ function onPickSize(value: any) {
 /** 当前选区第一个单元格的对齐状态（用于按钮高亮） */
 const selHalign = computed<HAlign | undefined>(() => {
   const p = targetCells.value[0]
-  return p ? formats.value[cellFmtKey(p.rowNo, p.colKey)]?.halign : undefined
+  return p ? fmtAt(p.rowNo, p.colKey)?.halign : undefined
 })
 
 const selValign = computed<VAlign | undefined>(() => {
   const p = targetCells.value[0]
-  return p ? formats.value[cellFmtKey(p.rowNo, p.colKey)]?.valign : undefined
+  return p ? fmtAt(p.rowNo, p.colKey)?.valign : undefined
 })
 
 /** 对齐：选区已全部是该对齐方式时再点一次取消 */
 function setAlign(kind: 'halign' | 'valign', value: HAlign | VAlign) {
   if (!targetCells.value.length) return
-  const same = targetCells.value.every(
-    (p) => formats.value[cellFmtKey(p.rowNo, p.colKey)]?.[kind] === value,
-  )
+  const same = targetCells.value.every((p) => fmtAt(p.rowNo, p.colKey)?.[kind] === value)
   applyFormat(kind === 'halign'
     ? { halign: (same ? undefined : value) as HAlign | undefined }
     : { valign: (same ? undefined : value) as VAlign | undefined })
@@ -1767,9 +1839,14 @@ function setAlign(kind: 'halign' | 'valign', value: HAlign | VAlign) {
 function clearFormat(cells?: CellPos[]) {
   const list = cells || targetCells.value
   if (!list.length) return
-  const map: Record<string, CellFmt> = { ...formats.value }
-  for (const p of list) delete map[cellFmtKey(p.rowNo, p.colKey)]
-  formats.value = map
+  const dataMap: Record<string, CellFmt> = { ...formats.value }
+  const headMap: Record<string, CellFmt> = { ...headerFmt.value }
+  for (const p of list) {
+    if (isHeaderRow(p.rowNo)) delete headMap[p.colKey]
+    else delete dataMap[cellFmtKey(p.rowNo, p.colKey)]
+  }
+  formats.value = dataMap
+  headerFmt.value = headMap
 }
 
 
@@ -2240,6 +2317,23 @@ async function exportView() {
       rows: data,
       defaultFont: defaultFont.value || undefined,
       defaultSize: defaultSize.value,
+      headerStyle: (c) => {
+        const col = cols[c]
+        const f = col ? headerFmt.value[col.key] : undefined
+        if (!f) return null
+        return {
+          bold: f.bold,
+          italic: f.italic,
+          underline: f.underline,
+          strike: f.strike,
+          color: f.color,
+          bg: f.bg,
+          font: f.font,
+          fontSize: f.size,
+          halign: f.halign,
+          valign: f.valign,
+        }
+      },
       cellStyle: (r, c) => {
         const item = visible[r]
         const col = cols[c]
@@ -2291,6 +2385,8 @@ interface ViewPayload {
   blankColLabels?: Record<string, string>
   /** 手工改写的单元格文本，key = `<行号>|<列 key>` */
   edits?: Record<string, string>
+  /** 表头样式，key = 列 key */
+  headerFmt?: Record<string, CellFmt>
 }
 
 function currentView(): ViewPayload {
@@ -2308,6 +2404,7 @@ function currentView(): ViewPayload {
     hiddenRows: [...hiddenRows.value],
     blankColLabels: JSON.parse(JSON.stringify(blankColLabels.value)),
     edits: JSON.parse(JSON.stringify(edits.value)),
+    headerFmt: JSON.parse(JSON.stringify(headerFmt.value)),
   }
 }
 
@@ -2360,6 +2457,9 @@ function applyView(data: ViewPayload | null | undefined) {
   }
   if (data.edits && typeof data.edits === 'object') {
     edits.value = { ...data.edits }
+  }
+  if (data.headerFmt && typeof data.headerFmt === 'object') {
+    headerFmt.value = { ...data.headerFmt }
   }
 }
 
@@ -2719,6 +2819,20 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   top: 0;
   z-index: 6;
 }
+/* 表头行号格（第 1 行）：可点击选中整行表头 */
+.br-corner-row {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-fill-3);
+  }
+
+  &.is-on {
+    background: rgba(var(--primary-2), 0.9);
+    color: rgb(var(--primary-6));
+  }
+}
+
 /* 列标 + 列名两层表头，整体吸顶 */
 .br-colhead {
   top: 0;
@@ -2828,6 +2942,45 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 表头右侧筛选/排序入口（默认隐形，悬停或选中时出现） */
+.br-th-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-text-3);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+
+  &:hover {
+    background: var(--color-fill-3);
+    color: var(--color-text-1);
+  }
+
+  .is-active {
+    color: rgb(var(--primary-6));
+  }
+}
+
+.br-th:hover .br-th-btn,
+.br-th.is-on .br-th-btn {
+  opacity: 1;
+}
+
+/* 表头单元格被选中：淡蓝底 + 主题色内描边 */
+.br-th.in-sel {
+  background: rgba(var(--primary-1), 0.9);
+  box-shadow: inset 0 0 0 1px rgb(var(--primary-5));
 }
 
 .br-th-flag {
