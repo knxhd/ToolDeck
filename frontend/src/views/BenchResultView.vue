@@ -194,21 +194,24 @@
               :class="{ 'br-td-ann': !!c.annId, 'in-sel': isInSel(item.rowNo, c.key) }"
               @click="onCellClick(item, c.key, $event)"
               @contextmenu="onCellCtx($event, c, item)">
-              <template v-if="c.annId">
+              <template v-if="item.blank || c.blank">
+                <span class="br-cell-text"></span>
+              </template>
+              <template v-else-if="c.annId">
                 <input class="br-ann-input" :value="cellValue(item.rowNo, c.annId)" placeholder="—"
                   @input="onCellInputEvent(item.rowNo, c.annId, $event)" @blur="onCellBlur" />
               </template>
               <template v-else-if="c.wrap">
-                <span class="br-cell-text is-wrap" :title="item.row[c.colIdx]">{{ item.row[c.colIdx] || '' }}</span>
-                <a-button v-if="(item.row[c.colIdx] || '').length > 60" class="br-zoom" size="mini" type="text"
-                  @click="openDetail(c.label, item.row[c.colIdx])">
+                <span class="br-cell-text is-wrap" :title="cellText(item, c)">{{ cellText(item, c) }}</span>
+                <a-button v-if="cellText(item, c).length > 60" class="br-zoom" size="mini" type="text"
+                  @click="openDetail(c.label, cellText(item, c))">
                   <template #icon><icon-eye /></template>
                 </a-button>
               </template>
               <template v-else>
-                <span class="br-cell-text" :title="item.row[c.colIdx]">{{ item.row[c.colIdx] || '' }}</span>
-                <a-button v-if="(item.row[c.colIdx] || '').length > 60" class="br-zoom" size="mini" type="text"
-                  @click="openDetail(c.label, item.row[c.colIdx])">
+                <span class="br-cell-text" :title="cellText(item, c)">{{ cellText(item, c) }}</span>
+                <a-button v-if="cellText(item, c).length > 60" class="br-zoom" size="mini" type="text"
+                  @click="openDetail(c.label, cellText(item, c))">
                   <template #icon><icon-eye /></template>
                 </a-button>
               </template>
@@ -224,6 +227,11 @@
     <!-- 右键菜单：列头 / 行号 / 单元格 / 选区 / 全选 统一同一套功能 -->
     <div v-if="ctx.open" class="br-ctx" :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }">
       <div class="br-ctx-item" @click="ctxCopyColumn()"><span>复制整列</span></div>
+      <div class="br-ctx-sep"></div>
+      <div class="br-ctx-item" @click="ctxInsertRow('up')"><span>向上插入 1 行</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertRow('down')"><span>向下插入 1 行</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertCol('left')"><span>向左插入 1 列</span><span class="br-ctx-icon"><icon-arrow-left /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertCol('right')"><span>向右插入 1 列</span><span class="br-ctx-icon"><icon-arrow-right /></span></div>
       <div class="br-ctx-sep"></div>
       <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
       <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
@@ -567,9 +575,29 @@ function widthFor(name: string): number {
   return 150
 }
 
+/** 插入的空白列 / 空白行（只做整体插入，表头留空） */
+interface BlankCol { id: number; at: string; side: 'left' | 'right' }
+interface BlankRow { id: number; at: number; side: 'up' | 'down' }
+const blankCols = ref<BlankCol[]>([])
+const blankRows = ref<BlankRow[]>([])
+let blankColSeq = 1
+let blankRowSeq = 1
+
+const BLANK_COL_W = 120
+
+interface RenderColumn {
+  key: string
+  label: string
+  colIdx: number
+  annId: string | null
+  width: number
+  wrap: boolean
+  blank?: boolean
+}
+
 /** 表头 / 列定义：数据列 + 标注列，宽度与换行取 colMeta 里的用户配置。 */
-const allColumns = computed(() => {
-  const data = columns.value.map((name, i) => {
+const allColumns = computed<RenderColumn[]>(() => {
+  const data: RenderColumn[] = columns.value.map((name, i) => {
     const key = `d${i}`
     return {
       key,
@@ -583,7 +611,7 @@ const allColumns = computed(() => {
   // 「序号」固定排在数据列第一列（key 仍按 CSV 原始下标，取值不受影响）
   const seqIdx = data.findIndex((c) => c.label === '序号')
   if (seqIdx > 0) data.unshift(data.splice(seqIdx, 1)[0])
-  const ann = annCols.value.map((c) => {
+  const ann: RenderColumn[] = annCols.value.map((c) => {
     const key = `a${c.id}`
     return {
       key,
@@ -594,7 +622,23 @@ const allColumns = computed(() => {
       wrap: colMeta[key]?.wrap ?? false,
     }
   })
-  return [...data, ...ann]
+  const list: RenderColumn[] = [...data, ...ann]
+  // 空白列按插入锚点放进列序里（锚点列没了就放到最后）
+  for (const b of blankCols.value) {
+    const key = `b${b.id}`
+    const at = list.findIndex((c) => c.key === b.at)
+    const pos = at < 0 ? list.length : (b.side === 'left' ? at : at + 1)
+    list.splice(pos, 0, {
+      key,
+      label: '',
+      colIdx: -1,
+      annId: null,
+      width: colMeta[key]?.width ?? BLANK_COL_W,
+      wrap: colMeta[key]?.wrap ?? false,
+      blank: true,
+    })
+  }
+  return list
 })
 
 const displayColumns = computed(() => allColumns.value.filter((c) => !hiddenColumns.value.has(c.key)))
@@ -618,6 +662,7 @@ const rowH = computed(() => (displayColumns.value.some((c) => c.wrap) ? ROW_H_WR
 
 // ---- 取值 ----
 function valueOf(row: AnyRow, rowNo: number, key: string): string {
+  if (key.startsWith('b')) return ''
   if (key.startsWith('a')) {
     return annCells.value[String(rowNo)]?.[key.slice(1)] || ''
   }
@@ -625,10 +670,16 @@ function valueOf(row: AnyRow, rowNo: number, key: string): string {
   return row[idx] ?? ''
 }
 
+/** 单元格显示值（空白列 / 空白行恒为空） */
+function cellText(item: RenderRow | null | undefined, c: RenderColumn): string {
+  if (!item || item.blank || c.blank || c.colIdx < 0) return ''
+  return item.row[c.colIdx] ?? ''
+}
+
 // ---- 行数据（筛选 + 排序） ----
 const successIdx = computed(() => columns.value.findIndex((n) => n === '是否成功'))
 
-interface RenderRow { idx: number; rowNo: number; row: AnyRow; isFail: boolean; hasAnn: boolean }
+interface RenderRow { idx: number; rowNo: number; row: AnyRow; isFail: boolean; hasAnn: boolean; blank?: boolean }
 
 function rowPassesFilters(row: AnyRow, rowNo: number, kw: string): boolean {
   for (const key of Object.keys(valueFilters.value)) {
@@ -681,6 +732,15 @@ const visibleRows = computed<RenderRow[]>(() => {
       if (va !== '' && vb !== '' && !Number.isNaN(na) && !Number.isNaN(nb)) return (na - nb) * dir
       return va.localeCompare(vb, 'zh-CN') * dir
     })
+    out.forEach((r, i) => { r.idx = i })
+  }
+  // 空白行：插在锚点行上/下（锚点不在当前视图里就放头/尾）
+  if (blankRows.value.length) {
+    for (const b of blankRows.value) {
+      const ri = out.findIndex((r) => r.rowNo === b.at)
+      const pos = ri < 0 ? (b.side === 'up' ? 0 : out.length) : (b.side === 'up' ? ri : ri + 1)
+      out.splice(pos, 0, { idx: 0, rowNo: -b.id, row: [], isFail: false, hasAnn: false, blank: true })
+    }
     out.forEach((r, i) => { r.idx = i })
   }
   return out
@@ -1093,7 +1153,7 @@ function ctxCopyColumn() {
   ctx.open = false
   if (!cols.length) return
   const matrix = visibleRows.value.map((r) =>
-    cols.map((c) => (c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? '')),
+    cols.map((c) => (c.annId ? cellValue(r.rowNo, c.annId) : cellText(r, c))),
   )
   void copyTable(matrix)
 }
@@ -1146,7 +1206,7 @@ function ctxFitWidth() {
     if (!c) continue
     let max = c.label.length * 2
     for (const r of visibleRows.value.slice(0, 2000)) {
-      const v = c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''
+      const v = c.annId ? cellValue(r.rowNo, c.annId) : cellText(r, c)
       for (const line of String(v).split('\n')) {
         let w = 0
         for (const ch of line) w += ch.charCodeAt(0) > 255 ? 2 : 1
@@ -1164,6 +1224,29 @@ function colLabel(key: string): string {
   return displayColumns.value.find((c) => c.key === key)?.label || ''
 }
 
+/** 插入空白行：整行插入，表头/单元格留空，不做单元格错位 */
+function ctxInsertRow(side: 'up' | 'down') {
+  ctx.open = false
+  const vr = visibleRows.value
+  // 锚点：右键所在行 > 当前选中行 > 首行/末行
+  const at = ctx.rowNo > 0
+    ? ctx.rowNo
+    : (selRows.value[0] || (side === 'up' ? vr[0]?.rowNo : vr[vr.length - 1]?.rowNo) || 0)
+  if (!at) return
+  blankRows.value = [...blankRows.value, { id: blankRowSeq++, at, side }]
+  scheduleSaveView()
+}
+
+/** 插入空白列：整列插入，表头留空 */
+function ctxInsertCol(side: 'left' | 'right') {
+  ctx.open = false
+  const at = ctxKeys.value[0] || displayColumns.value[0]?.key || ''
+  if (!at) return
+  blankCols.value = [...blankCols.value, { id: blankColSeq++, at, side }]
+  scheduleSaveView()
+  nextTick(() => { measure() })
+}
+
 function ctxHideColumn() {
   const keys = ctxKeys.value
   if (!keys.length) return
@@ -1176,6 +1259,15 @@ function ctxHideColumn() {
 function ctxDeleteColumn() {
   const keys = ctxKeys.value
   ctx.open = false
+  // 空白列是本次插入的，直接移除
+  const blanks = keys.filter((k) => k.startsWith('b'))
+  if (blanks.length) {
+    const ids = blanks.map((k) => Number(k.slice(1)))
+    blankCols.value = blankCols.value.filter((b) => !ids.includes(b.id))
+    for (const k of blanks) delete colMeta[k]
+    scheduleSaveView()
+    nextTick(() => { measure() })
+  }
   const cols = displayColumns.value.filter((c) => keys.includes(c.key))
   if (!cols.length) return
   // 标注列真删，数据列仅从当前视图隐藏
@@ -1759,7 +1851,7 @@ async function exportView() {
       return
     }
     const data = visibleRows.value.map((item) =>
-      cols.map((c) => (c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')),
+      cols.map((c) => (c.annId ? cellValue(item.rowNo, c.annId) : cellText(item, c))),
     )
     const visible = visibleRows.value
     await exportRowsToXlsx({
@@ -1802,6 +1894,9 @@ interface ViewPayload {
   formats?: Record<string, CellFmt>
   defaultFont?: string
   defaultSize?: number
+  /** 插入的空白列 / 空白行 */
+  blankCols?: BlankCol[]
+  blankRows?: BlankRow[]
 }
 
 function currentView(): ViewPayload {
@@ -1814,6 +1909,8 @@ function currentView(): ViewPayload {
     formats: JSON.parse(JSON.stringify(formats.value)),
     defaultFont: defaultFont.value,
     defaultSize: defaultSize.value,
+    blankCols: JSON.parse(JSON.stringify(blankCols.value)),
+    blankRows: JSON.parse(JSON.stringify(blankRows.value)),
   }
 }
 
@@ -1839,6 +1936,24 @@ function applyView(data: ViewPayload | null | undefined) {
   if (typeof data.defaultSize === 'number' && data.defaultSize > 0) {
     defaultSize.value = data.defaultSize
     sizeSel.value = data.defaultSize
+  }
+  if (Array.isArray(data.blankCols)) {
+    const list: BlankCol[] = []
+    for (const b of data.blankCols) {
+      if (!b || typeof b.id !== 'number' || typeof b.at !== 'string') continue
+      list.push({ id: b.id, at: b.at, side: b.side === 'left' ? 'left' : 'right' })
+    }
+    blankCols.value = list
+    blankColSeq = list.reduce((m, b) => Math.max(m, b.id), 0) + 1
+  }
+  if (Array.isArray(data.blankRows)) {
+    const list: BlankRow[] = []
+    for (const b of data.blankRows) {
+      if (!b || typeof b.id !== 'number' || typeof b.at !== 'number') continue
+      list.push({ id: b.id, at: b.at, side: b.side === 'up' ? 'up' : 'down' })
+    }
+    blankRows.value = list
+    blankRowSeq = list.reduce((m, b) => Math.max(m, b.id), 0) + 1
   }
 }
 
