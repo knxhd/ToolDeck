@@ -231,7 +231,7 @@
             </a-button>
             <a-button size="mini" type="text" :disabled="j.status === 'running'"
               @click="download(j, 'csv', 'result', '?with_annotations=1')">
-              <template #icon><icon-download /></template>下载结果
+              <template #icon><icon-download /></template>下载结果(CSV)
             </a-button>
             <a-button size="mini" type="text" @click="download(j, 'params', 'params')">
               <template #icon><icon-upload /></template>下载参数

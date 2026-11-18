@@ -20,8 +20,9 @@
         <a-button size="small" @click="reload">
           <template #icon><icon-refresh /></template>刷新
         </a-button>
-        <a-button size="small" @click="downloadCsv(false)">下载原始</a-button>
-        <a-button size="small" type="primary" @click="downloadCsv(true)">下载结果（含标注）</a-button>
+        <a-button size="small" @click="downloadRawCsv">下载原始</a-button>
+        <a-button size="small" type="primary" title="按当前视图导出 xlsx（隐藏列 / 列宽 / 换行 / 排序 / 筛选都会带上）"
+          @click="exportView">下载结果（xlsx，含标注）</a-button>
         <a-button size="small" @click="closeWindow">关闭</a-button>
       </div>
     </header>
@@ -47,13 +48,52 @@
       <span v-else-if="truncated" class="br-warn" title="可通过「下载结果」查看完整结果">
         <icon-exclamation-circle />结果超过 {{ MAX_ROWS }} 行，仅加载前 {{ MAX_ROWS }} 行
       </span>
+      <span v-if="annError" class="br-warn" :title="'标注读取失败：' + annError">
+        <icon-exclamation-circle />标注读取失败（请确认后端已重启）
+        <a-button size="mini" type="text" @click="loadAnnotations">重试</a-button>
+      </span>
       <span v-if="saving" class="br-saving"><icon-loading />保存中…</span>
       <span v-else-if="dirty" class="br-saving">有未保存的标注，稍后自动保存</span>
     </div>
 
+    <!-- 格式工具条（作用于选中单元格；未选中时字体/字号为整表默认） -->
+    <div class="br-fmtbar">
+      <a-button size="mini" class="br-fmt-btn" :class="{ 'is-on': selHasBold }"
+        title="加粗选中单元格" @click="toggleBold"><b>B</b></a-button>
+      <span class="br-fmt-label">字体颜色</span>
+      <a-color-picker v-model="fontColor" size="mini" :disabled-alpha="true"
+        @change="onPickFontColor" />
+      <span class="br-fmt-label">单元格颜色</span>
+      <a-color-picker v-model="bgColor" size="mini" :disabled-alpha="true"
+        @change="onPickBgColor" />
+      <span class="br-fmt-label">字体</span>
+      <a-select v-model="fontSel" size="mini" style="width: 116px" allow-clear placement="bottom"
+        placeholder="默认" @change="onPickFont">
+        <a-option value="微软雅黑">微软雅黑</a-option>
+        <a-option value="宋体">宋体</a-option>
+        <a-option value="黑体">黑体</a-option>
+        <a-option value="楷体">楷体</a-option>
+        <a-option value="仿宋">仿宋</a-option>
+        <a-option value="等线">等线</a-option>
+        <a-option value="Arial">Arial</a-option>
+        <a-option value="Consolas">Consolas</a-option>
+      </a-select>
+      <span class="br-fmt-label">字号</span>
+      <a-select v-model="sizeSel" size="mini" style="width: 76px" placement="bottom"
+        @change="onPickSize">
+        <a-option v-for="s in [10, 11, 12, 14, 16, 18, 20]" :key="s" :value="s">{{ s }}</a-option>
+      </a-select>
+      <a-button size="mini" @click="clearFormat">清除格式</a-button>
+      <span v-if="selCells.length" class="br-fmt-hint">已选 {{ selCells.length }} 格（Shift 点击可扩选范围）</span>
+      <span v-else class="br-fmt-hint muted">先点选单元格；不选时字体/字号作用于整表</span>
+    </div>
+
     <!-- 表格 -->
     <div ref="wrapRef" class="br-grid-wrap" @scroll="onScroll">
-      <div class="br-inner" :style="{ width: totalWidth + 'px' }">
+      <div v-if="!ready" class="br-loading">
+        <icon-loading class="spin" />正在加载结果…
+      </div>
+      <div v-else class="br-inner" :style="{ width: totalWidth + 'px' }">
         <div class="br-head-row">
           <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
             :class="{ 'is-sorted': sortKey === c.key }" @click="openColumnPanel(c, $event)">
@@ -68,11 +108,13 @@
           <div v-for="item in windowRows" :key="item.rowNo" class="br-row"
             :class="{ fail: item.isFail, 'has-ann': item.hasAnn }"
             :style="{ height: rowH + 'px', transform: `translateY(${item.idx * rowH}px)` }">
-            <div v-for="c in displayColumns" :key="c.key" class="br-td" :style="{ width: c.width + 'px' }"
-              :class="{ 'br-td-ann': !!c.annId }">
+            <div v-for="c in displayColumns" :key="c.key" class="br-td"
+              :style="{ width: c.width + 'px', ...cellCss(item.rowNo, c.key) }"
+              :class="{ 'br-td-ann': !!c.annId, 'is-sel': selSet.has(cellFmtKey(item.rowNo, c.key)) }"
+              @click="onCellClick(item, c.key, $event)">
               <template v-if="c.annId">
                 <input class="br-ann-input" :value="cellValue(item.rowNo, c.annId)" placeholder="—"
-                  @input="onCellInputEvent(item.rowNo, c.annId, $event)" />
+                  @input="onCellInputEvent(item.rowNo, c.annId, $event)" @blur="onCellBlur" />
               </template>
               <template v-else-if="c.wrap">
                 <span class="br-cell-text is-wrap" :title="item.row[c.colIdx]">{{ item.row[c.colIdx] || '' }}</span>
@@ -220,6 +262,7 @@ import { useRoute } from 'vue-router'
 
 import { getToken } from '@/api/client'
 import { toast } from '@/utils/feedback'
+import { exportRowsToXlsx } from '@/utils/xlsxExport'
 
 type AnyRow = string[]
 
@@ -236,8 +279,11 @@ const route = useRoute()
 const jobId = String(route.params.jobId || '')
 
 const loading = ref(false)
+/** 首次渲染前置为 false：视图与标注都到位后再画表，避免先闪原始表 */
+const ready = ref(false)
 const truncated = ref(false)
 const rows = ref<AnyRow[]>([])
+const totalRows = ref(0)
 const columns = ref<string[]>([])
 const job = reactive<any>({})
 const keyword = ref('')
@@ -252,12 +298,32 @@ const annCols = ref<AnnCol[]>([])
 const annCells = ref<Record<string, Record<string, string>>>({})
 const dirty = ref(false)
 const saving = ref(false)
+/** 标注读取失败原因（多为后端未重启导致接口不存在） */
+const annError = ref('')
 let saveTimer: ReturnType<typeof setTimeout> | null = null
 
 // ---- 列配置（宽度 / 自动换行），key = d<索引> | a<标注列 id> ----
 const colMeta = reactive<Record<string, ColMeta>>({})
 const hiddenColumns = ref<Set<string>>(new Set())
 const columnPanelOpen = ref(false)
+
+// ---- 单元格样式（加粗 / 字色 / 底色 / 字体 / 字号），key = `<行号>|<列 key>` ----
+interface CellFmt { bold?: boolean; color?: string; bg?: string; font?: string; size?: number }
+const formats = ref<Record<string, CellFmt>>({})
+/** 整表默认字体 / 字号（px），未单独设置的单元格跟随 */
+const defaultFont = ref('')
+const defaultSize = ref(12)
+/** 工具栏下拉的当前值（与默认值分开，选中单元格时只改单元格） */
+const fontSel = ref('')
+const sizeSel = ref(12)
+const fontColor = ref('#1f2329')
+const bgColor = ref('#fff1b8')
+
+// ---- 选区（矩形选择，shift 扩展） ----
+interface CellPos { rowNo: number; colKey: string }
+const selAnchor = ref<CellPos | null>(null)
+const selFocus = ref<CellPos | null>(null)
+
 
 // ---- 排序与筛选 ----
 const sortKey = ref<string | null>(null)
@@ -426,9 +492,139 @@ const visibleRows = computed<RenderRow[]>(() => {
   return out
 })
 
+// ---- 单元格选区与样式 ----
+function cellFmtKey(rowNo: number, colKey: string): string {
+  return `${rowNo}|${colKey}`
+}
+
+/** 单元格最终样式：整表默认 + 单元格自身的覆盖 */
+function cellCss(rowNo: number, colKey: string): Record<string, string> {
+  const f = formats.value[cellFmtKey(rowNo, colKey)]
+  const out: Record<string, string> = {}
+  if (f?.bold) out.fontWeight = '600'
+  if (f?.color) out.color = f.color
+  if (f?.bg) out.background = f.bg
+  const fam = f?.font || defaultFont.value
+  if (fam) out.fontFamily = fam
+  out.fontSize = `${f?.size || defaultSize.value}px`
+  return out
+}
+
+/** 选区内的单元格（按可见行 × 可见列取矩形，上限 4000 格防止误操作卡死） */
+const selCells = computed<CellPos[]>(() => {
+  const a = selAnchor.value
+  const b = selFocus.value
+  if (!a || !b) return []
+  const cols = displayColumns.value.map((c) => c.key)
+  const vr = visibleRows.value
+  let ci1 = cols.indexOf(a.colKey)
+  let ci2 = cols.indexOf(b.colKey)
+  let ri1 = vr.findIndex((r) => r.rowNo === a.rowNo)
+  let ri2 = vr.findIndex((r) => r.rowNo === b.rowNo)
+  if (ci1 < 0 || ci2 < 0 || ri1 < 0 || ri2 < 0) return []
+  if (ri1 > ri2) [ri1, ri2] = [ri2, ri1]
+  if (ci1 > ci2) [ci1, ci2] = [ci2, ci1]
+  if ((ri2 - ri1 + 1) * (ci2 - ci1 + 1) > 4000) {
+    ri2 = Math.min(ri2, ri1 + 3999)
+  }
+  const out: CellPos[] = []
+  for (let r = ri1; r <= ri2; r++) {
+    for (let c = ci1; c <= ci2; c++) out.push({ rowNo: vr[r].rowNo, colKey: cols[c] })
+  }
+  return out
+})
+
+const selSet = computed<Set<string>>(
+  () => new Set(selCells.value.map((p) => cellFmtKey(p.rowNo, p.colKey))),
+)
+
+function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
+  const pos: CellPos = { rowNo: item.rowNo, colKey }
+  if (ev.shiftKey && selAnchor.value) {
+    selFocus.value = pos
+  } else {
+    selAnchor.value = pos
+    selFocus.value = pos
+  }
+}
+
+function clearSelection() {
+  selAnchor.value = null
+  selFocus.value = null
+}
+
+/** Esc 取消选区 */
+function onKeydown(ev: KeyboardEvent) {
+  if (ev.key === 'Escape' && selCells.value.length) clearSelection()
+}
+
+function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
+  if (!selCells.value.length) return
+  const map: Record<string, CellFmt> = { ...formats.value }
+  for (const p of selCells.value) {
+    const k = cellFmtKey(p.rowNo, p.colKey)
+    const cur: CellFmt = { ...(map[k] || {}) }
+    if (onlyIf && !onlyIf(cur)) continue
+    for (const [field, value] of Object.entries(patch)) {
+      const key = field as keyof CellFmt
+      if (value === undefined || value === null || value === '') delete cur[key]
+      else (cur as any)[key] = value
+    }
+    if (Object.keys(cur).length) map[k] = cur
+    else delete map[k]
+  }
+  formats.value = map
+}
+
+function toggleBold() {
+  if (!selCells.value.length) return
+  const allBold = selCells.value.every(
+    (p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold,
+  )
+  applyFormat({ bold: allBold ? undefined : true })
+}
+
+function onPickFontColor(color: string) {
+  applyFormat({ color: color || undefined })
+}
+
+function onPickBgColor(color: string) {
+  applyFormat({ bg: color || undefined })
+}
+
+/** 有选区时作用于选中单元格，没有选区时调整为整表默认 */
+function onPickFont(value: any) {
+  const name = typeof value === 'string' ? value : ''
+  fontSel.value = name
+  if (selCells.value.length) applyFormat({ font: name || undefined })
+  else defaultFont.value = name
+}
+
+function onPickSize(value: any) {
+  const n = Number(value)
+  if (!n) return
+  sizeSel.value = n
+  if (selCells.value.length) applyFormat({ size: n })
+  else defaultSize.value = n
+}
+
+const selHasBold = computed(() =>
+  selCells.value.length > 0
+  && selCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold),
+)
+
+function clearFormat() {
+  if (!selCells.value.length) return
+  const map: Record<string, CellFmt> = { ...formats.value }
+  for (const p of selCells.value) delete map[cellFmtKey(p.rowNo, p.colKey)]
+  formats.value = map
+}
+
+
 // ---- 虚拟滚动 ----
 const wrapRef = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
+
 const viewportH = ref(600)
 const overscan = 8
 
@@ -463,19 +659,21 @@ async function apiGet<T>(url: string): Promise<T> {
 
 async function reload() {
   loading.value = true
+  ready.value = false
   truncated.value = false
   rows.value = []
   try {
-    // 先取第一页拿到表头与任务信息
+    // 先把「调整」拿到手（视图 + 标注），再读行数据，避免先渲染原表再套用调整造成闪现
+    await Promise.all([loadView(), loadAnnotations()])
+    // 取第一页拿到表头与任务信息
     const first = await apiGet<any>(`/api/bench/jobs/${jobId}/rows?offset=0&limit=${PAGE_SIZE}`)
     Object.assign(job, first.job || {})
     columns.value = first.columns || []
     const total = first.total || 0
+    totalRows.value = total
     const cap = Math.min(total, MAX_ROWS)
     truncated.value = total > MAX_ROWS
     rows.value = first.rows || []
-    await nextTick()
-    measure()
     // 剩余行分批补齐（虚拟滚动下渲染量恒定，加载期间表格已可交互）
     while (rows.value.length < cap) {
       const page = await apiGet<any>(
@@ -485,8 +683,11 @@ async function reload() {
       if (!got.length) break
       rows.value = rows.value.concat(got)
     }
-    await loadAnnotations()
+    ready.value = true
+    await nextTick()
+    measure()
   } catch (err: any) {
+    ready.value = true
     toast.error(err.message || '加载结果失败')
   } finally {
     loading.value = false
@@ -501,8 +702,11 @@ async function loadAnnotations() {
     annCols.value = (data.cols || []).filter((c) => c && c.id)
     annCells.value = data.cells || {}
     dirty.value = false
+    annError.value = ''
   } catch (err: any) {
-    toast.error(err.message || '加载标注失败')
+    // 后端未重启（接口 404）时最容易出现：显式提示，避免以为标注丢了
+    annError.value = err.message || '未知错误'
+    toast.error(`标注加载失败：${annError.value}`)
   }
 }
 
@@ -510,7 +714,12 @@ async function loadAnnotations() {
 function scheduleSave() {
   dirty.value = true
   if (saveTimer) clearTimeout(saveTimer)
-  saveTimer = setTimeout(() => { void flushSave() }, 800)
+  saveTimer = setTimeout(() => { void flushSave() }, 400)
+}
+
+/** 离开输入框立即落库，避免刚填完就刷新丢数据。 */
+function onCellBlur() {
+  void flushSave()
 }
 
 async function flushSave() {
@@ -526,7 +735,11 @@ async function flushSave() {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
       body: JSON.stringify({ cols: annCols.value, cells: annCells.value }),
     })
-    if (!res.ok) throw new Error('保存标注失败')
+    if (!res.ok) {
+      throw new Error(res.status === 404
+        ? '保存标注失败：接口不存在，请重启后端后再试'
+        : `保存标注失败（${res.status}）`)
+    }
     dirty.value = false
   } catch (err: any) {
     toast.error(err.message || '保存标注失败')
@@ -802,21 +1015,221 @@ function openDetail(label: string, text: string) {
 }
 
 // ---- 下载 / 关闭 ----
-async function downloadCsv(withAnnotations: boolean) {
+/** 原始结果 CSV（服务端原样，不含标注与视图调整）。 */
+async function downloadRawCsv() {
   try {
-    const url = `/api/bench/jobs/${jobId}/csv${withAnnotations ? '?with_annotations=1' : ''}`
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } })
+    const res = await fetch(`/api/bench/jobs/${jobId}/csv`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    })
     if (!res.ok) throw new Error('下载失败')
     const blob = await res.blob()
     const u = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = u
-    a.download = `benchmark-result-${job.name || jobId}${withAnnotations ? '-annotated' : ''}.csv`
+    a.download = `benchmark-result-${job.name || jobId}.csv`
     a.click()
     URL.revokeObjectURL(u)
   } catch (err: any) {
     toast.error(err.message || '下载失败')
   }
+}
+
+/** 导出上限：避免在浏览器里拼超大表把内存打满。 */
+const EXPORT_MAX_ROWS = 20000
+const NUMERIC_LABELS = new Set(['序号', '状态码', '总耗时ms', '首帧耗时ms', '响应字节数'])
+
+/** 导出前把还没加载完的行补齐（结果页默认只加载前 5000 行）。 */
+async function ensureRowsForExport(): Promise<boolean> {
+  const target = Math.min(totalRows.value || rows.value.length, EXPORT_MAX_ROWS)
+  if (rows.value.length >= target) return totalRows.value <= EXPORT_MAX_ROWS
+  loading.value = true
+  try {
+    while (rows.value.length < target) {
+      const page = await apiGet<any>(
+        `/api/bench/jobs/${jobId}/rows?offset=${rows.value.length}&limit=${PAGE_SIZE}`,
+      )
+      const got: AnyRow[] = page.rows || []
+      if (!got.length) break
+      rows.value = rows.value.concat(got)
+    }
+  } catch (err: any) {
+    toast.error(err.message || '补齐结果行失败')
+  } finally {
+    loading.value = false
+  }
+  await nextTick()
+  return totalRows.value <= EXPORT_MAX_ROWS
+}
+
+/** 按当前视图（隐藏列 / 列宽 / 换行 / 排序 / 筛选 / 标注）导出 xlsx。 */
+async function exportView() {
+  try {
+    const complete = await ensureRowsForExport()
+    if (!complete) {
+      toast.warning(`结果超过 ${EXPORT_MAX_ROWS} 行，只导出前 ${EXPORT_MAX_ROWS} 行`)
+    }
+    const cols = displayColumns.value
+    if (!cols.length) {
+      toast.warning('没有可导出的列，请先在列设置里恢复列')
+      return
+    }
+    const data = visibleRows.value.map((item) =>
+      cols.map((c) => (c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')),
+    )
+    const safeName = String(job.name || jobId).replace(/[\\/:*?"<>|]/g, '_')
+    const visible = visibleRows.value
+    await exportRowsToXlsx({
+      sheetName: '结果',
+      columns: cols.map((c) => ({
+        label: c.label,
+        width: c.width,
+        wrap: c.wrap,
+        numeric: !c.annId && NUMERIC_LABELS.has(c.label),
+      })),
+      rows: data,
+      defaultFont: defaultFont.value || undefined,
+      defaultSize: defaultSize.value,
+      cellStyle: (r, c) => {
+        const item = visible[r]
+        const col = cols[c]
+        if (!item || !col) return null
+        const f = formats.value[cellFmtKey(item.rowNo, col.key)]
+        if (!f) return null
+        return { bold: f.bold, color: f.color, bg: f.bg, font: f.font, fontSize: f.size }
+      },
+      fileName: `benchmark-result-${safeName}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '')}`,
+    })
+  } catch (err: any) {
+    toast.error(err.message || '导出失败')
+  }
+}
+
+// ---- 视图设置持久化：后端为准（按任务存），localStorage 只做离线兜底缓存 ----
+const VIEW_KEY = `bench.view.${jobId}`
+let viewTimer: ReturnType<typeof setTimeout> | null = null
+
+interface ViewPayload {
+  colMeta?: Record<string, { width: number; wrap: boolean }>
+  hidden?: string[]
+  sort?: { key: string; dir: 'asc' | 'desc' } | null
+  valueFilters?: Record<string, string[]>
+  condFilters?: Record<string, CondFilter>
+  /** 单元格样式，key = `<行号>|<列 key>` */
+  formats?: Record<string, CellFmt>
+  defaultFont?: string
+  defaultSize?: number
+}
+
+function currentView(): ViewPayload {
+  return {
+    colMeta: JSON.parse(JSON.stringify(colMeta)),
+    hidden: [...hiddenColumns.value],
+    sort: sortKey.value ? { key: sortKey.value, dir: sortDir.value } : null,
+    valueFilters: JSON.parse(JSON.stringify(valueFilters.value)),
+    condFilters: JSON.parse(JSON.stringify(condFilters.value)),
+    formats: JSON.parse(JSON.stringify(formats.value)),
+    defaultFont: defaultFont.value,
+    defaultSize: defaultSize.value,
+  }
+}
+
+function applyView(data: ViewPayload | null | undefined) {
+  if (!data) return
+  if (data.colMeta && typeof data.colMeta === 'object') {
+    for (const [k, v] of Object.entries(data.colMeta)) {
+      if (v && typeof v.width === 'number') colMeta[k] = { width: v.width, wrap: !!v.wrap }
+    }
+  }
+  if (Array.isArray(data.hidden)) hiddenColumns.value = new Set<string>(data.hidden)
+  if (data.sort?.key) {
+    sortKey.value = data.sort.key
+    sortDir.value = data.sort.dir === 'desc' ? 'desc' : 'asc'
+  }
+  if (data.valueFilters && typeof data.valueFilters === 'object') valueFilters.value = data.valueFilters
+  if (data.condFilters && typeof data.condFilters === 'object') condFilters.value = data.condFilters
+  if (data.formats && typeof data.formats === 'object') formats.value = { ...data.formats }
+  if (typeof data.defaultFont === 'string') {
+    defaultFont.value = data.defaultFont
+    fontSel.value = data.defaultFont
+  }
+  if (typeof data.defaultSize === 'number' && data.defaultSize > 0) {
+    defaultSize.value = data.defaultSize
+    sizeSel.value = data.defaultSize
+  }
+}
+
+function readLocalView(): ViewPayload | null {
+  try {
+    const raw = localStorage.getItem(VIEW_KEY)
+    return raw ? (JSON.parse(raw) as ViewPayload) : null
+  } catch {
+    return null
+  }
+}
+
+function writeLocalView(data: ViewPayload) {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(data))
+  } catch { /* 忽略 */ }
+}
+
+/** 保存视图到后端；失败时至少保住本地缓存，下次打开还能恢复。 */
+async function saveView() {
+  const payload = currentView()
+  writeLocalView(payload)
+  try {
+    const res = await fetch(`/api/bench/jobs/${jobId}/view`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error(`${res.status}`)
+  } catch {
+    // 后端不可用时不打扰用户，本地缓存已写入
+  }
+}
+
+function scheduleSaveView() {
+  if (viewTimer) clearTimeout(viewTimer)
+  viewTimer = setTimeout(() => { void saveView() }, 400)
+}
+
+/**
+ * 载入视图：优先后端；后端没有（老任务 / 未重启服务）时退回本地缓存，
+ * 并把本地这份同步写回后端，保证下一次打开就是后端数据。
+ */
+async function loadView() {
+  try {
+    const data = await apiGet<ViewPayload>(`/api/bench/jobs/${jobId}/view`)
+    if (data && Object.keys(data).length) {
+      applyView(data)
+      writeLocalView(data)
+      return
+    }
+    const local = readLocalView()
+    if (local) {
+      applyView(local)
+      void saveView()
+    }
+  } catch {
+    applyView(readLocalView())
+  }
+}
+
+
+/** 刷新 / 关页前把还没提交的标注用 keepalive 请求补发一次。 */
+function onBeforeUnload() {
+  if (!dirty.value) return
+  try {
+    const body = JSON.stringify({ cols: annCols.value, cells: annCells.value })
+    if (body.length > 60000) return // 超出 keepalive 限制，交给下一页重新编辑
+    void fetch(`/api/bench/jobs/${jobId}/annotations`, {
+      method: 'PUT',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body,
+    })
+  } catch { /* 页面即将卸载，忽略 */ }
 }
 
 function closeWindow() {
@@ -845,14 +1258,22 @@ onMounted(() => {
   void reload()
   window.addEventListener('resize', onResize)
   document.addEventListener('mousedown', onDocMousedown)
+  window.addEventListener('beforeunload', onBeforeUnload)
+  window.addEventListener('keydown', onKeydown)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   document.removeEventListener('mousedown', onDocMousedown)
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  window.removeEventListener('keydown', onKeydown)
   stopResize()
   if (saveTimer) clearTimeout(saveTimer)
   if (kwTimer) clearTimeout(kwTimer)
+  if (viewTimer) {
+    clearTimeout(viewTimer)
+    saveView()
+  }
   if (dirty.value) void flushSave()
 })
 
@@ -866,6 +1287,9 @@ watch(keyword, (v) => {
 
 // 换行 / 列宽变化后重算可视区
 watch(rowH, () => { nextTick(measure) })
+
+// 视图调整（列宽 / 换行 / 隐藏列 / 排序 / 筛选）自动落本地，刷新后恢复
+watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, formats, defaultFont, defaultSize], scheduleSaveView, { deep: true })
 </script>
 
 <style lang="less" scoped>
@@ -941,6 +1365,24 @@ watch(rowH, () => { nextTick(measure) })
   min-height: 0;
   overflow: auto;
   background: var(--color-bg-2);
+}
+
+.br-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 180px;
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.br-loading .spin {
+  animation: br-spin 1s linear infinite;
+}
+
+@keyframes br-spin {
+  to { transform: rotate(360deg); }
 }
 
 .br-inner {
@@ -1041,6 +1483,7 @@ watch(rowH, () => { nextTick(measure) })
 }
 
 .br-td {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -1061,6 +1504,53 @@ watch(rowH, () => { nextTick(measure) })
 
 .br-td-ann {
   background: rgba(var(--green-1), 0.35);
+}
+
+/* 选中单元格：淡蓝底 + 内描边 */
+.br-td.is-sel {
+  box-shadow: inset 0 0 0 1px rgb(var(--primary-5));
+}
+.br-td.is-sel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--primary-6), 0.08);
+  pointer-events: none;
+}
+
+.br-fmtbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-border-1);
+  background: var(--color-bg-1);
+}
+
+.br-fmt-btn {
+  min-width: 28px;
+  padding: 0 8px;
+  font-weight: 400;
+
+  &.is-on {
+    background: rgba(var(--primary-1), 1);
+    border-color: rgb(var(--primary-5));
+    color: rgb(var(--primary-6));
+  }
+  b { font-size: 12px; }
+}
+
+.br-fmt-label {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.br-fmt-hint {
+  font-size: 12px;
+  color: var(--color-text-2);
+
+  &.muted { color: var(--color-text-3); }
 }
 
 .br-cell-text {
@@ -1093,8 +1583,9 @@ watch(rowH, () => { nextTick(measure) })
   width: 100%;
   height: 26px;
   padding: 0 6px;
-  font-size: 12px;
-  color: var(--color-text-1);
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 3px;

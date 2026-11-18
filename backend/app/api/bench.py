@@ -12,6 +12,8 @@
 - GET  /api/bench/jobs/{id}/rows    按页读取结果行（结果查看页用）
 - GET  /api/bench/jobs/{id}/annotations   读取自定义标注列与单元格
 - PUT  /api/bench/jobs/{id}/annotations   保存标注（整体覆盖）
+- GET  /api/bench/jobs/{id}/view          读取结果页视图设置
+- PUT  /api/bench/jobs/{id}/view          保存结果页视图设置（整体覆盖）
 - DELETE /api/bench/jobs/{id}       删除任务记录（连同任务目录）
 """
 from __future__ import annotations
@@ -428,6 +430,34 @@ async def put_annotations(
             cells[str(row_no)] = cleaned
     bench_store.save_annotations(job_id, user["id"], {"cols": cols, "cells": cells})
     return {"ok": True, "cols": len(cols)}
+
+
+@router.get("/jobs/{job_id}/view")
+async def get_view(job_id: str, user: dict = Depends(current_user)) -> dict:
+    """结果页视图设置（列宽 / 隐藏列 / 换行 / 排序 / 筛选）。"""
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return bench_store.get_view(job_id, user["id"])
+
+
+@router.put("/jobs/{job_id}/view")
+async def put_view(
+    job_id: str,
+    body: dict = Body(...),
+    user: dict = Depends(current_user),
+) -> dict:
+    """整体保存视图设置，后端只做结构校验，字段语义由前端解释。"""
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="视图数据格式不正确")
+    payload = json.dumps(body, ensure_ascii=False)
+    if len(payload) > 512 * 1024:
+        raise HTTPException(status_code=400, detail="视图数据过大")
+    bench_store.save_view(job_id, user["id"], body)
+    return {"ok": True}
 
 
 @router.get("/jobs/{job_id}/params")

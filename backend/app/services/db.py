@@ -198,6 +198,15 @@ def init_db() -> None:
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             );
 
+            -- 结果页视图设置（列宽 / 隐藏列 / 换行 / 排序 / 筛选），每个任务一份，跨浏览器/设备保持一致
+            CREATE TABLE IF NOT EXISTS bench_job_views (
+                job_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS secrets (
                 id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,

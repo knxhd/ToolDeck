@@ -255,6 +255,7 @@ def delete_job(job_id: str, user_id: int) -> bool:
     with get_db() as conn:
         conn.execute("DELETE FROM bench_jobs WHERE id=? AND user_id=?", (job_id, user_id))
         conn.execute("DELETE FROM bench_annotations WHERE job_id=?", (job_id,))
+        conn.execute("DELETE FROM bench_job_views WHERE job_id=?", (job_id,))
     # 清理整个任务目录
     result_path = job.get("result_path") or ""
     if result_path:
@@ -295,6 +296,38 @@ def save_annotations(job_id: str, user_id: int, payload: dict) -> None:
     with get_db() as conn:
         conn.execute(
             """INSERT INTO bench_annotations (job_id, user_id, payload_json, updated_at)
+               VALUES (?, ?, ?, datetime('now', 'localtime'))
+               ON CONFLICT(job_id) DO UPDATE SET
+                   payload_json=excluded.payload_json,
+                   updated_at=excluded.updated_at""",
+            (job_id, user_id, text),
+        )
+
+
+# ---------- 结果页视图设置 ----------
+
+def get_view(job_id: str, user_id: int) -> dict:
+    """读取结果页视图设置；没有则返回空对象。"""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT payload_json FROM bench_job_views WHERE job_id=? AND user_id=?",
+            (job_id, user_id),
+        ).fetchone()
+    if not row:
+        return {}
+    try:
+        data = json.loads(row["payload_json"] or "{}")
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_view(job_id: str, user_id: int, payload: dict) -> None:
+    """整体覆盖保存视图设置（字段不做强约束，由前端自行解释）。"""
+    text = json.dumps(payload, ensure_ascii=False)
+    with get_db() as conn:
+        conn.execute(
+            """INSERT INTO bench_job_views (job_id, user_id, payload_json, updated_at)
                VALUES (?, ?, ?, datetime('now', 'localtime'))
                ON CONFLICT(job_id) DO UPDATE SET
                    payload_json=excluded.payload_json,
@@ -347,6 +380,8 @@ __all__ = [
     "delete_job",
     "get_annotations",
     "save_annotations",
+    "get_view",
+    "save_view",
     "request_cancel",
     "is_cancelled",
     "clear_cancel",
