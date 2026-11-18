@@ -168,52 +168,21 @@
       </div>
     </div>
 
-    <!-- 右键菜单（列 / 行 / 单元格） -->
+    <!-- 右键菜单：列头 / 行号 / 单元格 / 选区 / 全选 统一同一套功能 -->
     <div v-if="ctx.open" class="br-ctx" :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }">
-      <template v-if="ctx.type === 'col'">
-        <div class="br-ctx-item" @click="ctxCopyColumn()"><span>复制整列</span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
-        <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
-        <div class="br-ctx-item" @click="ctxFilter()"><span>筛选此列</span><span class="br-ctx-icon"><icon-filter /></span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="ctxWrap()"><span>自动换行</span>
-          <span class="br-ctx-sub">{{ selColWrap ? '开' : '关' }}</span></div>
-        <div class="br-ctx-item" @click="ctxFitWidth()"><span>列宽自适应</span></div>
-        <div class="br-ctx-item" @click="ctxHideColumn()"><span>隐藏此列</span></div>
-        <div class="br-ctx-item danger" @click="ctxDeleteColumn()"><span>删除此列</span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="ctxClearFormat()"><span>清除此列格式</span></div>
-      </template>
-
-      <template v-else-if="ctx.type === 'all'">
-        <div class="br-ctx-item" @click="ctxCopyAll()"><span>复制整表</span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="selectAllCells()"><span>取消全选</span></div>
-        <div class="br-ctx-item danger" @click="ctxClearAllFormat()"><span>清除整表格式</span></div>
-      </template>
-
-      <template v-else-if="ctx.type === 'sel'">
-        <div class="br-ctx-item" @click="ctxCopySelection()"><span>复制选区</span></div>
-        <div class="br-ctx-item" @click="ctxClearSelectionFormat()"><span>清除选区格式</span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="ctxClearSelection()"><span>取消选择</span></div>
-      </template>
-
-      <template v-else-if="ctx.type === 'row'">
-        <div class="br-ctx-item" @click="ctxCopyRow()"><span>复制整行</span></div>
-        <div class="br-ctx-item" @click="ctxRowFilter()"><span>只显示此行相同值</span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="ctxClearRowFormat()"><span>清除此行格式</span></div>
-      </template>
-
-      <template v-else>
-        <div class="br-ctx-item" @click="ctxCopyCell()"><span>复制</span></div>
-        <div class="br-ctx-item" @click="ctxCellDetail()"><span>查看单元格详情</span></div>
-        <div class="br-ctx-sep"></div>
-        <div class="br-ctx-item" @click="ctxBold()"><span>加粗</span></div>
-        <div class="br-ctx-item" @click="ctxClearFormat()"><span>清除格式</span></div>
-      </template>
+      <div class="br-ctx-item" @click="ctxCopyColumn()"><span>复制整列</span></div>
+      <div class="br-ctx-sep"></div>
+      <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
+      <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
+      <div class="br-ctx-item" @click="ctxFilter()"><span>筛选此列</span><span class="br-ctx-icon"><icon-filter /></span></div>
+      <div class="br-ctx-sep"></div>
+      <div class="br-ctx-item" @click="ctxWrap()"><span>自动换行</span>
+        <span class="br-ctx-sub">{{ selColWrap ? '开' : '关' }}</span></div>
+      <div class="br-ctx-item" @click="ctxFitWidth()"><span>列宽自适应</span></div>
+      <div class="br-ctx-item" @click="ctxHideColumn()"><span>隐藏此列</span></div>
+      <div class="br-ctx-item danger" @click="ctxDeleteColumn()"><span>删除此列</span></div>
+      <div class="br-ctx-sep"></div>
+      <div class="br-ctx-item" @click="ctxClearFormat()"><span>清除此列格式</span></div>
     </div>
 
     <!-- 列操作 / 筛选面板（类似飞书表头下拉） -->
@@ -916,7 +885,8 @@ function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell' | 'all' | 'sel', c
   const menuW = 200
   const menuH = type === 'col' ? 300 : type === 'sel' ? 160 : 170
   ctx.type = type
-  ctx.colKey = col?.key || (selCols.value[0] || '')
+  // 统一菜单都基于「目标列」：右键点中的列 > 已选列 > 当前第一列
+  ctx.colKey = col?.key || selCols.value[0] || displayColumns.value[0]?.key || ''
   ctx.rowNo = item?.rowNo || 0
   ctx.x = Math.min(ev.clientX, window.innerWidth - menuW - 8)
   ctx.y = Math.min(ev.clientY, window.innerHeight - menuH - 8)
@@ -995,9 +965,7 @@ async function copyText(text: string) {
 }
 
 function ctxCopyColumn() {
-  const cols = selCols.value.length
-    ? displayColumns.value.filter((c) => selCols.value.includes(c.key))
-    : displayColumns.value.filter((c) => c.key === ctx.colKey)
+  const cols = displayColumns.value.filter((c) => ctxKeys.value.includes(c.key))
   ctx.open = false
   if (!cols.length) return
   const matrix = visibleRows.value.map((r) =>
@@ -1006,33 +974,8 @@ function ctxCopyColumn() {
   void copyTable(matrix)
 }
 
-function ctxCopyRow() {
-  const rows = selRows.value.length
-    ? visibleRows.value.filter((r) => selRows.value.includes(r.rowNo))
-    : visibleRows.value.filter((r) => r.rowNo === ctx.rowNo)
-  ctx.open = false
-  if (!rows.length) return
-  const matrix = rows.map((it) =>
-    displayColumns.value.map((c) => (c.annId ? cellValue(it.rowNo, c.annId) : it.row[c.colIdx] ?? '')),
-  )
-  void copyTable(matrix)
-}
 
-function ctxCopyCell() {
-  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
-  const c = ctxColumn()
-  ctx.open = false
-  if (!item || !c) return
-  void copyText(c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')
-}
 
-function ctxCellDetail() {
-  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
-  const c = ctxColumn()
-  ctx.open = false
-  if (!item || !c) return
-  openDetail(c.label, c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')
-}
 
 function ctxSort(dir: 'asc' | 'desc') {
   if (!ctx.colKey) return
@@ -1049,39 +992,56 @@ function ctxFilter() {
   openColumnPanel(c, null)
 }
 
-const selColWrap = computed(() => !!colMeta[selCols.value[0] || '']?.wrap)
+/** 统一菜单作用的目标列：多选列时全部生效 */
+const ctxKeys = computed<string[]>(() => {
+  if (selCols.value.length > 1) return selCols.value
+  return ctx.colKey ? [ctx.colKey] : []
+})
+
+const selColWrap = computed(() => !!colMeta[ctxKeys.value[0] || '']?.wrap)
 
 function ctxWrap() {
-  const key = ctx.colKey
-  if (!key) return
-  const meta = colMeta[key] || (colMeta[key] = { width: 150, wrap: false })
-  meta.wrap = !meta.wrap
+  const keys = ctxKeys.value
+  if (!keys.length) return
+  const on = !colMeta[keys[0]]?.wrap
+  for (const key of keys) {
+    const meta = colMeta[key] || (colMeta[key] = { width: widthFor(colLabel(key)), wrap: false })
+    meta.wrap = on
+  }
   ctx.open = false
   nextTick(() => { measure() })
 }
 
 /** 列宽自适应：按该列可见内容最长字符估算（中文按 2 个字符宽） */
 function ctxFitWidth() {
-  const c = ctxColumn()
-  const key = ctx.colKey
+  const keys = ctxKeys.value
   ctx.open = false
-  if (!c || !key) return
-  let max = c.label.length * 2
-  for (const r of visibleRows.value.slice(0, 2000)) {
-    const v = c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''
-    for (const line of String(v).split('\n')) {
-      let w = 0
-      for (const ch of line) w += ch.charCodeAt(0) > 255 ? 2 : 1
-      if (w > max) max = w
+  if (!keys.length) return
+  for (const key of keys) {
+    const c = displayColumns.value.find((x) => x.key === key)
+    if (!c) continue
+    let max = c.label.length * 2
+    for (const r of visibleRows.value.slice(0, 2000)) {
+      const v = c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''
+      for (const line of String(v).split('\n')) {
+        let w = 0
+        for (const ch of line) w += ch.charCodeAt(0) > 255 ? 2 : 1
+        if (w > max) max = w
+      }
     }
+    const width = Math.max(80, Math.min(900, Math.round(max * 7 + 24)))
+    colMeta[key] = { width, wrap: colMeta[key]?.wrap ?? false }
   }
-  const width = Math.max(80, Math.min(900, Math.round(max * 7 + 24)))
-  colMeta[key] = { width, wrap: colMeta[key]?.wrap ?? false }
   nextTick(() => { measure() })
 }
 
+/** 列 key → 列名（新建 colMeta 时给个合适默认宽度） */
+function colLabel(key: string): string {
+  return displayColumns.value.find((c) => c.key === key)?.label || ''
+}
+
 function ctxHideColumn() {
-  const keys = selCols.value.length ? selCols.value : (ctx.colKey ? [ctx.colKey] : [])
+  const keys = ctxKeys.value
   if (!keys.length) return
   const set = new Set(hiddenColumns.value)
   for (const k of keys) set.add(k)
@@ -1090,7 +1050,7 @@ function ctxHideColumn() {
 }
 
 function ctxDeleteColumn() {
-  const keys = selCols.value.length ? selCols.value : (ctx.colKey ? [ctx.colKey] : [])
+  const keys = ctxKeys.value
   ctx.open = false
   const cols = displayColumns.value.filter((c) => keys.includes(c.key))
   if (!cols.length) return
@@ -1122,112 +1082,24 @@ function ctxDeleteColumn() {
 }
 
 function ctxClearFormat() {
-  const cells = ctx.type === 'col'
-    ? (() => {
-        const keys = selCols.value.length ? selCols.value : [ctx.colKey]
-        const out: CellPos[] = []
-        for (const r of visibleRows.value) for (const k of keys) out.push({ rowNo: r.rowNo, colKey: k })
-        return out
-      })()
-    : ctx.type === 'row'
-      ? (() => {
-          const nos = selRows.value.length ? selRows.value : [ctx.rowNo]
-          const out: CellPos[] = []
-          for (const no of nos) for (const c of displayColumns.value) out.push({ rowNo: no, colKey: c.key })
-          return out
-        })()
-      : [{ rowNo: ctx.rowNo, colKey: ctx.colKey }]
   ctx.open = false
+  const cells = targetCells.value.length
+    ? targetCells.value
+    : (ctxKeys.value.length && ctx.rowNo
+      ? ctxKeys.value.map((k) => ({ rowNo: ctx.rowNo, colKey: k }))
+      : [])
   clearFormat(cells)
 }
 
-function ctxClearRowFormat() {
-  ctxClearFormat()
-}
 
-function selectedRowsForCopy(): RenderRow[] {
-  if (!selRows.value.length) return visibleRows.value
-  const set = new Set(selRows.value)
-  return visibleRows.value.filter((r) => set.has(r.rowNo))
-}
 
-function selectedColsForCopy() {
-  if (!selCols.value.length) return displayColumns.value
-  return displayColumns.value.filter((c) => selCols.value.includes(c.key))
-}
 
-/** 多选区域复制（与选区一致，Excel 可识别单元格与格内换行） */
-function ctxCopySelection() {
-  ctx.open = false
-  // 行/列多选：按所选行列取值
-  if (selRows.value.length || selCols.value.length) {
-    const cols = selectedColsForCopy()
-    const rows = selectedRowsForCopy()
-    if (!cols.length || !rows.length) return
-    const matrix = rows.map((it) =>
-      cols.map((c) => (c.annId ? cellValue(it.rowNo, c.annId) : it.row[c.colIdx] ?? '')),
-    )
-    void copyTable(matrix)
-    return
-  }
-  // 单元格矩形选区：只复制框里的单元格，别扩大到整表
-  const cells = selCells.value
-  if (!cells.length) return
-  const rowNos = [...new Set(cells.map((p) => p.rowNo))].sort((a, b) => a - b)
-  const colKeys = [...new Set(cells.map((p) => p.colKey))]
-  const cols = displayColumns.value.filter((c) => colKeys.includes(c.key))
-  const byNo = new Map(visibleRows.value.map((r) => [r.rowNo, r]))
-  const matrix = rowNos.map((no) => {
-    const it = byNo.get(no)
-    return cols.map((c) => {
-      if (!it) return ''
-      return c.annId ? cellValue(no, c.annId) : it.row[c.colIdx] ?? ''
-    })
-  })
-  void copyTable(matrix)
-}
 
-function ctxClearSelectionFormat() {
-  ctx.open = false
-  clearFormat(targetCells.value)
-}
 
-function ctxClearSelection() {
-  ctx.open = false
-  clearSelection()
-}
 
-function ctxCopyAll() {
-  const cols = displayColumns.value
-  const body = visibleRows.value.map((it) =>
-    cols.map((c) => (c.annId ? cellValue(it.rowNo, c.annId) : it.row[c.colIdx] ?? '')),
-  )
-  ctx.open = false
-  void copyTable([cols.map((c) => c.label), ...body])
-}
 
-function ctxClearAllFormat() {
-  ctx.open = false
-  formats.value = {}
-  toast.success('已清除整表格式')
-}
 
-function ctxBold() {
-  ctx.open = false
-  toggleBold()
-}
 
-function ctxRowFilter() {
-  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
-  ctx.open = false
-  if (!item) return
-  // 以该行第一列的值为条件，快速缩小到同值行
-  const first = displayColumns.value.find((col) => !col.annId)
-  if (!first) return
-  const value = first.annId ? cellValue(item.rowNo, first.annId) : item.row[first.colIdx] ?? ''
-  valueFilters.value = { ...valueFilters.value, [first.key]: [value] }
-  resetScroll()
-}
 
 
 function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
