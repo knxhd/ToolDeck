@@ -8,7 +8,10 @@
 - POST /api/bench/upload            一次性上传 CSV（不落测试集，兼容旧流程）
 - POST /api/bench/run               用模板请求 + 测试集/数据文件发起批量测试
 - GET  /api/bench/jobs              当前用户的任务记录列表（可按接口过滤）
-- GET  /api/bench/jobs/{id}/csv     下载结果 CSV
+- GET  /api/bench/jobs/{id}/csv     下载结果 CSV（with_annotations=1 时追加标注列）
+- GET  /api/bench/jobs/{id}/rows    按页读取结果行（结果查看页用）
+- GET  /api/bench/jobs/{id}/annotations   读取自定义标注列与单元格
+- PUT  /api/bench/jobs/{id}/annotations   保存标注（整体覆盖）
 - DELETE /api/bench/jobs/{id}       删除任务记录（连同任务目录）
 """
 from __future__ import annotations
@@ -49,6 +52,61 @@ async def _read_csv_upload(file: UploadFile) -> bytes:
     if not raw.strip():
         raise HTTPException(status_code=400, detail="文件为空")
     return raw
+
+
+# ---------- 结果查看 / 标注 ----------
+
+def _read_result_slice(path, offset: int, limit: int) -> tuple[list[str], list[list[str]], int]:
+    """流式读取结果 CSV，只保留 [offset, offset+limit) 的行，返回 (表头, 行, 总行数)。"""
+    with open(path, "r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.reader(f)
+        header = next(reader, [])
+        rows: list[list[str]] = []
+        i = 0
+        for r in reader:
+            if i >= offset and len(rows) < limit:
+                rows.append(r)
+            i += 1
+    return header, rows, i
+
+
+def _assign_annotation_header(base: list[str], ann_cols: list[dict]) -> list[str]:
+    """把标注列名追加到结果表头；与已有列重名时加「（标注）」后缀并保证唯一。"""
+    taken = set(base)
+    names: list[str] = []
+    for c in ann_cols:
+        name = str(c.get("name") or "").strip() or "标注"
+        if name in taken:
+            name = f"{name}（标注）"
+        base_name, n = name, 2
+        while name in taken:
+            name = f"{base_name}{n}"
+            n += 1
+        taken.add(name)
+        names.append(name)
+    return names
+
+
+def _write_annotated_csv(job: dict, src, user_id: int):
+    """把标注列追加到结果 CSV，生成同目录下的 _.annotated.csv 并返回其路径。"""
+    from pathlib import Path
+
+    ann = bench_store.get_annotations(job["id"], user_id)
+    ann_cols = [c for c in ann.get("cols", []) if isinstance(c, dict) and c.get("id")]
+    cells = ann.get("cells", {})
+    if not ann_cols:
+        return src  # 没有标注列，直接返回原文件
+    out = Path(src).with_suffix(".annotated.csv")
+    with open(src, "r", encoding="utf-8-sig", newline="") as fin, \
+            open(out, "w", encoding="utf-8-sig", newline="") as fout:
+        reader = csv.reader(fin)
+        writer = csv.writer(fout)
+        header = next(reader, [])
+        writer.writerow(header + _assign_annotation_header(header, ann_cols))
+        for i, row in enumerate(reader, start=1):
+            row_cells = cells.get(str(i)) or {}
+            writer.writerow(row + [str(row_cells.get(c["id"], "") or "") for c in ann_cols])
+    return out
 
 
 @router.post("/datasets")
@@ -257,7 +315,11 @@ async def jobs(
 
 
 @router.get("/jobs/{job_id}/csv")
-async def download_csv(job_id: str, user: dict = Depends(current_user)) -> FileResponse:
+async def download_csv(
+    job_id: str,
+    with_annotations: int = 0,
+    user: dict = Depends(current_user),
+) -> FileResponse:
     job = bench_store.get_job(job_id, user["id"])
     if not job:
         raise HTTPException(status_code=404, detail="任务不存在")
@@ -269,11 +331,103 @@ async def download_csv(job_id: str, user: dict = Depends(current_user)) -> FileR
     p = Path(result)
     if not p.exists():
         raise HTTPException(status_code=404, detail="结果文件尚未生成")
+    if with_annotations:
+        annotated = _write_annotated_csv(job, p, user["id"])
+        return FileResponse(
+            annotated,
+            media_type="text/csv",
+            filename=f"benchmark-result-{job['name']}-{job_id}-annotated.csv",
+        )
     return FileResponse(
         p,
         media_type="text/csv",
         filename=f"benchmark-result-{job['name']}-{job_id}.csv",
     )
+
+
+@router.get("/jobs/{job_id}/rows")
+async def job_rows(
+    job_id: str,
+    offset: int = 0,
+    limit: int = 100,
+    user: dict = Depends(current_user),
+) -> dict:
+    """按页读取结果行，供结果查看页渲染（行号 = 结果 CSV 中的序号，1 起）。"""
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    result = job.get("result_path") or ""
+    from pathlib import Path
+
+    p = Path(result)
+    if not result or not p.exists():
+        raise HTTPException(status_code=404, detail="结果文件尚未生成")
+    offset = max(0, offset)
+    limit = max(1, min(limit, 500))
+    header, rows, total = _read_result_slice(p, offset, limit)
+    # 短行补空，避免前端按列索引取值出现 undefined
+    rows = [r + [""] * (len(header) - len(r)) for r in rows]
+    return {
+        "job": {
+            "id": job["id"],
+            "name": job["name"],
+            "status": job["status"],
+            "total": job["total"],
+            "done": job["done"],
+            "success": job["success"],
+            "fail": job["fail"],
+            "concurrency": job["concurrency"],
+            "streaming": job["streaming"],
+            "created_at": job["created_at"],
+            "stats": job["stats"],
+            "dataset_name": job.get("dataset_name") or "",
+        },
+        "columns": header,
+        "rows": rows,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+    }
+
+
+@router.get("/jobs/{job_id}/annotations")
+async def get_annotations(job_id: str, user: dict = Depends(current_user)) -> dict:
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    return bench_store.get_annotations(job_id, user["id"])
+
+
+@router.put("/jobs/{job_id}/annotations")
+async def put_annotations(
+    job_id: str,
+    body: dict = Body(...),
+    user: dict = Depends(current_user),
+) -> dict:
+    """整体保存标注列与单元格（前端防抖后整份提交）。"""
+    job = bench_store.get_job(job_id, user["id"])
+    if not job:
+        raise HTTPException(status_code=404, detail="任务不存在")
+    raw_cols = body.get("cols")
+    raw_cells = body.get("cells")
+    if not isinstance(raw_cols, list) or not isinstance(raw_cells, dict):
+        raise HTTPException(status_code=400, detail="标注数据格式不正确")
+    if len(raw_cols) > 20:
+        raise HTTPException(status_code=400, detail="标注列最多 20 列")
+    cols = [
+        {"id": str(c.get("id") or ""), "name": str(c.get("name") or "").strip()}
+        for c in raw_cols
+        if isinstance(c, dict) and c.get("id")
+    ]
+    cells: dict[str, dict[str, str]] = {}
+    for row_no, values in raw_cells.items():
+        if not isinstance(values, dict):
+            continue
+        cleaned = {str(k): str(v) for k, v in values.items() if str(v).strip()}
+        if cleaned:
+            cells[str(row_no)] = cleaned
+    bench_store.save_annotations(job_id, user["id"], {"cols": cols, "cells": cells})
+    return {"ok": True, "cols": len(cols)}
 
 
 @router.get("/jobs/{job_id}/params")

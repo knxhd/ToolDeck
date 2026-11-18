@@ -188,6 +188,16 @@ def init_db() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_bench_datasets_user ON bench_datasets(user_id, created_at DESC);
 
+            -- 结果标注：列定义与单元格值整体以 JSON 存储，每个任务一份
+            -- payload_json: {"cols":[{"id":"c1","name":"状态"}],"cells":{"12":{"c1":"正确"}}}
+            CREATE TABLE IF NOT EXISTS bench_annotations (
+                job_id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                payload_json TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS secrets (
                 id TEXT PRIMARY KEY,
                 user_id INTEGER NOT NULL,

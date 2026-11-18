@@ -4,6 +4,11 @@ import MainLayout from '@/layouts/MainLayout.vue'
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/bench/result/:jobId',
+    name: 'bench-result',
+    component: () => import('@/views/BenchResultView.vue'),
+  },
+  {
     path: '/',
     component: MainLayout,
     redirect: '/http',

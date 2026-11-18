@@ -254,6 +254,7 @@ def delete_job(job_id: str, user_id: int) -> bool:
         return False
     with get_db() as conn:
         conn.execute("DELETE FROM bench_jobs WHERE id=? AND user_id=?", (job_id, user_id))
+        conn.execute("DELETE FROM bench_annotations WHERE job_id=?", (job_id,))
     # 清理整个任务目录
     result_path = job.get("result_path") or ""
     if result_path:
@@ -264,6 +265,42 @@ def delete_job(job_id: str, user_id: int) -> bool:
         except OSError:
             pass
     return True
+
+
+# ---------- 结果标注 ----------
+
+def get_annotations(job_id: str, user_id: int) -> dict:
+    """读取任务的标注：{cols: [{id, name}], cells: {行号: {colId: 值}}}。"""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT payload_json FROM bench_annotations WHERE job_id=? AND user_id=?",
+            (job_id, user_id),
+        ).fetchone()
+    if not row:
+        return {"cols": [], "cells": {}}
+    try:
+        data = json.loads(row["payload_json"] or "{}")
+    except json.JSONDecodeError:
+        return {"cols": [], "cells": {}}
+    cols = data.get("cols") if isinstance(data.get("cols"), list) else []
+    cells = data.get("cells") if isinstance(data.get("cells"), dict) else {}
+    return {"cols": cols, "cells": cells}
+
+
+def save_annotations(job_id: str, user_id: int, payload: dict) -> None:
+    """整体覆盖保存；payload 由调用方校验结构。"""
+    cols = payload.get("cols") if isinstance(payload.get("cols"), list) else []
+    cells = payload.get("cells") if isinstance(payload.get("cells"), dict) else {}
+    text = json.dumps({"cols": cols, "cells": cells}, ensure_ascii=False)
+    with get_db() as conn:
+        conn.execute(
+            """INSERT INTO bench_annotations (job_id, user_id, payload_json, updated_at)
+               VALUES (?, ?, ?, datetime('now', 'localtime'))
+               ON CONFLICT(job_id) DO UPDATE SET
+                   payload_json=excluded.payload_json,
+                   updated_at=excluded.updated_at""",
+            (job_id, user_id, text),
+        )
 
 
 # ---------- 取消标记（内存态） ----------
@@ -308,6 +345,8 @@ __all__ = [
     "get_job",
     "update_job",
     "delete_job",
+    "get_annotations",
+    "save_annotations",
     "request_cancel",
     "is_cancelled",
     "clear_cancel",

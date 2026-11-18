@@ -226,7 +226,11 @@
             >
               <template #icon><icon-stop /></template>{{ isCancelling(j) ? '取消中…' : '取消' }}
             </a-button>
-            <a-button size="mini" type="text" :disabled="j.status === 'running'" @click="download(j, 'csv', 'result')">
+            <a-button size="mini" type="text" :disabled="j.status === 'running'" @click="openResult(j)">
+              <template #icon><icon-eye /></template>查看结果
+            </a-button>
+            <a-button size="mini" type="text" :disabled="j.status === 'running'"
+              @click="download(j, 'csv', 'result', '?with_annotations=1')">
               <template #icon><icon-download /></template>下载结果
             </a-button>
             <a-button size="mini" type="text" @click="download(j, 'params', 'params')">
@@ -670,6 +674,11 @@ async function cancel(j: any) {
   }, 60_000)
 }
 
+function openResult(j: any) {
+  // 结果查看页为独立路由，新窗口共享同源 localStorage 里的登录态
+  window.open(`/bench/result/${j.id}`, '_blank')
+}
+
 function openReport(j: any) {
   // 直接在新窗口打开报告 HTML（浏览器会带 Authorization 由 fetch 不行，改用带 token 的下载链接）
   const token = getToken()
@@ -705,9 +714,9 @@ function statusColor(s: string) {
   return { running: 'blue', done: 'green', failed: 'red', cancelled: 'orange' }[s] || 'gray'
 }
 
-async function download(j: any, kind: 'csv' | 'params', label: string) {
+async function download(j: any, kind: 'csv' | 'params', label: string, query = '') {
   try {
-    const res = await fetch(`/api/bench/jobs/${j.id}/${kind}`, {
+    const res = await fetch(`/api/bench/jobs/${j.id}/${kind}${query}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
     if (!res.ok) throw new Error(`下载${label}失败`)
