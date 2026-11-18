@@ -218,7 +218,9 @@
               <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
                 :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
                 @click="openColumnPanel(c, $event)" @contextmenu.prevent.stop="openCtx($event, 'col', c)">
-                <span class="br-th-name" :title="c.label">{{ c.label }}</span>
+                <input v-if="c.blank" class="br-th-edit" :value="blankColLabel(c.key)"
+                  @mousedown.stop @click.stop @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
+                <span v-else class="br-th-name" :title="c.label">{{ c.label }}</span>
                 <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
                 <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
                 <icon-filter v-if="hasFilter(c.key)" class="br-th-flag is-active" />
@@ -242,9 +244,15 @@
             <div v-for="c in displayColumns" :key="c.key" class="br-td"
               :style="{ width: c.width + 'px', ...cellCss(item.rowNo, c.key) }"
               :class="{ 'br-td-ann': !!c.annId, 'in-sel': isInSel(item.rowNo, c.key) }"
-              @click="onCellClick(item, c.key, $event)" @contextmenu="onCellCtx($event, c, item)">
-              <template v-if="item.blank || c.blank">
-                <span class="br-cell-text"></span>
+              @click="onCellClick(item, c.key, $event)" @dblclick.stop="startEdit(item, c)"
+              @contextmenu="onCellCtx($event, c, item)">
+              <template v-if="isEditing(item.rowNo, c.key)">
+                <input v-model="editValue" class="br-cell-edit" @click.stop
+                  @blur="commitEdit" @keydown.enter.prevent="commitEdit"
+                  @keydown.esc.stop.prevent="cancelEdit" />
+              </template>
+              <template v-else-if="item.blank || c.blank">
+                <span class="br-cell-text">{{ cellText(item, c) }}</span>
               </template>
               <template v-else-if="c.annId">
                 <input class="br-ann-input" :value="cellValue(item.rowNo, c.annId)" placeholder="—"
@@ -714,6 +722,19 @@ interface BlankRow { id: number; at: number; side: 'up' | 'down' }
 const hiddenRows = ref<number[]>([])
 const blankCols = ref<BlankCol[]>([])
 const blankRows = ref<BlankRow[]>([])
+/** 插入的空白列表头文字，key = 列 key（`b<序号>`） */
+const blankColLabels = ref<Record<string, string>>({})
+
+function blankColLabel(key: string): string {
+  return blankColLabels.value[key] ?? ''
+}
+
+function onBlankColLabel(key: string, ev: Event) {
+  const v = (ev.target as HTMLInputElement).value
+  if (v) blankColLabels.value[key] = v
+  else delete blankColLabels.value[key]
+  scheduleSaveView()
+}
 let blankColSeq = 1
 let blankRowSeq = 1
 
@@ -764,7 +785,7 @@ const allColumns = computed<RenderColumn[]>(() => {
     const pos = at < 0 ? list.length : (b.side === 'left' ? at : at + 1)
     list.splice(pos, 0, {
       key,
-      label: '',
+      label: blankColLabel(key),
       colIdx: -1,
       annId: null,
       width: colMeta[key]?.width ?? BLANK_COL_W,
@@ -823,7 +844,10 @@ function valueOf(row: AnyRow, rowNo: number, key: string): string {
 
 /** 单元格显示值（空白列 / 空白行恒为空） */
 function cellText(item: RenderRow | null | undefined, c: RenderColumn): string {
-  if (!item || item.blank || c.blank || c.colIdx < 0) return ''
+  if (!item) return ''
+  const ed = edits.value[editKey(item.rowNo, c.key)]
+  if (ed !== undefined) return ed
+  if (item.blank || c.blank || c.colIdx < 0) return ''
   return item.row[c.colIdx] ?? ''
 }
 
@@ -1068,6 +1092,59 @@ const stat = computed(() => {
   const avg = count ? sum / count : 0
   return { count, sum, sumText: fmtNum(sum), avgText: fmtNum(avg) }
 })
+
+// ---- 单元格原地编辑：双击进入，值存在视图里并持久化 ----
+/** 手工改写的单元格文本，key = `<行号>|<列 key>` */
+const edits = ref<Record<string, string>>({})
+const editing = ref<{ rowNo: number; colKey: string } | null>(null)
+const editValue = ref('')
+
+function isEditing(rowNo: number, colKey: string): boolean {
+  return !!editing.value && editing.value.rowNo === rowNo && editing.value.colKey === colKey
+}
+
+/** 可编辑：数据列、插入的空白列（标注列本身就是输入框，跳过） */
+function canEditCell(c: RenderColumn): boolean {
+  return !c.annId
+}
+
+function editKey(rowNo: number, colKey: string): string {
+  return `${rowNo}|${colKey}`
+}
+
+
+function startEdit(item: RenderRow, c: RenderColumn) {
+  if (!canEditCell(c)) return
+  editing.value = { rowNo: item.rowNo, colKey: c.key }
+  editValue.value = edits.value[editKey(item.rowNo, c.key)] ?? cellText(item, c)
+  nextTick(() => {
+    const el = wrapRef.value?.querySelector<HTMLInputElement>('.br-cell-edit')
+    el?.focus()
+    el?.select()
+  })
+}
+
+function commitEdit() {
+  const cur = editing.value
+  if (!cur) return
+  const key = editKey(cur.rowNo, cur.colKey)
+  const original = originalText(cur.rowNo, cur.colKey)
+  if (editValue.value === original) delete edits.value[key]
+  else edits.value[key] = editValue.value
+  editing.value = null
+  scheduleSaveView()
+}
+
+function cancelEdit() {
+  editing.value = null
+}
+
+/** 原始（未改写）显示值，用于判断是否还原 */
+function originalText(rowNo: number, colKey: string): string {
+  const row = rowByNo.value.get(rowNo)
+  const col = colByKey.value.get(colKey)
+  return col && col.colIdx >= 0 && row ? (row.row[col.colIdx] ?? '') : ''
+}
 
 interface SelRect { left: number; top: number; width: number; height: number }
 
@@ -2154,6 +2231,10 @@ interface ViewPayload {
   blankRows?: BlankRow[]
   /** 被删除（隐藏）的行号 */
   hiddenRows?: number[]
+  /** 插入空白列的表头文字 */
+  blankColLabels?: Record<string, string>
+  /** 手工改写的单元格文本，key = `<行号>|<列 key>` */
+  edits?: Record<string, string>
 }
 
 function currentView(): ViewPayload {
@@ -2169,6 +2250,8 @@ function currentView(): ViewPayload {
     blankCols: JSON.parse(JSON.stringify(blankCols.value)),
     blankRows: JSON.parse(JSON.stringify(blankRows.value)),
     hiddenRows: [...hiddenRows.value],
+    blankColLabels: JSON.parse(JSON.stringify(blankColLabels.value)),
+    edits: JSON.parse(JSON.stringify(edits.value)),
   }
 }
 
@@ -2215,6 +2298,12 @@ function applyView(data: ViewPayload | null | undefined) {
   }
   if (Array.isArray(data.hiddenRows)) {
     hiddenRows.value = data.hiddenRows.filter((n) => typeof n === 'number')
+  }
+  if (data.blankColLabels && typeof data.blankColLabels === 'object') {
+    blankColLabels.value = { ...data.blankColLabels }
+  }
+  if (data.edits && typeof data.edits === 'object') {
+    edits.value = { ...data.edits }
   }
 }
 
@@ -2600,8 +2689,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
-  padding: 0 8px;
+  padding: 0;
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-1);
@@ -2627,6 +2717,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3050,6 +3141,51 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   &.muted {
     color: var(--color-text-3);
   }
+}
+
+/* 插入列的列表头输入框（选中列名即可改名） */
+.br-th-edit {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--color-text-1);
+  outline: none;
+
+  &:hover {
+    border-color: var(--color-border-2);
+    background: var(--color-bg-2);
+  }
+
+  &:focus {
+    border-color: rgb(var(--primary-6));
+    background: var(--color-bg-2);
+  }
+
+  &::placeholder {
+    color: var(--color-text-3);
+  }
+}
+
+/* 单元格原地编辑输入框 */
+.br-cell-edit {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: var(--color-bg-2);
+  font-size: inherit;
+  font-family: inherit;
+  color: var(--color-text-1);
+  outline: none;
 }
 
 .br-cell-text {
