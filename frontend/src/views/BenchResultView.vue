@@ -20,9 +20,8 @@
         <a-button size="small" @click="reload">
           <template #icon><icon-refresh /></template>刷新
         </a-button>
-        <a-button size="small" @click="downloadRawCsv">下载原始</a-button>
-        <a-button size="small" type="primary" title="按当前视图导出 xlsx（隐藏列 / 列宽 / 换行 / 排序 / 筛选都会带上）"
-          @click="exportView">下载结果（xlsx，含标注）</a-button>
+        <a-button size="small" @click="downloadRawCsv">下载原始文件</a-button>
+        <a-button size="small" type="primary" @click="exportView">下载最终结果</a-button>
         <a-button size="small" @click="closeWindow">关闭</a-button>
       </div>
     </header>
@@ -784,8 +783,25 @@ const visibleKeys = computed<string[]>({
 
 const totalWidth = computed(() => displayColumns.value.reduce((s, c) => s + c.width, 0) || 800)
 
-/** 任一可见列开启自动换行时，行高切到多行模式。 */
-const rowH = computed(() => (displayColumns.value.some((c) => c.wrap) ? ROW_H_WRAP : ROW_H))
+/** 自动换行时预估的行数（与 .br-cell-text.is-wrap 的 line-clamp 保持一致）。 */
+const WRAP_LINES = 4
+
+/** 当前视图用到的最大字号（默认字号与单元格格式里的字号取大），行高随字号一起放大。 */
+const maxFontPx = computed(() => {
+  let m = defaultSize.value || 12
+  for (const f of Object.values(formats.value)) {
+    if (f?.size && f.size > m) m = f.size
+  }
+  return m
+})
+
+/** 任一可见列开启自动换行时，行高切到多行模式；字号变大时行高同步放大，避免文字压到相邻行。 */
+const rowH = computed(() => {
+  const fs = maxFontPx.value
+  const line = Math.round(fs * 1.5)
+  if (!displayColumns.value.some((c) => c.wrap)) return Math.max(ROW_H, line + 12)
+  return Math.max(ROW_H_WRAP, line * WRAP_LINES + 10)
+})
 
 // ---- 取值 ----
 function valueOf(row: AnyRow, rowNo: number, key: string): string {
@@ -2981,7 +2997,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 .br-cell-text.is-wrap {
   white-space: normal;
   word-break: break-all;
-  line-height: 18px;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
