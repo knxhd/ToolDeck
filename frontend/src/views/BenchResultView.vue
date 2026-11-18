@@ -58,17 +58,67 @@
 
     <!-- 格式工具条（作用于选中单元格；未选中时字体/字号为整表默认） -->
     <div class="br-fmtbar">
-      <a-button size="mini" class="br-fmt-btn" :class="{ 'is-on': selHasBold }"
-        title="加粗选中单元格" @click="toggleBold"><b>B</b></a-button>
-      <span class="br-fmt-label">字体颜色</span>
-      <a-color-picker v-model="fontColor" size="mini" :disabled-alpha="true"
-        @change="onPickFontColor" />
-      <span class="br-fmt-label">单元格颜色</span>
-      <a-color-picker v-model="bgColor" size="mini" :disabled-alpha="true"
-        @change="onPickBgColor" />
-      <span class="br-fmt-label">字体</span>
-      <a-select v-model="fontSel" size="mini" style="width: 116px" allow-clear placement="bottom"
-        placeholder="默认" @change="onPickFont">
+      <button type="button" class="br-fmt-ic" :class="{ 'is-on': selHasBold }" title="加粗"
+        @click="toggleBold">
+        <icon-bold />
+      </button>
+
+      <!-- 字体颜色 -->
+      <div class="br-fmt-dd">
+        <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'font' }"
+          title="字体颜色" @mousedown.stop @click.stop="togglePalette('font')">
+          <icon-font-colors />
+          <span class="br-color-bar" :style="{ background: fontColor }"></span>
+        </button>
+        <div v-if="palette === 'font'" class="br-palette" @mousedown.stop @click.stop>
+          <div class="br-pal-grid">
+            <button v-for="c in PALETTE" :key="'f' + c" type="button" class="br-pal-sw"
+              :class="{ 'is-cur': c.toLowerCase() === fontColor.toLowerCase() }"
+              :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
+          </div>
+          <div class="br-pal-title">最近使用</div>
+          <div class="br-pal-grid br-pal-recent">
+            <button v-for="c in recentColors" :key="'rf' + c" type="button" class="br-pal-sw"
+              :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
+            <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+          </div>
+          <label class="br-pal-more">
+            <span class="br-pal-dot"></span>更多颜色
+            <input type="color" :value="fontColor" @input="onMoreColor('font', $event)" />
+          </label>
+        </div>
+      </div>
+
+      <!-- 单元格颜色 -->
+      <div class="br-fmt-dd">
+        <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'bg' }"
+          title="单元格颜色" @mousedown.stop @click.stop="togglePalette('bg')">
+          <icon-bg-colors />
+          <span class="br-color-bar" :style="{ background: bgColor }"></span>
+        </button>
+        <div v-if="palette === 'bg'" class="br-palette" @mousedown.stop @click.stop>
+          <div class="br-pal-grid">
+            <button v-for="c in PALETTE" :key="'b' + c" type="button" class="br-pal-sw"
+              :class="{ 'is-cur': c.toLowerCase() === bgColor.toLowerCase() }"
+              :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
+          </div>
+          <div class="br-pal-title">最近使用</div>
+          <div class="br-pal-grid br-pal-recent">
+            <button v-for="c in recentColors" :key="'rb' + c" type="button" class="br-pal-sw"
+              :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
+            <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+          </div>
+          <label class="br-pal-more">
+            <span class="br-pal-dot"></span>更多颜色
+            <input type="color" :value="bgColor" @input="onMoreColor('bg', $event)" />
+          </label>
+        </div>
+      </div>
+
+      <span class="br-fmt-sep"></span>
+
+      <a-select v-model="fontSel" size="mini" style="width: 120px" allow-clear placement="bottom"
+        placeholder="默认字体" title="字体" @change="onPickFont">
         <a-option value="微软雅黑">微软雅黑</a-option>
         <a-option value="宋体">宋体</a-option>
         <a-option value="黑体">黑体</a-option>
@@ -78,12 +128,15 @@
         <a-option value="Arial">Arial</a-option>
         <a-option value="Consolas">Consolas</a-option>
       </a-select>
-      <span class="br-fmt-label">字号</span>
-      <a-select v-model="sizeSel" size="mini" style="width: 76px" placement="bottom"
-        @change="onPickSize">
+      <a-select v-model="sizeSel" size="mini" style="width: 72px" placement="bottom"
+        title="字号" @change="onPickSize">
         <a-option v-for="s in [10, 11, 12, 14, 16, 18, 20]" :key="s" :value="s">{{ s }}</a-option>
       </a-select>
-      <a-button size="mini" @click="clearFormat()">清除格式</a-button>
+
+      <button type="button" class="br-fmt-ic" title="清除格式" @click="clearFormat()">
+        <icon-eraser />
+      </button>
+
       <span v-if="targetCells.length" class="br-fmt-hint">
         已选 {{ targetCells.length }} 格<template v-if="selCols.length">（{{ selCols.length }} 列）</template><template v-if="selRows.length">（{{ selRows.length }} 行）</template>，Shift 点击可扩选范围
       </span>
@@ -364,6 +417,77 @@ const fontSel = ref('')
 const sizeSel = ref(12)
 const fontColor = ref('#1f2329')
 const bgColor = ref('#fff1b8')
+
+/** 打开的色板：字体颜色 / 单元格颜色 */
+const palette = ref<'' | 'font' | 'bg'>('')
+
+/** 色板 6 行 × 10 列：第一列是灰阶，其余 9 列同色相逐行加深 */
+const PALETTE = (() => {
+  const hues = ['#3B82F6', '#06B6D4', '#22C55E', '#FACC15', '#F97316', '#EF4444', '#EC4899', '#8B5CF6', '#94A3B8']
+  const grays = ['#FFFFFF', '#F2F3F5', '#E5E6EB', '#C9CDD4', '#86909C', '#1D2129']
+  const toRgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+  const toHex = (rgb: number[]) => '#' + rgb.map((n) => Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0')).join('')
+  const blend = (hex: string, ratio: number) => {
+    // ratio > 0 提亮（混白），ratio < 0 加深（混黑）
+    const target = ratio > 0 ? 255 : 0
+    const k = Math.abs(ratio)
+    return toHex(toRgb(hex).map((n) => n + (target - n) * k))
+  }
+  const levels = [0, 0.7, 0.45, 0.15, -0.15, -0.35]
+  const out: string[] = []
+  levels.forEach((lv, i) => {
+    out.push(grays[i])
+    for (const h of hues) out.push(blend(h, lv).toUpperCase())
+  })
+  return out
+})()
+
+const RECENT_KEY = 'bench.recentColors'
+
+function readRecentColors(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY)
+    const list = raw ? JSON.parse(raw) : []
+    return Array.isArray(list) ? list.slice(0, 9) : []
+  } catch {
+    return []
+  }
+}
+
+const recentColors = ref<string[]>(readRecentColors())
+
+function rememberColor(color: string) {
+  const c = color.toUpperCase()
+  const list = [c, ...recentColors.value.filter((x) => x.toUpperCase() !== c)].slice(0, 9)
+  recentColors.value = list
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list))
+  } catch {
+    /* 忽略存储失败 */
+  }
+}
+
+function togglePalette(which: 'font' | 'bg') {
+  palette.value = palette.value === which ? '' : which
+}
+
+/** 取色后立即写入选中单元格（未选中时按「选中提示」逻辑，不生效） */
+function pickColor(which: 'font' | 'bg', color: string) {
+  if (which === 'font') {
+    fontColor.value = color
+    onPickFontColor(color)
+  } else {
+    bgColor.value = color
+    onPickBgColor(color)
+  }
+  rememberColor(color)
+  palette.value = ''
+}
+
+function onMoreColor(which: 'font' | 'bg', ev: Event) {
+  const el = ev.target as HTMLInputElement
+  if (el?.value) pickColor(which, el.value)
+}
 
 // ---- 选区（矩形选择，shift 扩展） ----
 interface CellPos { rowNo: number; colKey: string }
@@ -1810,6 +1934,7 @@ function onResize() {
 function onDocMousedown(e: MouseEvent) {
   const target = e.target as HTMLElement | null
   if (ctx.open && !target?.closest('.br-ctx')) ctx.open = false
+  if (palette.value && !target?.closest('.br-fmt-dd')) palette.value = ''
   if (!panel.open) return
   if (target?.closest('.br-panel') || target?.closest('.br-th')) return
   panel.open = false
@@ -2223,29 +2348,131 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 .br-fmtbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-bottom: 1px solid var(--color-border-1);
   background: var(--color-bg-1);
 }
 
-.br-fmt-btn {
-  min-width: 28px;
-  padding: 0 8px;
-  font-weight: 400;
+.br-fmt-ic {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-1);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover { background: var(--color-fill-2); }
 
   &.is-on {
-    background: rgba(var(--primary-1), 1);
-    border-color: rgb(var(--primary-5));
+    background: rgba(var(--primary-6), 0.12);
     color: rgb(var(--primary-6));
   }
-  b { font-size: 12px; }
 }
 
-.br-fmt-label {
+/* 字体/单元格颜色按钮：底部一条当前颜色 */
+.br-fmt-color {
+  flex-direction: column;
+  justify-content: flex-start;
+  padding-top: 3px;
+
+  .br-color-bar {
+    position: absolute;
+    left: 5px;
+    right: 5px;
+    bottom: 4px;
+    height: 3px;
+    border-radius: 1px;
+  }
+}
+
+.br-fmt-dd { position: relative; }
+
+.br-fmt-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--color-border-2);
+}
+
+.br-palette {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  z-index: 60;
+  width: 248px;
+  padding: 8px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 6px;
+  background: var(--color-bg-1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.br-pal-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+}
+
+.br-pal-sw {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
+  cursor: pointer;
+
+  &.is-cur {
+    outline: 2px solid rgb(var(--primary-6));
+    outline-offset: 1px;
+  }
+}
+
+.br-pal-title {
+  margin: 8px 0 4px;
   font-size: 12px;
   color: var(--color-text-3);
+}
+
+.br-pal-recent { grid-auto-rows: 20px; }
+.br-pal-empty { grid-column: 1 / -1; font-size: 12px; color: var(--color-text-4); }
+
+.br-pal-more {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--color-border-1);
+  font-size: 12px;
+  color: var(--color-text-2);
+  cursor: pointer;
+
+  input[type='color'] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+.br-pal-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: conic-gradient(#ef4444, #facc15, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ef4444);
 }
 
 .br-fmt-hint {
