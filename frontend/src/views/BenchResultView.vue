@@ -487,6 +487,9 @@ const allColumns = computed(() => {
       wrap: colMeta[key]?.wrap ?? false,
     }
   })
+  // 「序号」固定排在数据列第一列（key 仍按 CSV 原始下标，取值不受影响）
+  const seqIdx = data.findIndex((c) => c.label === '序号')
+  if (seqIdx > 0) data.unshift(data.splice(seqIdx, 1)[0])
   const ann = annCols.value.map((c) => {
     const key = `a${c.id}`
     return {
@@ -1685,6 +1688,22 @@ function openDetail(label: string, text: string) {
 }
 
 // ---- 下载 / 关闭 ----
+/** 任务时间戳：yyyy-mm-dd-hhmmss（优先用任务创建时间）。 */
+function jobStamp(): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const raw = String(job.created_at || '').replace(' ', 'T')
+  let d = raw ? new Date(raw) : new Date()
+  if (Number.isNaN(d.getTime())) d = new Date()
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+}
+
+/** 下载文件名：测试集名_测试结果_yyyy-mm-dd-hhmmss */
+function resultFileBase(withAnnot?: boolean): string {
+  const set = String(job.dataset_name || job.name || jobId).replace(/[\\/:*?"<>|]/g, '_')
+  const tag = withAnnot ? '测试结果_标注' : '测试结果'
+  return `${set}_${tag}_${jobStamp()}`
+}
+
 /** 原始结果 CSV（服务端原样，不含标注与视图调整）。 */
 async function downloadRawCsv() {
   try {
@@ -1696,7 +1715,7 @@ async function downloadRawCsv() {
     const u = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = u
-    a.download = `benchmark-result-${job.name || jobId}.csv`
+    a.download = `${resultFileBase()}.csv`
     a.click()
     URL.revokeObjectURL(u)
   } catch (err: any) {
@@ -1746,7 +1765,6 @@ async function exportView() {
     const data = visibleRows.value.map((item) =>
       cols.map((c) => (c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')),
     )
-    const safeName = String(job.name || jobId).replace(/[\\/:*?"<>|]/g, '_')
     const visible = visibleRows.value
     await exportRowsToXlsx({
       sheetName: '结果',
@@ -1767,7 +1785,7 @@ async function exportView() {
         if (!f) return null
         return { bold: f.bold, color: f.color, bg: f.bg, font: f.font, fontSize: f.size }
       },
-      fileName: `benchmark-result-${safeName}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '')}`,
+      fileName: resultFileBase(),
     })
   } catch (err: any) {
     toast.error(err.message || '导出失败')

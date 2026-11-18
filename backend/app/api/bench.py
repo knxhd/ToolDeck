@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+from datetime import datetime
 import io
 import json
 
@@ -31,6 +32,25 @@ from backend.app.schemas.bench import BenchRequestTemplate, BenchRunBody
 from backend.app.services import bench_store
 
 router = APIRouter()
+
+
+def _job_stamp(job: dict) -> str:
+    """任务时间戳 yyyy-mm-dd-hhmmss（取任务创建时间，取不到就用当前时间）。"""
+    raw = str(job.get("created_at") or "")
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return datetime.strptime(raw[:19], fmt).strftime("%Y-%m-%d-%H%M%S")
+        except ValueError:
+            continue
+    return datetime.now().strftime("%Y-%m-%d-%H%M%S")
+
+
+def _job_base_name(job: dict, kind: str = "测试结果") -> str:
+    """下载文件名前缀：测试集名_<kind>_yyyy-mm-dd-hhmmss。"""
+    name = str(job.get("dataset_name") or job.get("name") or "批量测试")
+    for ch in '\\/:*?"<>|':
+        name = name.replace(ch, "_")
+    return f"{name}_{kind}_{_job_stamp(job)}"
 
 # 持有后台任务引用，避免被 GC 提前回收
 _bg_tasks: set[asyncio.Task] = set()
@@ -338,12 +358,12 @@ async def download_csv(
         return FileResponse(
             annotated,
             media_type="text/csv",
-            filename=f"benchmark-result-{job['name']}-{job_id}-annotated.csv",
+            filename=f"{_job_base_name(job, '测试结果_标注')}.csv",
         )
     return FileResponse(
         p,
         media_type="text/csv",
-        filename=f"benchmark-result-{job['name']}-{job_id}.csv",
+        filename=f"{_job_base_name(job)}.csv",
     )
 
 
@@ -476,7 +496,7 @@ async def download_params(job_id: str, user: dict = Depends(current_user)) -> Fi
     return FileResponse(
         p,
         media_type="text/csv",
-        filename=f"benchmark-params-{job['name']}-{job_id}.csv",
+        filename=f"{_job_base_name(job, '测试参数')}.csv",
     )
 
 
@@ -502,7 +522,7 @@ async def download_report(job_id: str, user: dict = Depends(current_user)) -> Fi
     return FileResponse(
         p,
         media_type="text/html",
-        filename=f"benchmark-report-{job['name']}-{job_id}.html",
+        filename=f"{_job_base_name(job, '测试报告')}.html",
     )
 
 

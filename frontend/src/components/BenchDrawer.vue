@@ -714,6 +714,23 @@ function statusColor(s: string) {
   return { running: 'blue', done: 'green', failed: 'red', cancelled: 'orange' }[s] || 'gray'
 }
 
+/** 任务时间戳 yyyy-mm-dd-hhmmss */
+function jobStamp(j: any): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const raw = String(j?.created_at || '').replace(' ', 'T')
+  const d = raw ? new Date(raw) : new Date()
+  const t = Number.isNaN(d.getTime()) ? new Date() : d
+  return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}-${pad(t.getHours())}${pad(t.getMinutes())}${pad(t.getSeconds())}`
+}
+
+/** 测试集名_测试结果_yyyy-mm-dd-hhmmss（参数/标注各有标记） */
+function fileBaseName(j: any, kind: 'csv' | 'params', query: string): string {
+  const set = String(j?.dataset_name || j?.name || j?.id || '批量测试').replace(/[\\/:*?"<>|]/g, '_')
+  const stamp = jobStamp(j)
+  if (kind === 'params') return `${set}_测试参数_${stamp}`
+  return `${set}_测试结果${query.includes('annotations') ? '_标注' : ''}_${stamp}`
+}
+
 async function download(j: any, kind: 'csv' | 'params', label: string, query = '') {
   try {
     const res = await fetch(`/api/bench/jobs/${j.id}/${kind}${query}`, {
@@ -724,7 +741,7 @@ async function download(j: any, kind: 'csv' | 'params', label: string, query = '
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `benchmark-${label}-${j.name}-${j.id}.csv`
+    a.download = `${fileBaseName(j, kind, query)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   } catch (err: any) {
