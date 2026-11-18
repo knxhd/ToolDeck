@@ -135,35 +135,34 @@
 
       <span class="br-fmt-sep"></span>
 
-      <!-- 垂直对齐 -->
-      <button type="button" class="br-fmt-ic" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }"
-        @click="setAlign('valign', 'top')">
-        <span class="br-va is-top"><i></i><i></i><i></i></span>
-      </button>
-      <button type="button" class="br-fmt-ic" title="垂直对齐（居中）" :class="{ 'is-on': selValign === 'middle' }"
-        @click="setAlign('valign', 'middle')">
-        <span class="br-va is-middle"><i></i><i></i><i></i></span>
-      </button>
-      <button type="button" class="br-fmt-ic" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
-        @click="setAlign('valign', 'bottom')">
-        <span class="br-va is-bottom"><i></i><i></i><i></i></span>
-      </button>
+      <!-- 对齐：上排垂直对齐，下排水平对齐 -->
+      <div class="br-align-grid">
+        <button type="button" class="br-fmt-ic" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }"
+          @click="setAlign('valign', 'top')">
+          <span class="br-va is-top"><i></i><i></i><i></i></span>
+        </button>
+        <button type="button" class="br-fmt-ic" title="垂直对齐（居中）" :class="{ 'is-on': selValign === 'middle' }"
+          @click="setAlign('valign', 'middle')">
+          <span class="br-va is-middle"><i></i><i></i><i></i></span>
+        </button>
+        <button type="button" class="br-fmt-ic" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
+          @click="setAlign('valign', 'bottom')">
+          <span class="br-va is-bottom"><i></i><i></i><i></i></span>
+        </button>
 
-      <span class="br-fmt-sep"></span>
-
-      <!-- 水平对齐 -->
-      <button type="button" class="br-fmt-ic" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
-        @click="setAlign('halign', 'left')">
-        <icon-align-left />
-      </button>
-      <button type="button" class="br-fmt-ic" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
-        @click="setAlign('halign', 'center')">
-        <icon-align-center />
-      </button>
-      <button type="button" class="br-fmt-ic" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
-        @click="setAlign('halign', 'right')">
-        <icon-align-right />
-      </button>
+        <button type="button" class="br-fmt-ic" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
+          @click="setAlign('halign', 'left')">
+          <icon-align-left />
+        </button>
+        <button type="button" class="br-fmt-ic" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
+          @click="setAlign('halign', 'center')">
+          <icon-align-center />
+        </button>
+        <button type="button" class="br-fmt-ic" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
+          @click="setAlign('halign', 'right')">
+          <icon-align-right />
+        </button>
+      </div>
 
       <span class="br-fmt-sep"></span>
 
@@ -266,6 +265,7 @@
       <div class="br-ctx-item" @click="ctxInsertRow('down')"><span>向下插入 1 行</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
       <div class="br-ctx-item" @click="ctxInsertCol('left')"><span>向左插入 1 列</span><span class="br-ctx-icon"><icon-arrow-left /></span></div>
       <div class="br-ctx-item" @click="ctxInsertCol('right')"><span>向右插入 1 列</span><span class="br-ctx-icon"><icon-arrow-right /></span></div>
+      <div class="br-ctx-item danger" @click="ctxDeleteRow()"><span>删除此行</span></div>
       <div class="br-ctx-sep"></div>
       <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
       <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
@@ -625,6 +625,8 @@ function widthFor(name: string): number {
 /** 插入的空白列 / 空白行（只做整体插入，表头留空） */
 interface BlankCol { id: number; at: string; side: 'left' | 'right' }
 interface BlankRow { id: number; at: number; side: 'up' | 'down' }
+/** 被「删除此行」隐藏掉的行号（数据行用原始行号，插入的空白行为负数） */
+const hiddenRows = ref<number[]>([])
 const blankCols = ref<BlankCol[]>([])
 const blankRows = ref<BlankRow[]>([])
 let blankColSeq = 1
@@ -759,6 +761,7 @@ const visibleRows = computed<RenderRow[]>(() => {
   for (let i = 0; i < rows.value.length; i++) {
     const row = rows.value[i]
     const rowNo = i + 1
+    if (hiddenRows.value.includes(rowNo)) continue
     const isFail = failIdx >= 0 && row[failIdx] === '失败'
     if (onlyFail.value && !isFail) continue
     const cellMap = annCells.value[String(rowNo)]
@@ -1288,6 +1291,26 @@ function ctxInsertRow(side: 'up' | 'down') {
     : (selRows.value[0] || (side === 'up' ? vr[0]?.rowNo : vr[vr.length - 1]?.rowNo) || 0)
   if (!at) return
   blankRows.value = [...blankRows.value, { id: blankRowSeq++, at, side }]
+  scheduleSaveView()
+}
+
+/** 删除行：数据行从视图隐藏，插入的空白行直接移除 */
+function ctxDeleteRow() {
+  ctx.open = false
+  const vrs = visibleRows.value
+  const anchors = (ctx.rowNo !== 0
+    ? [ctx.rowNo]
+    : (selRows.value.length ? selRows.value : (vrs[0] ? [vrs[0].rowNo] : [])))
+  if (!anchors.length) return
+  const blankIds = anchors.filter((n) => n < 0).map((n) => -n)
+  const dataNos = anchors.filter((n) => n > 0)
+  if (blankIds.length) blankRows.value = blankRows.value.filter((b) => !blankIds.includes(b.id))
+  if (dataNos.length) {
+    const set = new Set([...hiddenRows.value, ...dataNos])
+    hiddenRows.value = [...set]
+  }
+  selRows.value = []
+  ctx.rowNo = 0
   scheduleSaveView()
 }
 
@@ -1981,6 +2004,8 @@ interface ViewPayload {
   /** 插入的空白列 / 空白行 */
   blankCols?: BlankCol[]
   blankRows?: BlankRow[]
+  /** 被删除（隐藏）的行号 */
+  hiddenRows?: number[]
 }
 
 function currentView(): ViewPayload {
@@ -1995,6 +2020,7 @@ function currentView(): ViewPayload {
     defaultSize: defaultSize.value,
     blankCols: JSON.parse(JSON.stringify(blankCols.value)),
     blankRows: JSON.parse(JSON.stringify(blankRows.value)),
+    hiddenRows: [...hiddenRows.value],
   }
 }
 
@@ -2038,6 +2064,9 @@ function applyView(data: ViewPayload | null | undefined) {
     }
     blankRows.value = list
     blankRowSeq = list.reduce((m, b) => Math.max(m, b.id), 0) + 1
+  }
+  if (Array.isArray(data.hiddenRows)) {
+    hiddenRows.value = data.hiddenRows.filter((n) => typeof n === 'number')
   }
 }
 
@@ -2595,6 +2624,21 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 .br-fmt-dd { position: relative; }
+
+/* 对齐按钮：3 列 × 2 行（上排垂直对齐，下排水平对齐） */
+.br-align-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 24px);
+  grid-auto-rows: 22px;
+  gap: 1px 2px;
+  align-items: center;
+
+  .br-fmt-ic {
+    width: 24px;
+    height: 22px;
+    font-size: 14px;
+  }
+}
 
 /* 垂直对齐小图标：三条横线靠上/居中/靠下 */
 .br-va {
