@@ -745,6 +745,8 @@ function onRowClick(item: RenderRow) {
 }
 
 function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
+  // 清掉浏览器原生文字选区，否则 Shift 扩选会把文字颜色成块
+  window.getSelection()?.removeAllRanges()
   const pos: CellPos = { rowNo: item.rowNo, colKey }
   if (ev.shiftKey && selAnchor.value) {
     selFocus.value = pos
@@ -2019,6 +2021,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 .br-td {
   position: relative;
   box-sizing: border-box;
+  user-select: none;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -2193,6 +2196,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 .br-ann-input {
+  user-select: text;
   width: 100%;
   height: 26px;
   padding: 0 6px;
