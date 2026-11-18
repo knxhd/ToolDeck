@@ -1,11 +1,28 @@
 <template>
   <div class="collection-doc-pane">
-    <DocumentEditor
-      v-model="doc"
-      v-model:mode="mode"
-      v-model:fullscreen="fullscreen"
-      :title="tab.title"
-    />
+    <!-- 文档工具栏：编辑 / 分屏 / 预览 切换 + 全屏（与接口文档保持一致） -->
+    <div class="cdp-head">
+      <span class="cdp-title" :title="tab.title">{{ tab.title }}</span>
+      <div class="cdp-actions">
+        <a-radio-group v-model="mode" type="button" size="small">
+          <a-radio value="edit">编辑</a-radio>
+          <a-radio value="split">分屏</a-radio>
+          <a-radio value="preview">预览</a-radio>
+        </a-radio-group>
+        <a-button size="small" type="text" title="全屏查看 (Esc 退出)" @click="fullscreen = true">
+          <template #icon><icon-fullscreen /></template>
+        </a-button>
+      </div>
+    </div>
+
+    <div class="cdp-body">
+      <DocumentEditor
+        v-model="doc"
+        v-model:mode="mode"
+        v-model:fullscreen="fullscreen"
+        :title="tab.title"
+      />
+    </div>
   </div>
 </template>
 
@@ -42,6 +59,41 @@ watch(
 
 <style lang="less" scoped>
 .collection-doc-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 顶部工具栏：左标题，右模式切换与全屏 */
+.cdp-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 12px;
+  border-bottom: 1px solid var(--color-border-1);
+  background: var(--color-bg-1);
+}
+
+.cdp-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--color-text-3);
+}
+
+.cdp-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cdp-body {
   flex: 1;
   min-height: 0;
   display: flex;
