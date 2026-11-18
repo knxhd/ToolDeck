@@ -20,6 +20,10 @@ export interface XlsxCellStyle {
   font?: string
   /** 字号，单位 px（与页面一致，导出时换算为 pt） */
   fontSize?: number
+  /** 水平对齐 */
+  halign?: 'left' | 'center' | 'right'
+  /** 垂直对齐 */
+  valign?: 'top' | 'middle' | 'bottom'
 }
 
 export interface XlsxExportOptions {
@@ -101,9 +105,13 @@ export async function exportRowsToXlsx(opts: XlsxExportOptions): Promise<void> {
     const added = ws.addRow(values)
     columns.forEach((c, i) => {
       const cell = added.getCell(i + 1)
-      // 自动换行的列：内容换行 + 顶端对齐，行高由内容撑开
-      if (c.wrap) cell.alignment = { wrapText: true, vertical: 'top' }
       const st = cellStyle ? cellStyle(rowIndex, i) : null
+      // 对齐：页面设置的优先；自动换行的列默认顶端对齐，行高由内容撑开
+      const v = st?.valign || (c.wrap ? 'top' : undefined)
+      const h = st?.halign
+      if (c.wrap || v || h) {
+        cell.alignment = { wrapText: c.wrap || undefined, vertical: v, horizontal: h }
+      }
       const font: Partial<ExcelJS.Font> = {
         size: pxToPt(st?.fontSize || baseSize) ?? 9,
       }

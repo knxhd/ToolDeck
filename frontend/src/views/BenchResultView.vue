@@ -133,6 +133,40 @@
         <a-option v-for="s in [10, 11, 12, 14, 16, 18, 20]" :key="s" :value="s">{{ s }}</a-option>
       </a-select>
 
+      <span class="br-fmt-sep"></span>
+
+      <!-- 垂直对齐 -->
+      <button type="button" class="br-fmt-ic" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }"
+        @click="setAlign('valign', 'top')">
+        <span class="br-va is-top"><i></i><i></i><i></i></span>
+      </button>
+      <button type="button" class="br-fmt-ic" title="垂直对齐（居中）" :class="{ 'is-on': selValign === 'middle' }"
+        @click="setAlign('valign', 'middle')">
+        <span class="br-va is-middle"><i></i><i></i><i></i></span>
+      </button>
+      <button type="button" class="br-fmt-ic" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
+        @click="setAlign('valign', 'bottom')">
+        <span class="br-va is-bottom"><i></i><i></i><i></i></span>
+      </button>
+
+      <span class="br-fmt-sep"></span>
+
+      <!-- 水平对齐 -->
+      <button type="button" class="br-fmt-ic" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
+        @click="setAlign('halign', 'left')">
+        <icon-align-left />
+      </button>
+      <button type="button" class="br-fmt-ic" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
+        @click="setAlign('halign', 'center')">
+        <icon-align-center />
+      </button>
+      <button type="button" class="br-fmt-ic" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
+        @click="setAlign('halign', 'right')">
+        <icon-align-right />
+      </button>
+
+      <span class="br-fmt-sep"></span>
+
       <button type="button" class="br-fmt-ic" title="清除格式" @click="clearFormat()">
         <icon-eraser />
       </button>
@@ -415,7 +449,20 @@ const hiddenColumns = ref<Set<string>>(new Set())
 const columnPanelOpen = ref(false)
 
 // ---- 单元格样式（加粗 / 字色 / 底色 / 字体 / 字号），key = `<行号>|<列 key>` ----
-interface CellFmt { bold?: boolean; color?: string; bg?: string; font?: string; size?: number }
+type HAlign = 'left' | 'center' | 'right'
+type VAlign = 'top' | 'middle' | 'bottom'
+
+interface CellFmt {
+  bold?: boolean
+  color?: string
+  bg?: string
+  font?: string
+  size?: number
+  /** 水平对齐 */
+  halign?: HAlign
+  /** 垂直对齐 */
+  valign?: VAlign
+}
 const formats = ref<Record<string, CellFmt>>({})
 /** 整表默认字体 / 字号（px），未单独设置的单元格跟随 */
 const defaultFont = ref('')
@@ -761,6 +808,13 @@ function cellCss(rowNo: number, colKey: string): Record<string, string> {
   const fam = f?.font || defaultFont.value
   if (fam) out.fontFamily = fam
   out.fontSize = `${f?.size || defaultSize.value}px`
+  if (f?.halign) {
+    out.justifyContent = f.halign === 'left' ? 'flex-start' : f.halign === 'center' ? 'center' : 'flex-end'
+    out.textAlign = f.halign
+  }
+  if (f?.valign) {
+    out.alignItems = f.valign === 'top' ? 'flex-start' : f.valign === 'middle' ? 'center' : 'flex-end'
+  }
   return out
 }
 
@@ -1368,6 +1422,28 @@ function onPickSize(value: any) {
   else defaultSize.value = n
 }
 
+/** 当前选区第一个单元格的对齐状态（用于按钮高亮） */
+const selHalign = computed<HAlign | undefined>(() => {
+  const p = targetCells.value[0]
+  return p ? formats.value[cellFmtKey(p.rowNo, p.colKey)]?.halign : undefined
+})
+
+const selValign = computed<VAlign | undefined>(() => {
+  const p = targetCells.value[0]
+  return p ? formats.value[cellFmtKey(p.rowNo, p.colKey)]?.valign : undefined
+})
+
+/** 对齐：选区已全部是该对齐方式时再点一次取消 */
+function setAlign(kind: 'halign' | 'valign', value: HAlign | VAlign) {
+  if (!targetCells.value.length) return
+  const same = targetCells.value.every(
+    (p) => formats.value[cellFmtKey(p.rowNo, p.colKey)]?.[kind] === value,
+  )
+  applyFormat(kind === 'halign'
+    ? { halign: (same ? undefined : value) as HAlign | undefined }
+    : { valign: (same ? undefined : value) as VAlign | undefined })
+}
+
 const selHasBold = computed(() =>
   targetCells.value.length > 0
   && targetCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold),
@@ -1871,7 +1947,15 @@ async function exportView() {
         if (!item || !col) return null
         const f = formats.value[cellFmtKey(item.rowNo, col.key)]
         if (!f) return null
-        return { bold: f.bold, color: f.color, bg: f.bg, font: f.font, fontSize: f.size }
+        return {
+          bold: f.bold,
+          color: f.color,
+          bg: f.bg,
+          font: f.font,
+          fontSize: f.size,
+          halign: f.halign,
+          valign: f.valign,
+        }
       },
       fileName: resultFileBase(),
     })
@@ -2511,6 +2595,26 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 .br-fmt-dd { position: relative; }
+
+/* 垂直对齐小图标：三条横线靠上/居中/靠下 */
+.br-va {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 14px;
+  height: 16px;
+
+  i {
+    display: block;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+  }
+
+  &.is-top { justify-content: flex-start; }
+  &.is-middle { justify-content: center; }
+  &.is-bottom { justify-content: flex-end; }
+}
 
 .br-fmt-sep {
   width: 1px;
