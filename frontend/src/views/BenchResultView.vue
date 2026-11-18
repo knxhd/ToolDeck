@@ -56,119 +56,112 @@
       <span v-else-if="dirty" class="br-saving">有未保存的标注，稍后自动保存</span>
     </div>
 
-    <!-- 格式工具条（作用于选中单元格；未选中时字体/字号为整表默认） -->
+    <!-- 格式工具条：上排字体/字号，下排加粗与颜色，右侧两组对齐（仿飞书） -->
     <div class="br-fmtbar">
-      <button type="button" class="br-fmt-ic" :class="{ 'is-on': selHasBold }" title="加粗"
-        @click="toggleBold">
-        <icon-bold />
-      </button>
+      <div class="br-fmt-grid">
+        <a-select v-model="fontSel" size="mini" class="br-fg-font" allow-clear placement="bottom"
+          placeholder="默认字体" title="字体" @change="onPickFont">
+          <a-option value="微软雅黑">微软雅黑</a-option>
+          <a-option value="宋体">宋体</a-option>
+          <a-option value="黑体">黑体</a-option>
+          <a-option value="楷体">楷体</a-option>
+          <a-option value="仿宋">仿宋</a-option>
+          <a-option value="等线">等线</a-option>
+          <a-option value="Arial">Arial</a-option>
+          <a-option value="Consolas">Consolas</a-option>
+        </a-select>
+        <a-select v-model="sizeSel" size="mini" class="br-fg-size" placement="bottom"
+          title="字号" @change="onPickSize">
+          <a-option v-for="sz in [10, 11, 12, 14, 16, 18, 20]" :key="sz" :value="sz">{{ sz }}</a-option>
+        </a-select>
 
-      <!-- 字体颜色 -->
-      <div class="br-fmt-dd">
-        <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'font' }"
-          title="字体颜色" @mousedown.stop @click.stop="togglePalette('font')">
-          <icon-font-colors />
-          <span class="br-color-bar" :style="{ background: fontColor }"></span>
+        <button type="button" class="br-fmt-ic br-fg-bold" :class="{ 'is-on': selHasBold }" title="加粗"
+          @click="toggleBold">
+          <icon-bold />
         </button>
-        <div v-if="palette === 'font'" class="br-palette" @mousedown.stop @click.stop>
-          <div class="br-pal-grid">
-            <button v-for="c in PALETTE" :key="'f' + c" type="button" class="br-pal-sw"
-              :class="{ 'is-cur': c.toLowerCase() === fontColor.toLowerCase() }"
-              :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
+
+        <div class="br-fmt-dd br-fg-fcolor">
+          <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'font' }"
+            title="字体颜色" @mousedown.stop @click.stop="togglePalette('font')">
+            <icon-font-colors />
+            <span class="br-color-bar" :style="{ background: fontColor }"></span>
+          </button>
+          <div v-if="palette === 'font'" class="br-palette" @mousedown.stop @click.stop>
+            <div class="br-pal-grid">
+              <button v-for="c in PALETTE" :key="'f' + c" type="button" class="br-pal-sw"
+                :class="{ 'is-cur': c.toLowerCase() === fontColor.toLowerCase() }"
+                :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
+            </div>
+            <div class="br-pal-title">最近使用</div>
+            <div class="br-pal-grid br-pal-recent">
+              <button v-for="c in recentColors" :key="'rf' + c" type="button" class="br-pal-sw"
+                :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
+              <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+            </div>
+            <label class="br-pal-more">
+              <span class="br-pal-dot"></span>更多颜色
+              <input type="color" :value="fontColor" @input="onMoreColor('font', $event)" />
+            </label>
           </div>
-          <div class="br-pal-title">最近使用</div>
-          <div class="br-pal-grid br-pal-recent">
-            <button v-for="c in recentColors" :key="'rf' + c" type="button" class="br-pal-sw"
-              :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
-            <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+        </div>
+
+        <div class="br-fmt-dd br-fg-bcolor">
+          <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'bg' }"
+            title="单元格颜色" @mousedown.stop @click.stop="togglePalette('bg')">
+            <icon-bg-colors />
+            <span class="br-color-bar" :style="{ background: bgColor }"></span>
+          </button>
+          <div v-if="palette === 'bg'" class="br-palette" @mousedown.stop @click.stop>
+            <div class="br-pal-grid">
+              <button v-for="c in PALETTE" :key="'b' + c" type="button" class="br-pal-sw"
+                :class="{ 'is-cur': c.toLowerCase() === bgColor.toLowerCase() }"
+                :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
+            </div>
+            <div class="br-pal-title">最近使用</div>
+            <div class="br-pal-grid br-pal-recent">
+              <button v-for="c in recentColors" :key="'rb' + c" type="button" class="br-pal-sw"
+                :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
+              <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+            </div>
+            <label class="br-pal-more">
+              <span class="br-pal-dot"></span>更多颜色
+              <input type="color" :value="bgColor" @input="onMoreColor('bg', $event)" />
+            </label>
           </div>
-          <label class="br-pal-more">
-            <span class="br-pal-dot"></span>更多颜色
-            <input type="color" :value="fontColor" @input="onMoreColor('font', $event)" />
-          </label>
+        </div>
+
+        <button type="button" class="br-fmt-ic br-fg-clear" title="清除格式" @click="clearFormat()">
+          <icon-eraser />
+        </button>
+
+        <!-- 对齐：上排垂直对齐，下排水平对齐 -->
+        <div class="br-align-grid">
+          <button type="button" class="br-fmt-ic" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }"
+            @click="setAlign('valign', 'top')">
+            <span class="br-va is-top"><i></i><i></i><i></i></span>
+          </button>
+          <button type="button" class="br-fmt-ic" title="垂直对齐（居中）" :class="{ 'is-on': selValign === 'middle' }"
+            @click="setAlign('valign', 'middle')">
+            <span class="br-va is-middle"><i></i><i></i><i></i></span>
+          </button>
+          <button type="button" class="br-fmt-ic" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
+            @click="setAlign('valign', 'bottom')">
+            <span class="br-va is-bottom"><i></i><i></i><i></i></span>
+          </button>
+          <button type="button" class="br-fmt-ic" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
+            @click="setAlign('halign', 'left')">
+            <icon-align-left />
+          </button>
+          <button type="button" class="br-fmt-ic" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
+            @click="setAlign('halign', 'center')">
+            <icon-align-center />
+          </button>
+          <button type="button" class="br-fmt-ic" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
+            @click="setAlign('halign', 'right')">
+            <icon-align-right />
+          </button>
         </div>
       </div>
-
-      <!-- 单元格颜色 -->
-      <div class="br-fmt-dd">
-        <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'bg' }"
-          title="单元格颜色" @mousedown.stop @click.stop="togglePalette('bg')">
-          <icon-bg-colors />
-          <span class="br-color-bar" :style="{ background: bgColor }"></span>
-        </button>
-        <div v-if="palette === 'bg'" class="br-palette" @mousedown.stop @click.stop>
-          <div class="br-pal-grid">
-            <button v-for="c in PALETTE" :key="'b' + c" type="button" class="br-pal-sw"
-              :class="{ 'is-cur': c.toLowerCase() === bgColor.toLowerCase() }"
-              :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
-          </div>
-          <div class="br-pal-title">最近使用</div>
-          <div class="br-pal-grid br-pal-recent">
-            <button v-for="c in recentColors" :key="'rb' + c" type="button" class="br-pal-sw"
-              :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
-            <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
-          </div>
-          <label class="br-pal-more">
-            <span class="br-pal-dot"></span>更多颜色
-            <input type="color" :value="bgColor" @input="onMoreColor('bg', $event)" />
-          </label>
-        </div>
-      </div>
-
-      <span class="br-fmt-sep"></span>
-
-      <a-select v-model="fontSel" size="mini" style="width: 120px" allow-clear placement="bottom"
-        placeholder="默认字体" title="字体" @change="onPickFont">
-        <a-option value="微软雅黑">微软雅黑</a-option>
-        <a-option value="宋体">宋体</a-option>
-        <a-option value="黑体">黑体</a-option>
-        <a-option value="楷体">楷体</a-option>
-        <a-option value="仿宋">仿宋</a-option>
-        <a-option value="等线">等线</a-option>
-        <a-option value="Arial">Arial</a-option>
-        <a-option value="Consolas">Consolas</a-option>
-      </a-select>
-      <a-select v-model="sizeSel" size="mini" style="width: 72px" placement="bottom"
-        title="字号" @change="onPickSize">
-        <a-option v-for="s in [10, 11, 12, 14, 16, 18, 20]" :key="s" :value="s">{{ s }}</a-option>
-      </a-select>
-
-      <span class="br-fmt-sep"></span>
-
-      <!-- 对齐：上排垂直对齐，下排水平对齐 -->
-      <div class="br-align-grid">
-        <button type="button" class="br-fmt-ic" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }"
-          @click="setAlign('valign', 'top')">
-          <span class="br-va is-top"><i></i><i></i><i></i></span>
-        </button>
-        <button type="button" class="br-fmt-ic" title="垂直对齐（居中）" :class="{ 'is-on': selValign === 'middle' }"
-          @click="setAlign('valign', 'middle')">
-          <span class="br-va is-middle"><i></i><i></i><i></i></span>
-        </button>
-        <button type="button" class="br-fmt-ic" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
-          @click="setAlign('valign', 'bottom')">
-          <span class="br-va is-bottom"><i></i><i></i><i></i></span>
-        </button>
-
-        <button type="button" class="br-fmt-ic" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
-          @click="setAlign('halign', 'left')">
-          <icon-align-left />
-        </button>
-        <button type="button" class="br-fmt-ic" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
-          @click="setAlign('halign', 'center')">
-          <icon-align-center />
-        </button>
-        <button type="button" class="br-fmt-ic" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
-          @click="setAlign('halign', 'right')">
-          <icon-align-right />
-        </button>
-      </div>
-
-      <span class="br-fmt-sep"></span>
-
-      <button type="button" class="br-fmt-ic" title="清除格式" @click="clearFormat()">
-        <icon-eraser />
-      </button>
 
       <span v-if="targetCells.length" class="br-fmt-hint">
         已选 {{ targetCells.length }} 格<template v-if="selCols.length">（{{ selCols.length }} 列）</template><template v-if="selRows.length">（{{ selRows.length }} 行）</template>，Shift 点击可扩选范围
@@ -2576,12 +2569,28 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 .br-fmtbar {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 12px;
   padding: 4px 10px;
   border-bottom: 1px solid var(--color-border-1);
   background: var(--color-bg-1);
 }
+
+/* 上排：字体 / 字号；下排：加粗 / 字体颜色 / 单元格颜色；右侧对齐按钮跨两行 */
+.br-fmt-grid {
+  display: grid;
+  grid-template-columns: 118px 64px 28px 28px 28px 84px 28px;
+  grid-template-rows: 26px 26px;
+  gap: 2px 4px;
+  align-items: center;
+}
+
+.br-fg-font { grid-row: 1; grid-column: 1; }
+.br-fg-size { grid-row: 1; grid-column: 2; }
+.br-fg-bold { grid-row: 2; grid-column: 1; }
+.br-fg-fcolor { grid-row: 2; grid-column: 2; justify-self: start; }
+.br-fg-bcolor { grid-row: 2; grid-column: 3; justify-self: start; }
+.br-fg-clear { grid-row: 2; grid-column: 7; }
+.br-align-grid { grid-row: 1 / 3; grid-column: 6; }
 
 .br-fmt-ic {
   position: relative;
@@ -2628,15 +2637,15 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 /* 对齐按钮：3 列 × 2 行（上排垂直对齐，下排水平对齐） */
 .br-align-grid {
   display: grid;
-  grid-template-columns: repeat(3, 24px);
-  grid-auto-rows: 22px;
-  gap: 1px 2px;
+  grid-template-columns: repeat(3, 26px);
+  grid-template-rows: 26px 26px;
+  gap: 2px 2px;
   align-items: center;
 
   .br-fmt-ic {
-    width: 24px;
-    height: 22px;
-    font-size: 14px;
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
   }
 }
 
