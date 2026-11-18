@@ -83,8 +83,10 @@
         @change="onPickSize">
         <a-option v-for="s in [10, 11, 12, 14, 16, 18, 20]" :key="s" :value="s">{{ s }}</a-option>
       </a-select>
-      <a-button size="mini" @click="clearFormat">清除格式</a-button>
-      <span v-if="selCells.length" class="br-fmt-hint">已选 {{ selCells.length }} 格（Shift 点击可扩选范围）</span>
+      <a-button size="mini" @click="clearFormat()">清除格式</a-button>
+      <span v-if="targetCells.length" class="br-fmt-hint">
+        已选 {{ targetCells.length }} 格<template v-if="selColKey">（整列）</template><template v-else-if="selRowNo">（整行）</template>，Shift 点击可扩选范围
+      </span>
       <span v-else class="br-fmt-hint muted">先点选单元格；不选时字体/字号作用于整表</span>
     </div>
 
@@ -93,25 +95,50 @@
       <div v-if="!ready" class="br-loading">
         <icon-loading class="spin" />正在加载结果…
       </div>
-      <div v-else class="br-inner" :style="{ width: totalWidth + 'px' }">
-        <div class="br-head-row">
-          <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
-            :class="{ 'is-sorted': sortKey === c.key }" @click="openColumnPanel(c, $event)">
-            <span class="br-th-name" :title="c.label">{{ c.label }}</span>
-            <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
-            <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
-            <icon-filter v-if="hasFilter(c.key)" class="br-th-flag is-active" />
-            <span class="br-resize" @mousedown="startResize($event, c.key, c.width)" @click.stop></span>
+      <div v-else class="br-sheet" :style="{ width: GUTTER_W + totalWidth + 'px' }">
+        <!-- 列标（A、B、C…）+ 列名，两层表头，滚动时吸顶 -->
+        <div class="br-colhead">
+          <div class="br-corner">{{ nameBoxText }}</div>
+          <div class="br-head-main">
+            <div class="br-let-row">
+              <div v-for="(c, i) in displayColumns" :key="'let-' + c.key" class="br-let"
+                :style="{ width: c.width + 'px' }"
+                :class="{ 'is-on': selColKey === c.key }"
+                :title="c.label"
+                @click.stop="onColClick(c)"
+                @contextmenu.prevent.stop="openCtx($event, 'col', c)">
+                {{ colLetter(i) }}
+              </div>
+            </div>
+            <div class="br-head-row">
+              <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
+                :class="{ 'is-sorted': sortKey === c.key, 'is-on': selColKey === c.key }"
+                @click="openColumnPanel(c, $event)"
+                @contextmenu.prevent.stop="openCtx($event, 'col', c)">
+                <span class="br-th-name" :title="c.label">{{ c.label }}</span>
+                <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
+                <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
+                <icon-filter v-if="hasFilter(c.key)" class="br-th-flag is-active" />
+                <span class="br-resize" @mousedown="startResize($event, c.key, c.width)" @click.stop></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="br-body" :style="{ height: visibleRows.length * rowH + 'px' }">
+          <!-- 选区外框：单一描边，内部单元格边框隐藏 -->
+          <div v-if="selRect" class="br-selbox"
+            :style="{ left: selRect.left + 'px', top: selRect.top + 'px', width: selRect.width + 'px', height: selRect.height + 'px' }"></div>
           <div v-for="item in windowRows" :key="item.rowNo" class="br-row"
-            :class="{ fail: item.isFail, 'has-ann': item.hasAnn }"
+            :class="{ fail: item.isFail, 'has-ann': item.hasAnn, 'is-on': selRowNo === item.rowNo }"
             :style="{ height: rowH + 'px', transform: `translateY(${item.idx * rowH}px)` }">
+            <div class="br-gutter" :class="{ 'is-on': selRowNo === item.rowNo }"
+              @click.stop="onRowClick(item)"
+              @contextmenu.prevent.stop="openCtx($event, 'row', null, item)">{{ item.rowNo }}</div>
             <div v-for="c in displayColumns" :key="c.key" class="br-td"
               :style="{ width: c.width + 'px', ...cellCss(item.rowNo, c.key) }"
-              :class="{ 'br-td-ann': !!c.annId, 'is-sel': selSet.has(cellFmtKey(item.rowNo, c.key)) }"
-              @click="onCellClick(item, c.key, $event)">
+              :class="{ 'br-td-ann': !!c.annId, 'in-sel': selSet.has(cellFmtKey(item.rowNo, c.key)) }"
+              @click="onCellClick(item, c.key, $event)"
+              @contextmenu="onCellCtx($event, c, item)">
               <template v-if="c.annId">
                 <input class="br-ann-input" :value="cellValue(item.rowNo, c.annId)" placeholder="—"
                   @input="onCellInputEvent(item.rowNo, c.annId, $event)" @blur="onCellBlur" />
@@ -137,6 +164,40 @@
           <a-empty :description="rows.length ? '没有符合筛选条件的行' : '结果文件为空'" />
         </div>
       </div>
+    </div>
+
+    <!-- 右键菜单（列 / 行 / 单元格） -->
+    <div v-if="ctx.open" class="br-ctx" :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }">
+      <template v-if="ctx.type === 'col'">
+        <div class="br-ctx-item" @click="ctxCopyColumn()"><span>复制整列</span></div>
+        <div class="br-ctx-sep"></div>
+        <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
+        <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
+        <div class="br-ctx-item" @click="ctxFilter()"><span>筛选此列</span><span class="br-ctx-icon"><icon-filter /></span></div>
+        <div class="br-ctx-sep"></div>
+        <div class="br-ctx-item" @click="ctxWrap()"><span>自动换行</span>
+          <span class="br-ctx-sub">{{ selColWrap ? '开' : '关' }}</span></div>
+        <div class="br-ctx-item" @click="ctxFitWidth()"><span>列宽自适应</span></div>
+        <div class="br-ctx-item" @click="ctxHideColumn()"><span>隐藏此列</span></div>
+        <div class="br-ctx-item danger" @click="ctxDeleteColumn()"><span>删除此列</span></div>
+        <div class="br-ctx-sep"></div>
+        <div class="br-ctx-item" @click="ctxClearFormat()"><span>清除此列格式</span></div>
+      </template>
+
+      <template v-else-if="ctx.type === 'row'">
+        <div class="br-ctx-item" @click="ctxCopyRow()"><span>复制整行</span></div>
+        <div class="br-ctx-item" @click="ctxRowFilter()"><span>只显示此行相同值</span></div>
+        <div class="br-ctx-sep"></div>
+        <div class="br-ctx-item" @click="ctxClearRowFormat()"><span>清除此行格式</span></div>
+      </template>
+
+      <template v-else>
+        <div class="br-ctx-item" @click="ctxCopyCell()"><span>复制</span></div>
+        <div class="br-ctx-item" @click="ctxCellDetail()"><span>查看单元格详情</span></div>
+        <div class="br-ctx-sep"></div>
+        <div class="br-ctx-item" @click="ctxBold()"><span>加粗</span></div>
+        <div class="br-ctx-item" @click="ctxClearFormat()"><span>清除格式</span></div>
+      </template>
     </div>
 
     <!-- 列操作 / 筛选面板（类似飞书表头下拉） -->
@@ -323,6 +384,22 @@ const bgColor = ref('#fff1b8')
 interface CellPos { rowNo: number; colKey: string }
 const selAnchor = ref<CellPos | null>(null)
 const selFocus = ref<CellPos | null>(null)
+/** 选中的整列 / 整行（与单元格矩形互斥） */
+const selColKey = ref('')
+const selRowNo = ref(0)
+
+/** 行号栏宽度 */
+const GUTTER_W = 46
+
+// ---- 右键菜单 ----
+const ctx = reactive({
+  open: false,
+  x: 0,
+  y: 0,
+  type: 'col' as 'col' | 'row' | 'cell',
+  colKey: '',
+  rowNo: 0,
+})
 
 
 // ---- 排序与筛选 ----
@@ -534,9 +611,106 @@ const selCells = computed<CellPos[]>(() => {
   return out
 })
 
+/** 列标：A、B…Z、AA、AB… */
+function colLetter(index: number): string {
+  let n = index + 1
+  let s = ''
+  while (n > 0) {
+    const r = (n - 1) % 26
+    s = String.fromCharCode(65 + r) + s
+    n = Math.floor((n - 1) / 26)
+  }
+  return s
+}
+
+const nameBoxText = computed(() => {
+  if (selColKey.value) {
+    const idx = displayColumns.value.findIndex((c) => c.key === selColKey.value)
+    return idx >= 0 ? `${colLetter(idx)}列` : ''
+  }
+  if (selRowNo.value) return `${selRowNo.value}行`
+  const a = selAnchor.value
+  if (!a) return ''
+  const idx = displayColumns.value.findIndex((c) => c.key === a.colKey)
+  return idx >= 0 ? `${colLetter(idx)}${a.rowNo}` : ''
+})
+
+/** 工具栏/右键菜单作用的目标单元格：整列 > 整行 > 矩形选区 */
+const targetCells = computed<CellPos[]>(() => {
+  if (selColKey.value) {
+    const out: CellPos[] = []
+    for (const r of visibleRows.value.slice(0, 4000)) out.push({ rowNo: r.rowNo, colKey: selColKey.value })
+    return out
+  }
+  if (selRowNo.value) {
+    return displayColumns.value.map((c) => ({ rowNo: selRowNo.value, colKey: c.key }))
+  }
+  return selCells.value
+})
+
+/** 高亮用：整列 / 整行 / 矩形选区都算选中 */
 const selSet = computed<Set<string>>(
-  () => new Set(selCells.value.map((p) => cellFmtKey(p.rowNo, p.colKey))),
+  () => new Set(targetCells.value.map((p) => cellFmtKey(p.rowNo, p.colKey))),
 )
+
+interface SelRect { left: number; top: number; width: number; height: number }
+
+/** 选区外框位置（body 坐标系，含左侧行号栏宽度） */
+const selRect = computed<SelRect | null>(() => {
+  const cols = displayColumns.value
+  const vr = visibleRows.value
+  if (!cols.length || !vr.length) return null
+
+  const columnsRange = (c1: number, c2: number) => {
+    let left = GUTTER_W
+    for (let i = 0; i < c1; i++) left += cols[i].width
+    let width = 0
+    for (let i = c1; i <= c2; i++) width += cols[i].width
+    return { left, width }
+  }
+
+  const h = rowH.value
+
+  if (selColKey.value) {
+    const ci = cols.findIndex((c) => c.key === selColKey.value)
+    if (ci < 0) return null
+    const { left, width } = columnsRange(ci, ci)
+    return { left, width, top: 0, height: vr.length * h }
+  }
+
+  if (selRowNo.value) {
+    const ri = vr.findIndex((r) => r.rowNo === selRowNo.value)
+    if (ri < 0) return null
+    return { left: GUTTER_W, top: ri * h, width: totalWidth.value, height: h }
+  }
+
+  const a = selAnchor.value
+  const b = selFocus.value
+  if (!a || !b) return null
+  let ci1 = cols.findIndex((c) => c.key === a.colKey)
+  let ci2 = cols.findIndex((c) => c.key === b.colKey)
+  let ri1 = vr.findIndex((r) => r.rowNo === a.rowNo)
+  let ri2 = vr.findIndex((r) => r.rowNo === b.rowNo)
+  if (ci1 < 0 || ci2 < 0 || ri1 < 0 || ri2 < 0) return null
+  if (ci1 > ci2) [ci1, ci2] = [ci2, ci1]
+  if (ri1 > ri2) [ri1, ri2] = [ri2, ri1]
+  const { left, width } = columnsRange(ci1, ci2)
+  return { left, width, top: ri1 * h, height: (ri2 - ri1 + 1) * h }
+})
+
+function onColClick(c: { key: string }) {
+  selColKey.value = selColKey.value === c.key ? '' : c.key
+  selRowNo.value = 0
+  selAnchor.value = null
+  selFocus.value = null
+}
+
+function onRowClick(item: RenderRow) {
+  selRowNo.value = selRowNo.value === item.rowNo ? 0 : item.rowNo
+  selColKey.value = ''
+  selAnchor.value = null
+  selFocus.value = null
+}
 
 function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
   const pos: CellPos = { rowNo: item.rowNo, colKey }
@@ -546,22 +720,217 @@ function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
     selAnchor.value = pos
     selFocus.value = pos
   }
+  selColKey.value = ''
+  selRowNo.value = 0
 }
 
 function clearSelection() {
   selAnchor.value = null
   selFocus.value = null
+  selColKey.value = ''
+  selRowNo.value = 0
 }
 
 /** Esc 取消选区 */
 function onKeydown(ev: KeyboardEvent) {
-  if (ev.key === 'Escape' && selCells.value.length) clearSelection()
+  if (ev.key !== 'Escape') return
+  if (ctx.open) {
+    ctx.open = false
+    return
+  }
+  if (targetCells.value.length) clearSelection()
 }
 
+// ---- 右键菜单 ----
+function onCellCtx(ev: MouseEvent, col: any, item: RenderRow) {
+  const t = ev.target as HTMLElement | null
+  // 标注输入框保留浏览器原生右键菜单（剪切/粘贴）
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+  ev.preventDefault()
+  ev.stopPropagation()
+  openCtx(ev, 'cell', col, item)
+}
+
+function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell', col?: any, item?: RenderRow) {
+  const menuW = 200
+  const menuH = type === 'col' ? 300 : 170
+  ctx.type = type
+  ctx.colKey = col?.key || ''
+  ctx.rowNo = item?.rowNo || 0
+  ctx.x = Math.min(ev.clientX, window.innerWidth - menuW - 8)
+  ctx.y = Math.min(ev.clientY, window.innerHeight - menuH - 8)
+  ctx.open = true
+  // 右键同时把目标选中，保证「复制/清除格式」作用对象一目了然
+  if (type === 'col' && col) {
+    selColKey.value = col.key
+    selRowNo.value = 0
+    selAnchor.value = null
+    selFocus.value = null
+  } else if (type === 'row' && item) {
+    selRowNo.value = item.rowNo
+    selColKey.value = ''
+  } else if (type === 'cell' && col && item) {
+    selAnchor.value = { rowNo: item.rowNo, colKey: col.key }
+    selFocus.value = selAnchor.value
+    selColKey.value = ''
+    selRowNo.value = 0
+  }
+}
+
+function ctxColumn() {
+  return displayColumns.value.find((c) => c.key === ctx.colKey)
+}
+
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('已复制到剪贴板')
+  } catch {
+    toast.error('复制失败（浏览器未授权剪贴板）')
+  }
+}
+
+function ctxCopyColumn() {
+  const c = ctxColumn()
+  if (!c) return
+  const lines = visibleRows.value.map((r) => (c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''))
+  ctx.open = false
+  void copyText(lines.join('\n'))
+}
+
+function ctxCopyRow() {
+  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
+  ctx.open = false
+  if (!item) return
+  const line = displayColumns.value
+    .map((c) => (c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? ''))
+    .join('\t')
+  void copyText(line)
+}
+
+function ctxCopyCell() {
+  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
+  const c = ctxColumn()
+  ctx.open = false
+  if (!item || !c) return
+  void copyText(c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')
+}
+
+function ctxCellDetail() {
+  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
+  const c = ctxColumn()
+  ctx.open = false
+  if (!item || !c) return
+  openDetail(c.label, c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? '')
+}
+
+function ctxSort(dir: 'asc' | 'desc') {
+  if (!ctx.colKey) return
+  sortKey.value = ctx.colKey
+  sortDir.value = dir
+  ctx.open = false
+  resetScroll()
+}
+
+function ctxFilter() {
+  const c = ctxColumn()
+  ctx.open = false
+  if (!c) return
+  openColumnPanel(c, null)
+}
+
+const selColWrap = computed(() => !!colMeta[selColKey.value]?.wrap)
+
+function ctxWrap() {
+  const key = ctx.colKey
+  if (!key) return
+  const meta = colMeta[key] || (colMeta[key] = { width: 150, wrap: false })
+  meta.wrap = !meta.wrap
+  ctx.open = false
+  nextTick(() => { measure() })
+}
+
+/** 列宽自适应：按该列可见内容最长字符估算（中文按 2 个字符宽） */
+function ctxFitWidth() {
+  const c = ctxColumn()
+  const key = ctx.colKey
+  ctx.open = false
+  if (!c || !key) return
+  let max = c.label.length * 2
+  for (const r of visibleRows.value.slice(0, 2000)) {
+    const v = c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''
+    for (const line of String(v).split('\n')) {
+      let w = 0
+      for (const ch of line) w += ch.charCodeAt(0) > 255 ? 2 : 1
+      if (w > max) max = w
+    }
+  }
+  const width = Math.max(80, Math.min(900, Math.round(max * 7 + 24)))
+  colMeta[key] = { width, wrap: colMeta[key]?.wrap ?? false }
+  nextTick(() => { measure() })
+}
+
+function ctxHideColumn() {
+  if (!ctx.colKey) return
+  hiddenColumns.value = new Set([...hiddenColumns.value, ctx.colKey])
+  ctx.open = false
+}
+
+function ctxDeleteColumn() {
+  const key = ctx.colKey
+  const col = ctxColumn()
+  ctx.open = false
+  if (!col) return
+  if (col.annId) {
+    panel.key = col.key
+    panel.label = col.label
+    panel.annId = col.annId
+    removePanelColumn()
+  } else {
+    ctxHideColumnByKey(key)
+  }
+}
+
+function ctxHideColumnByKey(key: string) {
+  hiddenColumns.value = new Set([...hiddenColumns.value, key])
+}
+
+function ctxClearFormat() {
+  const cells = ctx.type === 'col'
+    ? visibleRows.value.map((r) => ({ rowNo: r.rowNo, colKey: ctx.colKey }))
+    : ctx.type === 'row'
+      ? displayColumns.value.map((c) => ({ rowNo: ctx.rowNo, colKey: c.key }))
+      : [{ rowNo: ctx.rowNo, colKey: ctx.colKey }]
+  ctx.open = false
+  clearFormat(cells)
+}
+
+function ctxClearRowFormat() {
+  ctxClearFormat()
+}
+
+function ctxBold() {
+  ctx.open = false
+  toggleBold()
+}
+
+function ctxRowFilter() {
+  const item = visibleRows.value.find((r) => r.rowNo === ctx.rowNo)
+  ctx.open = false
+  if (!item) return
+  // 以该行第一列的值为条件，快速缩小到同值行
+  const first = displayColumns.value.find((col) => !col.annId)
+  if (!first) return
+  const value = first.annId ? cellValue(item.rowNo, first.annId) : item.row[first.colIdx] ?? ''
+  valueFilters.value = { ...valueFilters.value, [first.key]: [value] }
+  resetScroll()
+}
+
+
 function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
-  if (!selCells.value.length) return
+  if (!targetCells.value.length) return
   const map: Record<string, CellFmt> = { ...formats.value }
-  for (const p of selCells.value) {
+  for (const p of targetCells.value) {
     const k = cellFmtKey(p.rowNo, p.colKey)
     const cur: CellFmt = { ...(map[k] || {}) }
     if (onlyIf && !onlyIf(cur)) continue
@@ -577,8 +946,8 @@ function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
 }
 
 function toggleBold() {
-  if (!selCells.value.length) return
-  const allBold = selCells.value.every(
+  if (!targetCells.value.length) return
+  const allBold = targetCells.value.every(
     (p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold,
   )
   applyFormat({ bold: allBold ? undefined : true })
@@ -596,7 +965,7 @@ function onPickBgColor(color: string) {
 function onPickFont(value: any) {
   const name = typeof value === 'string' ? value : ''
   fontSel.value = name
-  if (selCells.value.length) applyFormat({ font: name || undefined })
+  if (targetCells.value.length) applyFormat({ font: name || undefined })
   else defaultFont.value = name
 }
 
@@ -604,19 +973,20 @@ function onPickSize(value: any) {
   const n = Number(value)
   if (!n) return
   sizeSel.value = n
-  if (selCells.value.length) applyFormat({ size: n })
+  if (targetCells.value.length) applyFormat({ size: n })
   else defaultSize.value = n
 }
 
 const selHasBold = computed(() =>
-  selCells.value.length > 0
-  && selCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold),
+  targetCells.value.length > 0
+  && targetCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold),
 )
 
-function clearFormat() {
-  if (!selCells.value.length) return
+function clearFormat(cells?: CellPos[]) {
+  const list = cells || targetCells.value
+  if (!list.length) return
   const map: Record<string, CellFmt> = { ...formats.value }
-  for (const p of selCells.value) delete map[cellFmtKey(p.rowNo, p.colKey)]
+  for (const p of list) delete map[cellFmtKey(p.rowNo, p.colKey)]
   formats.value = map
 }
 
@@ -794,18 +1164,18 @@ function stopResize() {
 }
 
 // ---- 列面板：打开 / 排序 / 换行 / 删除列 ----
-function openColumnPanel(col: { key: string; label: string; annId: string | null }, e: MouseEvent) {
+function openColumnPanel(col: { key: string; label: string; annId: string | null }, e: MouseEvent | null) {
   // 再次点击同一列：收起面板
   if (panel.open && panel.key === col.key) {
     panel.open = false
     return
   }
-  const el = (e.currentTarget as HTMLElement).getBoundingClientRect()
+  const rect = e ? (e.currentTarget as HTMLElement).getBoundingClientRect() : null
   panel.key = col.key
   panel.label = col.label
   panel.annId = col.annId
-  panel.x = Math.min(el.left, window.innerWidth - 340)
-  panel.y = Math.min(el.bottom + 4, window.innerHeight - 540)
+  panel.x = Math.min(rect ? rect.left : ctx.x, window.innerWidth - 340)
+  panel.y = Math.min(rect ? rect.bottom + 4 : ctx.y, window.innerHeight - 540)
   panel.rowCount = rows.value.length
   panelTab.value = 'value'
   valueSearch.value = ''
@@ -1248,8 +1618,9 @@ function onResize() {
 
 /** 点击面板与表头之外的地方关闭面板（表头自身负责切换/收起）。 */
 function onDocMousedown(e: MouseEvent) {
-  if (!panel.open) return
   const target = e.target as HTMLElement | null
+  if (ctx.open && !target?.closest('.br-ctx')) ctx.open = false
+  if (!panel.open) return
   if (target?.closest('.br-panel') || target?.closest('.br-th')) return
   panel.open = false
 }
@@ -1385,19 +1756,69 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   to { transform: rotate(360deg); }
 }
 
-.br-inner {
+.br-sheet {
   position: relative;
   min-width: 100%;
 }
 
-.br-head-row {
+/* 列标 + 列名两层表头，整体吸顶 */
+.br-colhead {
   position: sticky;
   top: 0;
-  z-index: 3;
+  z-index: 6;
+  display: flex;
+  background: var(--color-bg-1);
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.br-corner {
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  flex: 0 0 auto;
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-text-2);
+  background: var(--color-fill-2);
+  border-right: 1px solid var(--color-border-2);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.br-head-main {
+  flex: 1 1 auto;
+}
+
+.br-let-row {
+  display: flex;
+  height: 22px;
+  background: var(--color-fill-2);
+  border-bottom: 1px solid var(--color-border-1);
+}
+
+.br-let {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-text-3);
+  border-right: 1px solid var(--color-border-1);
+  overflow: hidden;
+  cursor: pointer;
+  user-select: none;
+
+  &:hover { background: var(--color-fill-3); }
+  &.is-on { background: rgba(var(--primary-2), 0.9); color: rgb(var(--primary-6)); }
+}
+
+.br-head-row {
   display: flex;
   background: var(--color-fill-2);
-  border-bottom: 1px solid var(--color-border-2);
-  height: 36px;
+  height: 34px;
 }
 
 .br-th {
@@ -1417,13 +1838,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 
   &:hover { background: var(--color-fill-3); }
   &.is-sorted { background: rgba(var(--primary-1), 0.6); }
-
-  &:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 4;
-    background: var(--color-fill-2);
-  }
+  &.is-on { background: rgba(var(--primary-2), 0.9); }
 }
 
 .br-th-name {
@@ -1473,7 +1888,6 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   left: 0;
   top: 0;
   display: flex;
-  border-bottom: 1px solid var(--color-border-1);
   background: var(--color-bg-2);
 
   &.fail { background: rgba(var(--red-1), 0.5); }
@@ -1492,14 +1906,22 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   font-size: 12px;
   color: var(--color-text-1);
   border-right: 1px solid var(--color-border-1);
+  border-bottom: 1px solid var(--color-border-1);
   overflow: hidden;
+}
 
-  &:first-child {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: inherit;
-  }
+/* 选区内部：不画单元格边线，只留整体外框 */
+.br-td.in-sel {
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.br-selbox {
+  position: absolute;
+  z-index: 3;
+  border: 2px solid rgb(var(--primary-6));
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(var(--primary-6), 0.15);
 }
 
 .br-td-ann {
@@ -1507,14 +1929,83 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 /* 选中单元格：淡蓝底 + 内描边 */
-.br-td.is-sel {
-  box-shadow: inset 0 0 0 1px rgb(var(--primary-5));
+
+.br-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  flex: 0 0 auto;
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--color-text-3);
+  background: var(--color-fill-2);
+  border-right: 1px solid var(--color-border-2);
+  border-bottom: 1px solid var(--color-border-1);
+  user-select: none;
+  cursor: pointer;
+
+  &:hover { background: var(--color-fill-3); }
+  &.is-on {
+    background: rgba(var(--primary-2), 0.9);
+    color: rgb(var(--primary-6));
+    font-weight: 600;
+  }
 }
-.br-td.is-sel::after {
+
+.br-row.is-on { background: rgba(var(--primary-1), 0.35); }
+
+/* 右键菜单 */
+.br-ctx {
+  position: fixed;
+  z-index: 1000;
+  min-width: 168px;
+  padding: 4px 0;
+  background: var(--color-bg-popup);
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.br-ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: var(--color-text-1);
+  cursor: pointer;
+  user-select: none;
+
+  &:hover { background: var(--color-fill-2); }
+  &.danger { color: rgb(var(--danger-6)); }
+}
+
+.br-ctx-icon {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.br-ctx-sub {
+  font-size: 12px;
+  color: var(--color-text-3);
+}
+
+.br-ctx-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--color-border-1);
+}
+
+.br-td.in-sel::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(var(--primary-6), 0.08);
+  background: rgba(var(--primary-6), 0.14);
   pointer-events: none;
 }
 
