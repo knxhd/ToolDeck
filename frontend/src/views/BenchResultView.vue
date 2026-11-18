@@ -180,38 +180,41 @@
       </div>
       <div v-else class="br-sheet" :style="{ width: GUTTER_W + totalWidth + 'px' }">
         <!-- 列标（A、B、C…）+ 列名，两层表头，滚动时吸顶 -->
-        <div class="br-colhead">
-          <div class="br-corner" :class="{ 'is-on': selAll }" title="点击全选整张表" @click.stop="selectAllCells"
-            @contextmenu.prevent.stop="openCtx($event, 'all')">{{ nameBoxText }}</div>
-          <div class="br-head-main">
-            <div class="br-let-row">
-              <div v-for="(c, i) in displayColumns" :key="'let-' + c.key" class="br-let"
-                :style="{ width: c.width + 'px' }" :class="{ 'is-on': selAll || selCols.includes(c.key) }"
-                :title="c.label" @click.stop="onColClick(c, $event)"
-                @contextmenu.prevent.stop="openCtx($event, 'col', c)">
-                {{ colLetter(i) }}
+        <div class="br-headers">
+          <div class="br-colhead">
+            <div class="br-corner" :class="{ 'is-on': selAll }" title="点击全选整张表" @click.stop="selectAllCells"
+              @contextmenu.prevent.stop="openCtx($event, 'all')">{{ nameBoxText }}</div>
+            <div class="br-head-main">
+              <div class="br-let-row">
+                <div v-for="(c, i) in displayColumns" :key="'let-' + c.key" class="br-let"
+                  :style="{ width: c.width + 'px' }" :class="{ 'is-on': selAll || selCols.includes(c.key) }"
+                  :title="c.label" @click.stop="onColClick(c, $event)"
+                  @contextmenu.prevent.stop="openCtx($event, 'col', c)">
+                  {{ colLetter(i) }}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="br-colhead">
+            <div class="br-corner">1</div>
+            <div class="br-head-main">
+              <div class="br-head-row">
+                <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
+                  :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
+                  @click="openColumnPanel(c, $event)" @contextmenu.prevent.stop="openCtx($event, 'col', c)">
+                  <input v-if="c.blank" class="br-th-edit" :value="blankColLabel(c.key)" @mousedown.stop @click.stop
+                    @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
+                  <span v-else class="br-th-name" :title="c.label">{{ c.label }}</span>
+                  <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
+                  <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
+                  <icon-filter v-if="hasFilter(c.key)" class="br-th-flag is-active" />
+                  <span class="br-resize" @mousedown="startResize($event, c.key, c.width)" @click.stop></span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-        <div class="br-colhead">
-          <div class="br-corner">1</div>
-          <div class="br-head-main">
-            <div class="br-head-row">
-              <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
-                :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
-                @click="openColumnPanel(c, $event)" @contextmenu.prevent.stop="openCtx($event, 'col', c)">
-                <input v-if="c.blank" class="br-th-edit" :value="blankColLabel(c.key)" @mousedown.stop @click.stop
-                  @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
-                <span v-else class="br-th-name" :title="c.label">{{ c.label }}</span>
-                <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
-                <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
-                <icon-filter v-if="hasFilter(c.key)" class="br-th-flag is-active" />
-                <span class="br-resize" @mousedown="startResize($event, c.key, c.width)" @click.stop></span>
-              </div>
-            </div>
-          </div>
-        </div>
+
         <div class="br-body" :style="{ height: visibleRows.length * rowH + 'px' }">
           <!-- 选区外框：单一描边，内部单元格边框隐藏 -->
           <div v-if="selRect" class="br-selbox"
@@ -2711,9 +2714,13 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   min-width: 100%;
 }
 
+.br-headers {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
 /* 列标 + 列名两层表头，整体吸顶 */
 .br-colhead {
-  position: sticky;
   top: 0;
   z-index: 6;
   display: flex;
