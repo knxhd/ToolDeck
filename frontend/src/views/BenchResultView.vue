@@ -192,6 +192,11 @@
                 {{ colLetter(i) }}
               </div>
             </div>
+          </div>
+        </div>
+        <div class="br-colhead">
+          <div class="br-corner">1</div>
+          <div class="br-head-main">
             <div class="br-head-row">
               <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
                 :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
@@ -217,7 +222,7 @@
             :style="{ height: rowH + 'px', transform: `translateY(${item.idx * rowH}px)` }">
             <div class="br-gutter" :class="{ 'is-on': selRows.includes(item.rowNo) }"
               @click.stop="onRowClick(item, $event)" @contextmenu.prevent.stop="openCtx($event, 'row', null, item)">
-              {{ item.idx + 1 }}
+              {{ item.idx + 2 }}
             </div>
             <div v-for="c in displayColumns" :key="c.key" class="br-td"
               :style="{ width: c.width + 'px', ...cellCss(item.rowNo, c.key) }"
@@ -2734,18 +2739,6 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
-
-  /* 左上角小三角（全选按钮） */
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 0;
-    height: 0;
-    border-top: 7px solid rgb(var(--primary-6));
-    border-right: 7px solid transparent;
-  }
 
   &:hover {
     background: var(--color-fill-3);
