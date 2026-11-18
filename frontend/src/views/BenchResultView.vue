@@ -99,7 +99,8 @@
         <!-- 列标（A、B、C…）+ 列名，两层表头，滚动时吸顶 -->
         <div class="br-colhead">
           <div class="br-corner" :class="{ 'is-on': selAll }" title="点击全选整张表"
-            @click.stop="selectAllCells">{{ nameBoxText }}</div>
+            @click.stop="selectAllCells"
+            @contextmenu.prevent.stop="openCtx($event, 'all')">{{ nameBoxText }}</div>
           <div class="br-head-main">
             <div class="br-let-row">
               <div v-for="(c, i) in displayColumns" :key="'let-' + c.key" class="br-let"
@@ -183,6 +184,13 @@
         <div class="br-ctx-item danger" @click="ctxDeleteColumn()"><span>删除此列</span></div>
         <div class="br-ctx-sep"></div>
         <div class="br-ctx-item" @click="ctxClearFormat()"><span>清除此列格式</span></div>
+      </template>
+
+      <template v-else-if="ctx.type === 'all'">
+        <div class="br-ctx-item" @click="ctxCopyAll()"><span>复制整表</span></div>
+        <div class="br-ctx-sep"></div>
+        <div class="br-ctx-item" @click="selectAllCells()"><span>取消全选</span></div>
+        <div class="br-ctx-item danger" @click="ctxClearAllFormat()"><span>清除整表格式</span></div>
       </template>
 
       <template v-else-if="ctx.type === 'row'">
@@ -399,7 +407,7 @@ const ctx = reactive({
   open: false,
   x: 0,
   y: 0,
-  type: 'col' as 'col' | 'row' | 'cell',
+  type: 'col' as 'col' | 'row' | 'cell' | 'all',
   colKey: '',
   rowNo: 0,
 })
@@ -791,7 +799,9 @@ function onCellCtx(ev: MouseEvent, col: any, item: RenderRow) {
   openCtx(ev, 'cell', col, item)
 }
 
-function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell', col?: any, item?: RenderRow) {
+function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell' | 'all', col?: any, item?: RenderRow) {
+  // 全选状态下右键任意位置，都直接给「整表」菜单
+  if (selAll.value) type = 'all'
   const menuW = 200
   const menuH = type === 'col' ? 300 : 170
   ctx.type = type
@@ -800,7 +810,7 @@ function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell', col?: any, item?:
   ctx.x = Math.min(ev.clientX, window.innerWidth - menuW - 8)
   ctx.y = Math.min(ev.clientY, window.innerHeight - menuH - 8)
   ctx.open = true
-  selAll.value = false
+  if (type !== 'all') selAll.value = false
   // 右键同时把目标选中，保证「复制/清除格式」作用对象一目了然
   if (type === 'col' && col) {
     selColKey.value = col.key
@@ -822,6 +832,43 @@ function ctxColumn() {
   return displayColumns.value.find((c) => c.key === ctx.colKey)
 }
 
+/** TSV 字段转义：含制表符/换行/引号时加引号并转义内部引号 */
+function tsvCell(v: string): string {
+  return /[\t\n\r"]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v
+}
+
+function htmlCell(v: string): string {
+  const esc = v
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+  // mso-data-placement:same-cell 明确告诉 Excel：这是单元格内换行，不要拆成多行
+  return esc.replace(/\r?\n/g, '<br style="mso-data-placement:same-cell">')
+}
+
+/**
+ * 复制成表格：同时写 text/html + text/plain。
+ * Excel / WPS 粘贴 text/html 时会识别成单元格，单元格内的换行也会保留在同一格里。
+ */
+async function copyTable(rows: string[][]): Promise<void> {
+  const tsv = rows.map((r) => r.map(tsvCell).join('\t')).join('\n')
+  const html = `<table>${rows.map((r) => `<tr>${r.map((c) => `<td>${htmlCell(c)}</td>`).join('')}</tr>`).join('')}</table>`
+  try {
+    if (navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': new Blob([tsv], { type: 'text/plain' }),
+          'text/html': new Blob([html], { type: 'text/html' }),
+        }),
+      ])
+      toast.success('已复制到剪贴板')
+      return
+    }
+  } catch { /* 回退到纯文本 */ }
+  await copyText(tsv)
+}
+
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
@@ -834,9 +881,9 @@ async function copyText(text: string) {
 function ctxCopyColumn() {
   const c = ctxColumn()
   if (!c) return
-  const lines = visibleRows.value.map((r) => (c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''))
+  const lines = visibleRows.value.map((r) => [c.annId ? cellValue(r.rowNo, c.annId) : r.row[c.colIdx] ?? ''])
   ctx.open = false
-  void copyText(lines.join('\n'))
+  void copyTable(lines)
 }
 
 function ctxCopyRow() {
@@ -845,8 +892,7 @@ function ctxCopyRow() {
   if (!item) return
   const line = displayColumns.value
     .map((c) => (c.annId ? cellValue(item.rowNo, c.annId) : item.row[c.colIdx] ?? ''))
-    .join('\t')
-  void copyText(line)
+  void copyTable([line])
 }
 
 function ctxCopyCell() {
@@ -948,6 +994,21 @@ function ctxClearFormat() {
 
 function ctxClearRowFormat() {
   ctxClearFormat()
+}
+
+function ctxCopyAll() {
+  const cols = displayColumns.value
+  const body = visibleRows.value.map((it) =>
+    cols.map((c) => (c.annId ? cellValue(it.rowNo, c.annId) : it.row[c.colIdx] ?? '')),
+  )
+  ctx.open = false
+  void copyTable([cols.map((c) => c.label), ...body])
+}
+
+function ctxClearAllFormat() {
+  ctx.open = false
+  formats.value = {}
+  toast.success('已清除整表格式')
 }
 
 function ctxBold() {
