@@ -1993,11 +1993,6 @@ function hasFilter(key: string): boolean {
   return (!!sel && sel.length > 0) || !!cond
 }
 
-const activeFilterCount = computed(() =>
-  Object.keys(valueFilters.value).filter((k) => valueFilters.value[k]?.length).length
-  + Object.keys(condFilters.value).length,
-)
-
 function clearPanelFilter() {
   const key = panel.key
   delete valueFilters.value[key]
@@ -2031,12 +2026,6 @@ function confirmPanel() {
   resetScroll()
 }
 
-function clearAllFilters() {
-  valueFilters.value = {}
-  condFilters.value = {}
-  resetScroll()
-}
-
 function removePanelColumn() {
   const { key, annId } = panel
   if (annId) {
@@ -2063,13 +2052,6 @@ function removePanelColumn() {
 }
 
 // ---- 标注列管理 ----
-function openAddCol() {
-  colDialogMode.value = 'add'
-  renameTargetId = null
-  colDialogName.value = ''
-  colDialogOpen.value = true
-}
-
 function submitColumn(): boolean {
   const name = colDialogName.value.trim()
   if (!name) {
