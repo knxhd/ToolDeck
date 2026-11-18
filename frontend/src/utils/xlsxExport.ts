@@ -67,9 +67,8 @@ export async function exportRowsToXlsx(opts: XlsxExportOptions): Promise<void> {
   const { columns, rows, fileName, defaultFont, defaultSize, cellStyle } = opts
   const wb = new ExcelJS.Workbook()
   wb.creator = 'api-tool'
-  const ws = wb.addWorksheet((opts.sheetName || '结果').slice(0, 31), {
-    views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
-  })
+  // 不写冻结窗格：WPS 会把冻结分界线渲染成绿色粗线，看起来像表格里多了一道边框
+  const ws = wb.addWorksheet((opts.sheetName || '结果').slice(0, 31))
 
   const baseSize = defaultSize || DEFAULT_PX
   const headerPt = pxToPt(baseSize + 2) ?? 10
