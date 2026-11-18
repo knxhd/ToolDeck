@@ -1289,7 +1289,33 @@ function isInSel(rowNo: number, colKey: string): boolean {
 }
 
 /** Esc 取消选区 */
+/** Ctrl/⌘ + S：不走浏览器“保存网页”，把视图 + 标注立即写回后端。 */
+async function saveToServer() {
+  if (savingNow.value) return
+  savingNow.value = true
+  try {
+    if (editing.value) commitEdit()
+    if (viewTimer) {
+      clearTimeout(viewTimer)
+      viewTimer = null
+    }
+    const viewOk = await saveView()
+    const annOk = await flushSave()
+    if (viewOk && annOk) toast.success('已保存')
+    else if (viewOk || annOk) toast.warning('部分保存失败')
+    else toast.error('保存失败')
+  } finally {
+    savingNow.value = false
+  }
+}
+
 function onKeydown(ev: KeyboardEvent) {
+  if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 's' || ev.key === 'S')) {
+    ev.preventDefault()
+    ev.stopPropagation()
+    void saveToServer()
+    return
+  }
   if (ev.key !== 'Escape') return
   if (ctx.open) {
     ctx.open = false
@@ -1791,12 +1817,12 @@ function onCellBlur() {
   void flushSave()
 }
 
-async function flushSave() {
+async function flushSave(): Promise<boolean> {
   if (saveTimer) {
     clearTimeout(saveTimer)
     saveTimer = null
   }
-  if (!dirty.value) return
+  if (!dirty.value) return true
   saving.value = true
   try {
     const res = await fetch(`/api/bench/jobs/${jobId}/annotations`, {
@@ -1810,8 +1836,10 @@ async function flushSave() {
         : `保存标注失败（${res.status}）`)
     }
     dirty.value = false
+    return true
   } catch (err: any) {
     toast.error(err.message || '保存标注失败')
+    return false
   } finally {
     saving.value = false
   }
@@ -2202,6 +2230,8 @@ async function exportView() {
 // ---- 视图设置持久化：后端为准（按任务存），localStorage 只做离线兜底缓存 ----
 const VIEW_KEY = `bench.view.${jobId}`
 let viewTimer: ReturnType<typeof setTimeout> | null = null
+/** Ctrl+S 保存中，防止连按重复提交 */
+const savingNow = ref(false)
 
 interface ViewPayload {
   colMeta?: Record<string, { width: number; wrap: boolean }>
@@ -2310,7 +2340,7 @@ function writeLocalView(data: ViewPayload) {
 }
 
 /** 保存视图到后端；失败时至少保住本地缓存，下次打开还能恢复。 */
-async function saveView() {
+async function saveView(): Promise<boolean> {
   const payload = currentView()
   writeLocalView(payload)
   try {
@@ -2320,8 +2350,10 @@ async function saveView() {
       body: JSON.stringify(payload),
     })
     if (!res.ok) throw new Error(`${res.status}`)
+    return true
   } catch {
     // 后端不可用时不打扰用户，本地缓存已写入
+    return false
   }
 }
 
