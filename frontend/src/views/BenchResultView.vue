@@ -98,12 +98,13 @@
       <div v-else class="br-sheet" :style="{ width: GUTTER_W + totalWidth + 'px' }">
         <!-- 列标（A、B、C…）+ 列名，两层表头，滚动时吸顶 -->
         <div class="br-colhead">
-          <div class="br-corner">{{ nameBoxText }}</div>
+          <div class="br-corner" :class="{ 'is-on': selAll }" title="点击全选整张表"
+            @click.stop="selectAllCells">{{ nameBoxText }}</div>
           <div class="br-head-main">
             <div class="br-let-row">
               <div v-for="(c, i) in displayColumns" :key="'let-' + c.key" class="br-let"
                 :style="{ width: c.width + 'px' }"
-                :class="{ 'is-on': selColKey === c.key }"
+                :class="{ 'is-on': selAll || selColKey === c.key }"
                 :title="c.label"
                 @click.stop="onColClick(c)"
                 @contextmenu.prevent.stop="openCtx($event, 'col', c)">
@@ -112,7 +113,7 @@
             </div>
             <div class="br-head-row">
               <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
-                :class="{ 'is-sorted': sortKey === c.key, 'is-on': selColKey === c.key }"
+  :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selColKey === c.key }"
                 @click="openColumnPanel(c, $event)"
                 @contextmenu.prevent.stop="openCtx($event, 'col', c)">
                 <span class="br-th-name" :title="c.label">{{ c.label }}</span>
@@ -133,10 +134,10 @@
             :style="{ height: rowH + 'px', transform: `translateY(${item.idx * rowH}px)` }">
             <div class="br-gutter" :class="{ 'is-on': selRowNo === item.rowNo }"
               @click.stop="onRowClick(item)"
-              @contextmenu.prevent.stop="openCtx($event, 'row', null, item)">{{ item.rowNo }}</div>
+              @contextmenu.prevent.stop="openCtx($event, 'row', null, item)">{{ item.idx + 1 }}</div>
             <div v-for="c in displayColumns" :key="c.key" class="br-td"
               :style="{ width: c.width + 'px', ...cellCss(item.rowNo, c.key) }"
-              :class="{ 'br-td-ann': !!c.annId, 'in-sel': selSet.has(cellFmtKey(item.rowNo, c.key)) }"
+              :class="{ 'br-td-ann': !!c.annId, 'in-sel': isInSel(item.rowNo, c.key) }"
               @click="onCellClick(item, c.key, $event)"
               @contextmenu="onCellCtx($event, c, item)">
               <template v-if="c.annId">
@@ -387,6 +388,8 @@ const selFocus = ref<CellPos | null>(null)
 /** 选中的整列 / 整行（与单元格矩形互斥） */
 const selColKey = ref('')
 const selRowNo = ref(0)
+/** 全选（点左上角小三角） */
+const selAll = ref(false)
 
 /** 行号栏宽度 */
 const GUTTER_W = 46
@@ -624,11 +627,15 @@ function colLetter(index: number): string {
 }
 
 const nameBoxText = computed(() => {
+  if (selAll.value) return '全选'
   if (selColKey.value) {
     const idx = displayColumns.value.findIndex((c) => c.key === selColKey.value)
     return idx >= 0 ? `${colLetter(idx)}列` : ''
   }
-  if (selRowNo.value) return `${selRowNo.value}行`
+  if (selRowNo.value) {
+    const ri = visibleRows.value.findIndex((r) => r.rowNo === selRowNo.value)
+    return ri >= 0 ? `${ri + 1}行` : ''
+  }
   const a = selAnchor.value
   if (!a) return ''
   const idx = displayColumns.value.findIndex((c) => c.key === a.colKey)
@@ -637,6 +644,17 @@ const nameBoxText = computed(() => {
 
 /** 工具栏/右键菜单作用的目标单元格：整列 > 整行 > 矩形选区 */
 const targetCells = computed<CellPos[]>(() => {
+  if (selAll.value) {
+    const out: CellPos[] = []
+    const cols = displayColumns.value
+    for (const r of visibleRows.value) {
+      for (const c of cols) {
+        if (out.length >= 4000) return out
+        out.push({ rowNo: r.rowNo, colKey: c.key })
+      }
+    }
+    return out
+  }
   if (selColKey.value) {
     const out: CellPos[] = []
     for (const r of visibleRows.value.slice(0, 4000)) out.push({ rowNo: r.rowNo, colKey: selColKey.value })
@@ -671,6 +689,10 @@ const selRect = computed<SelRect | null>(() => {
 
   const h = rowH.value
 
+  if (selAll.value) {
+    return { left: GUTTER_W, top: 0, width: totalWidth.value, height: vr.length * h }
+  }
+
   if (selColKey.value) {
     const ci = cols.findIndex((c) => c.key === selColKey.value)
     if (ci < 0) return null
@@ -699,6 +721,7 @@ const selRect = computed<SelRect | null>(() => {
 })
 
 function onColClick(c: { key: string }) {
+  selAll.value = false
   selColKey.value = selColKey.value === c.key ? '' : c.key
   selRowNo.value = 0
   selAnchor.value = null
@@ -706,6 +729,7 @@ function onColClick(c: { key: string }) {
 }
 
 function onRowClick(item: RenderRow) {
+  selAll.value = false
   selRowNo.value = selRowNo.value === item.rowNo ? 0 : item.rowNo
   selColKey.value = ''
   selAnchor.value = null
@@ -722,6 +746,7 @@ function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
   }
   selColKey.value = ''
   selRowNo.value = 0
+  selAll.value = false
 }
 
 function clearSelection() {
@@ -729,6 +754,21 @@ function clearSelection() {
   selFocus.value = null
   selColKey.value = ''
   selRowNo.value = 0
+  selAll.value = false
+}
+
+/** 左上角小三角：全选整张表（再点一次取消） */
+function selectAllCells() {
+  selAll.value = !selAll.value
+  selColKey.value = ''
+  selRowNo.value = 0
+  selAnchor.value = null
+  selFocus.value = null
+}
+
+/** 单元格是否处于选中态（全选时全部算选中） */
+function isInSel(rowNo: number, colKey: string): boolean {
+  return selAll.value || selSet.value.has(cellFmtKey(rowNo, colKey))
 }
 
 /** Esc 取消选区 */
@@ -760,6 +800,7 @@ function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell', col?: any, item?:
   ctx.x = Math.min(ev.clientX, window.innerWidth - menuW - 8)
   ctx.y = Math.min(ev.clientY, window.innerHeight - menuH - 8)
   ctx.open = true
+  selAll.value = false
   // 右键同时把目标选中，保证「复制/清除格式」作用对象一目了然
   if (type === 'col' && col) {
     selColKey.value = col.key
@@ -1780,12 +1821,30 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   display: flex;
   align-items: center;
   justify-content: center;
+  padding-left: 8px;
   font-size: 11px;
   color: var(--color-text-2);
   background: var(--color-fill-2);
   border-right: 1px solid var(--color-border-2);
   overflow: hidden;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+
+  /* 左上角小三角（全选按钮） */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-top: 7px solid rgb(var(--primary-6));
+    border-right: 7px solid transparent;
+  }
+
+  &:hover { background: var(--color-fill-3); }
+  &.is-on { background: rgba(var(--primary-2), 0.9); color: rgb(var(--primary-6)); }
 }
 
 .br-head-main {
@@ -1911,10 +1970,10 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   overflow: hidden;
 }
 
-/* 选区内部：不画单元格边线，只留整体外框 */
+/* 选区内部：去掉单元格边线（宽度置 0，外宽不变，不会挤出空白），只留整体外框 */
 .br-td.in-sel {
-  border-right-color: transparent;
-  border-bottom-color: transparent;
+  border-right-width: 0;
+  border-bottom-width: 0;
 }
 
 .br-selbox {
