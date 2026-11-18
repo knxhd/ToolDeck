@@ -2757,13 +2757,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   }
 }
 
-.br-head-main {
-  flex: 1 1 auto;
-}
-
 .br-let-row {
   display: flex;
-  height: 22px;
+  height: 30px;
   background: var(--color-fill-2);
   border-bottom: 1px solid var(--color-border-1);
 }
