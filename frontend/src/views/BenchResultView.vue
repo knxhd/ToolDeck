@@ -273,6 +273,14 @@
       </div>
     </div>
 
+    <!-- 底部状态栏：选区的计数值 / 求和 / 平均值（非数字单元格按 0 计入） -->
+    <div class="br-statusbar">
+      <span v-if="!stat.count" class="br-st-hint">框选单元格后在此显示统计（非数字按 0 计入）</span>
+      <span class="br-st-item">计数值: <b>{{ stat.count }}</b></span>
+      <span class="br-st-item">求和: <b>{{ stat.sumText }}</b></span>
+      <span class="br-st-item">平均值: <b>{{ stat.avgText }}</b></span>
+    </div>
+
     <!-- 右键菜单：列头 / 行号 / 单元格 / 选区 / 全选 统一同一套功能 -->
     <div v-if="ctx.open" class="br-ctx" :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }">
       <div class="br-ctx-item" @click="ctxCopyColumn()"><span>复制整列</span></div>
@@ -1028,6 +1036,38 @@ const targetCells = computed<CellPos[]>(() => {
 const selSet = computed<Set<string>>(
   () => new Set(targetCells.value.map((p) => cellFmtKey(p.rowNo, p.colKey))),
 )
+
+/** 行号 / 列 key 到渲染对象的索引，供状态栏取显示值（含标注、空白列）。 */
+const rowByNo = computed(() => new Map(visibleRows.value.map((r) => [r.rowNo, r])))
+const colByKey = computed(() => new Map(displayColumns.value.map((c) => [c.key, c])))
+
+/** 数字化：去掉千分位与首尾空白；空或非数字（如带单位的文本）一律按 0 计。 */
+function toNumber(text: string): number {
+  const t = text.trim().replace(/,/g, '')
+  if (!t) return 0
+  const n = Number(t)
+  return Number.isFinite(n) ? n : 0
+}
+
+function fmtNum(n: number): string {
+  if (!Number.isFinite(n)) return '0'
+  if (Number.isInteger(n)) return String(n)
+  return String(Number(n.toFixed(2)))
+}
+
+/** 状态栏统计：计数值=选中格数；求和/平均值把非数字单元格按 0 计入。 */
+const stat = computed(() => {
+  let sum = 0
+  for (const p of targetCells.value) {
+    const row = rowByNo.value.get(p.rowNo)
+    const col = colByKey.value.get(p.colKey)
+    const text = col && col.colIdx >= 0 ? cellText(row, col) : ''
+    sum += toNumber(text)
+  }
+  const count = targetCells.value.length
+  const avg = count ? sum / count : 0
+  return { count, sum, sumText: fmtNum(sum), avgText: fmtNum(avg) }
+})
 
 interface SelRect { left: number; top: number; width: number; height: number }
 
@@ -2320,6 +2360,33 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   display: flex;
   flex-direction: column;
   background: var(--color-fill-1);
+}
+
+/* 底部状态栏：右侧显示选区统计，仿 WPS */
+.br-statusbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  height: 26px;
+  padding: 16px 32px;
+  border-top: 1px solid var(--color-border-2);
+  background: var(--color-fill-2);
+  font-size: 12px;
+  color: var(--color-text-2);
+  user-select: none;
+
+  b {
+    font-weight: 500;
+    color: var(--color-text-1);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.br-st-hint {
+  color: var(--color-text-3);
+  font-size: 11px;
 }
 
 .br-head {
