@@ -1898,6 +1898,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 
 .br-td {
   position: relative;
+  box-sizing: border-box;
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -1918,6 +1919,7 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 
 .br-selbox {
   position: absolute;
+  box-sizing: border-box;
   z-index: 3;
   border: 2px solid rgb(var(--primary-6));
   pointer-events: none;
