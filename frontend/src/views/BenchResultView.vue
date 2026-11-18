@@ -42,7 +42,8 @@
         清除筛选（{{ activeFilterCount }}）
       </a-button>
       <span class="br-count">
-        共 {{ rows.length }} 行<template v-if="visibleRows.length !== rows.length">，筛选后 {{ visibleRows.length }} 行</template>
+        共 {{ rows.length }} 行<template v-if="visibleRows.length !== rows.length">，筛选后 {{ visibleRows.length }}
+          行</template>
       </span>
       <span v-if="loading" class="br-saving"><icon-loading />加载中…</span>
       <span v-else-if="truncated" class="br-warn" title="可通过「下载结果」查看完整结果">
@@ -56,115 +57,141 @@
       <span v-else-if="dirty" class="br-saving">有未保存的标注，稍后自动保存</span>
     </div>
 
-    <!-- 格式工具条：上排字体/字号，下排加粗与颜色，右侧两组对齐（仿飞书） -->
+    <!-- 格式工具条：左侧清除格式（文字在上图标在下），中间上排字体/字号 + 下排字形与颜色，右侧两组对齐 -->
     <div class="br-fmtbar">
-      <div class="br-fmt-grid">
-        <a-select v-model="fontSel" size="mini" class="br-fg-font" allow-clear placement="bottom"
-          placeholder="默认字体" title="字体" @change="onPickFont">
-          <a-option value="微软雅黑">微软雅黑</a-option>
-          <a-option value="宋体">宋体</a-option>
-          <a-option value="黑体">黑体</a-option>
-          <a-option value="楷体">楷体</a-option>
-          <a-option value="仿宋">仿宋</a-option>
-          <a-option value="等线">等线</a-option>
-          <a-option value="Arial">Arial</a-option>
-          <a-option value="Consolas">Consolas</a-option>
-        </a-select>
-        <a-select v-model="sizeSel" size="mini" class="br-fg-size" placement="bottom"
-          title="字号" @change="onPickSize">
-          <a-option v-for="sz in [10, 11, 12, 14, 16, 18, 20]" :key="sz" :value="sz">{{ sz }}</a-option>
-        </a-select>
+      <button type="button" class="br-fmt-tall" title="清除所选单元格的格式" @click="clearFormat()">
+        <span class="br-tall-text">清除格式</span>
+        <icon-eraser />
+      </button>
 
-        <button type="button" class="br-fmt-ic br-fg-bold" :class="{ 'is-on': selHasBold }" title="加粗"
-          @click="toggleBold">
-          <icon-bold />
-        </button>
+      <span class="br-fmt-sep"></span>
 
-        <div class="br-fmt-dd br-fg-fcolor">
-          <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'font' }"
-            title="字体颜色" @mousedown.stop @click.stop="togglePalette('font')">
-            <icon-font-colors />
-            <span class="br-color-bar" :style="{ background: fontColor }"></span>
-          </button>
-          <div v-if="palette === 'font'" class="br-palette" @mousedown.stop @click.stop>
-            <div class="br-pal-grid">
-              <button v-for="c in PALETTE" :key="'f' + c" type="button" class="br-pal-sw"
-                :class="{ 'is-cur': c.toLowerCase() === fontColor.toLowerCase() }"
-                :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
-            </div>
-            <div class="br-pal-title">最近使用</div>
-            <div class="br-pal-grid br-pal-recent">
-              <button v-for="c in recentColors" :key="'rf' + c" type="button" class="br-pal-sw"
-                :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
-              <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
-            </div>
-            <label class="br-pal-more">
-              <span class="br-pal-dot"></span>更多颜色
-              <input type="color" :value="fontColor" @input="onMoreColor('font', $event)" />
-            </label>
-          </div>
+      <div class="br-fmt-main">
+        <div class="br-fmt-row">
+          <a-select v-model="fontSel" size="mini" style="width: 120px;min-width: 120px;max-width: 120px;"
+            class="br-fg-font" placement="bottom" placeholder="默认字体" title="字体" @change="onPickFont">
+            <a-option :value="''">默认字体</a-option>
+            <a-option v-for="font in font_list" :key="font" :value="font">{{ font }}</a-option>
+          </a-select>
+          <a-select v-model="sizeSel" size="mini" class="br-fg-size" placement="bottom" title="字号" @change="onPickSize">
+            <a-option v-for="sz in [10, 11, 12, 14, 16, 18, 20]" :key="sz" :value="sz">{{ sz }}</a-option>
+          </a-select>
         </div>
 
-        <div class="br-fmt-dd br-fg-bcolor">
-          <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'bg' }"
-            title="单元格颜色" @mousedown.stop @click.stop="togglePalette('bg')">
-            <icon-bg-colors />
-            <span class="br-color-bar" :style="{ background: bgColor }"></span>
+        <div class="br-fmt-row">
+          <button type="button" class="br-fmt-ic" :class="{ 'is-on': selHasBold }" title="加粗"
+            @click="toggleStyle('bold')">
+            <icon-bold />
           </button>
-          <div v-if="palette === 'bg'" class="br-palette" @mousedown.stop @click.stop>
-            <div class="br-pal-grid">
-              <button v-for="c in PALETTE" :key="'b' + c" type="button" class="br-pal-sw"
-                :class="{ 'is-cur': c.toLowerCase() === bgColor.toLowerCase() }"
-                :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
+          <button type="button" class="br-fmt-ic" :class="{ 'is-on': selHasStrike }" title="删除线"
+            @click="toggleStyle('strike')">
+            <icon-strikethrough />
+          </button>
+          <button type="button" class="br-fmt-ic" :class="{ 'is-on': selHasItalic }" title="斜体"
+            @click="toggleStyle('italic')">
+            <icon-italic />
+          </button>
+          <button type="button" class="br-fmt-ic" :class="{ 'is-on': selHasUnderline }" title="下划线"
+            @click="toggleStyle('underline')">
+            <icon-underline />
+          </button>
+
+          <div class="br-fmt-dd br-fg-fcolor">
+            <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'font' }" title="字体颜色"
+              @mousedown.stop @click.stop="togglePalette('font')">
+              <icon-font-colors />
+              <span class="br-color-bar" :style="{ background: fontColor }"></span>
+            </button>
+            <div v-if="palette === 'font'" class="br-palette" @mousedown.stop @click.stop>
+              <div class="br-pal-grid">
+                <button v-for="c in PALETTE" :key="'f' + c" type="button" class="br-pal-sw"
+                  :class="{ 'is-cur': c.toLowerCase() === fontColor.toLowerCase() }" :style="{ background: c }"
+                  :title="c" @click="pickColor('font', c)" />
+              </div>
+              <div class="br-pal-title">最近使用</div>
+              <div class="br-pal-grid br-pal-recent">
+                <button v-for="c in recentColors" :key="'rf' + c" type="button" class="br-pal-sw"
+                  :style="{ background: c }" :title="c" @click="pickColor('font', c)" />
+                <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+              </div>
+              <label class="br-pal-more">
+                <span class="br-pal-dot"></span>更多颜色
+                <input type="color" :value="fontColor" @input="onMoreColor('font', $event)" />
+              </label>
             </div>
-            <div class="br-pal-title">最近使用</div>
-            <div class="br-pal-grid br-pal-recent">
-              <button v-for="c in recentColors" :key="'rb' + c" type="button" class="br-pal-sw"
-                :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
-              <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
-            </div>
-            <label class="br-pal-more">
-              <span class="br-pal-dot"></span>更多颜色
-              <input type="color" :value="bgColor" @input="onMoreColor('bg', $event)" />
-            </label>
           </div>
-        </div>
 
-        <button type="button" class="br-fmt-ic br-fg-clear" title="清除格式" @click="clearFormat()">
-          <icon-eraser />
-        </button>
-
-        <!-- 对齐：上排垂直对齐，下排水平对齐 -->
-        <div class="br-align-grid">
-          <button type="button" class="br-fmt-ic" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }"
-            @click="setAlign('valign', 'top')">
-            <span class="br-va is-top"><i></i><i></i><i></i></span>
-          </button>
-          <button type="button" class="br-fmt-ic" title="垂直对齐（居中）" :class="{ 'is-on': selValign === 'middle' }"
-            @click="setAlign('valign', 'middle')">
-            <span class="br-va is-middle"><i></i><i></i><i></i></span>
-          </button>
-          <button type="button" class="br-fmt-ic" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
-            @click="setAlign('valign', 'bottom')">
-            <span class="br-va is-bottom"><i></i><i></i><i></i></span>
-          </button>
-          <button type="button" class="br-fmt-ic" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
-            @click="setAlign('halign', 'left')">
-            <icon-align-left />
-          </button>
-          <button type="button" class="br-fmt-ic" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
-            @click="setAlign('halign', 'center')">
-            <icon-align-center />
-          </button>
-          <button type="button" class="br-fmt-ic" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
-            @click="setAlign('halign', 'right')">
-            <icon-align-right />
-          </button>
+          <div class="br-fmt-dd br-fg-bcolor">
+            <button type="button" class="br-fmt-ic br-fmt-color" :class="{ 'is-on': palette === 'bg' }" title="单元格颜色"
+              @mousedown.stop @click.stop="togglePalette('bg')">
+              <icon-bg-colors />
+              <span class="br-color-bar" :style="{ background: bgColor }"></span>
+            </button>
+            <div v-if="palette === 'bg'" class="br-palette" @mousedown.stop @click.stop>
+              <div class="br-pal-grid">
+                <button v-for="c in PALETTE" :key="'b' + c" type="button" class="br-pal-sw"
+                  :class="{ 'is-cur': c.toLowerCase() === bgColor.toLowerCase() }" :style="{ background: c }" :title="c"
+                  @click="pickColor('bg', c)" />
+              </div>
+              <div class="br-pal-title">最近使用</div>
+              <div class="br-pal-grid br-pal-recent">
+                <button v-for="c in recentColors" :key="'rb' + c" type="button" class="br-pal-sw"
+                  :style="{ background: c }" :title="c" @click="pickColor('bg', c)" />
+                <span v-if="!recentColors.length" class="br-pal-empty">暂无</span>
+              </div>
+              <label class="br-pal-more">
+                <span class="br-pal-dot"></span>更多颜色
+                <input type="color" :value="bgColor" @input="onMoreColor('bg', $event)" />
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
+      <span class="br-fmt-sep"></span>
+
+      <!-- 对齐：上排垂直对齐，下排水平对齐 -->
+      <div class="br-align-grid">
+        <a-button type="text" title="顶部对齐" :class="{ 'is-on': selValign === 'top' }" @click="setAlign('valign', 'top')">
+          <template #icon>
+            <iconToTop />
+          </template>
+        </a-button>
+        <a-button type="text" title="垂直对齐" :class="{ 'is-on': selValign === 'middle' }"
+          @click="setAlign('valign', 'middle')">
+          <template #icon>
+            <iconToMiddle />
+          </template>
+        </a-button>
+        <a-button type="text" title="底部对齐" :class="{ 'is-on': selValign === 'bottom' }"
+          @click="setAlign('valign', 'bottom')">
+          <template #icon>
+            <iconToBottom />
+          </template>
+        </a-button>
+        <a-button type="text" title="向左对齐" :class="{ 'is-on': selHalign === 'left' }"
+          @click="setAlign('halign', 'left')">
+          <template #icon>
+            <iconToLeft />
+          </template>
+        </a-button>
+        <a-button type="text" title="中心对齐" :class="{ 'is-on': selHalign === 'center' }"
+          @click="setAlign('halign', 'center')">
+          <template #icon>
+            <iconToCenter />
+          </template>
+        </a-button>
+        <a-button type="text" title="向右对齐" :class="{ 'is-on': selHalign === 'right' }"
+          @click="setAlign('halign', 'right')">
+          <template #icon>
+            <iconToRight />
+          </template>
+        </a-button>
+      </div>
+
       <span v-if="targetCells.length" class="br-fmt-hint">
-        已选 {{ targetCells.length }} 格<template v-if="selCols.length">（{{ selCols.length }} 列）</template><template v-if="selRows.length">（{{ selRows.length }} 行）</template>，Shift 点击可扩选范围
+        已选 {{ targetCells.length }} 格<template v-if="selCols.length">（{{ selCols.length }} 列）</template><template
+          v-if="selRows.length">（{{ selRows.length }} 行）</template>，Shift 点击可扩选范围
       </span>
       <span v-else class="br-fmt-hint muted">先点选单元格；不选时字体/字号作用于整表</span>
     </div>
@@ -177,25 +204,21 @@
       <div v-else class="br-sheet" :style="{ width: GUTTER_W + totalWidth + 'px' }">
         <!-- 列标（A、B、C…）+ 列名，两层表头，滚动时吸顶 -->
         <div class="br-colhead">
-          <div class="br-corner" :class="{ 'is-on': selAll }" title="点击全选整张表"
-            @click.stop="selectAllCells"
+          <div class="br-corner" :class="{ 'is-on': selAll }" title="点击全选整张表" @click.stop="selectAllCells"
             @contextmenu.prevent.stop="openCtx($event, 'all')">{{ nameBoxText }}</div>
           <div class="br-head-main">
             <div class="br-let-row">
               <div v-for="(c, i) in displayColumns" :key="'let-' + c.key" class="br-let"
-                :style="{ width: c.width + 'px' }"
-                :class="{ 'is-on': selAll || selCols.includes(c.key) }"
-                :title="c.label"
-                @click.stop="onColClick(c, $event)"
+                :style="{ width: c.width + 'px' }" :class="{ 'is-on': selAll || selCols.includes(c.key) }"
+                :title="c.label" @click.stop="onColClick(c, $event)"
                 @contextmenu.prevent.stop="openCtx($event, 'col', c)">
                 {{ colLetter(i) }}
               </div>
             </div>
             <div class="br-head-row">
               <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
-  :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
-                @click="openColumnPanel(c, $event)"
-                @contextmenu.prevent.stop="openCtx($event, 'col', c)">
+                :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
+                @click="openColumnPanel(c, $event)" @contextmenu.prevent.stop="openCtx($event, 'col', c)">
                 <span class="br-th-name" :title="c.label">{{ c.label }}</span>
                 <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
                 <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
@@ -208,18 +231,19 @@
         <div class="br-body" :style="{ height: visibleRows.length * rowH + 'px' }">
           <!-- 选区外框：单一描边，内部单元格边框隐藏 -->
           <div v-if="selRect" class="br-selbox"
-            :style="{ left: selRect.left + 'px', top: selRect.top + 'px', width: selRect.width + 'px', height: selRect.height + 'px' }"></div>
+            :style="{ left: selRect.left + 'px', top: selRect.top + 'px', width: selRect.width + 'px', height: selRect.height + 'px' }">
+          </div>
           <div v-for="item in windowRows" :key="item.rowNo" class="br-row"
             :class="{ fail: item.isFail, 'has-ann': item.hasAnn, 'is-on': selRows.includes(item.rowNo) }"
             :style="{ height: rowH + 'px', transform: `translateY(${item.idx * rowH}px)` }">
             <div class="br-gutter" :class="{ 'is-on': selRows.includes(item.rowNo) }"
-              @click.stop="onRowClick(item, $event)"
-              @contextmenu.prevent.stop="openCtx($event, 'row', null, item)">{{ item.idx + 1 }}</div>
+              @click.stop="onRowClick(item, $event)" @contextmenu.prevent.stop="openCtx($event, 'row', null, item)">
+              {{ item.idx + 1 }}
+            </div>
             <div v-for="c in displayColumns" :key="c.key" class="br-td"
               :style="{ width: c.width + 'px', ...cellCss(item.rowNo, c.key) }"
               :class="{ 'br-td-ann': !!c.annId, 'in-sel': isInSel(item.rowNo, c.key) }"
-              @click="onCellClick(item, c.key, $event)"
-              @contextmenu="onCellCtx($event, c, item)">
+              @click="onCellClick(item, c.key, $event)" @contextmenu="onCellCtx($event, c, item)">
               <template v-if="item.blank || c.blank">
                 <span class="br-cell-text"></span>
               </template>
@@ -254,18 +278,27 @@
     <div v-if="ctx.open" class="br-ctx" :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }">
       <div class="br-ctx-item" @click="ctxCopyColumn()"><span>复制整列</span></div>
       <div class="br-ctx-sep"></div>
-      <div class="br-ctx-item" @click="ctxInsertRow('up')"><span>向上插入 1 行</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
-      <div class="br-ctx-item" @click="ctxInsertRow('down')"><span>向下插入 1 行</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
-      <div class="br-ctx-item" @click="ctxInsertCol('left')"><span>向左插入 1 列</span><span class="br-ctx-icon"><icon-arrow-left /></span></div>
-      <div class="br-ctx-item" @click="ctxInsertCol('right')"><span>向右插入 1 列</span><span class="br-ctx-icon"><icon-arrow-right /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertRow('up')"><span>向上插入 1 行</span><span
+          class="br-ctx-icon"><icon-arrow-up /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertRow('down')"><span>向下插入 1 行</span><span
+          class="br-ctx-icon"><icon-arrow-down /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertCol('left')"><span>向左插入 1 列</span><span
+          class="br-ctx-icon"><icon-arrow-left /></span></div>
+      <div class="br-ctx-item" @click="ctxInsertCol('right')"><span>向右插入 1 列</span><span
+          class="br-ctx-icon"><icon-arrow-right /></span></div>
       <div class="br-ctx-item danger" @click="ctxDeleteRow()"><span>删除此行</span></div>
       <div class="br-ctx-sep"></div>
-      <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span class="br-ctx-icon"><icon-arrow-up /></span></div>
-      <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span class="br-ctx-icon"><icon-arrow-down /></span></div>
-      <div class="br-ctx-item" @click="ctxFilter()"><span>筛选此列</span><span class="br-ctx-icon"><icon-filter /></span></div>
+      <div class="br-ctx-item" @click="ctxSort('asc')"><span>升序排列</span><span
+          class="br-ctx-icon"><icon-arrow-up /></span>
+      </div>
+      <div class="br-ctx-item" @click="ctxSort('desc')"><span>降序排列</span><span
+          class="br-ctx-icon"><icon-arrow-down /></span></div>
+      <div class="br-ctx-item" @click="ctxFilter()"><span>筛选此列</span><span class="br-ctx-icon"><icon-filter /></span>
+      </div>
       <div class="br-ctx-sep"></div>
       <div class="br-ctx-item" @click="ctxWrap()"><span>自动换行</span>
-        <span class="br-ctx-sub">{{ selColWrap ? '开' : '关' }}</span></div>
+        <span class="br-ctx-sub">{{ selColWrap ? '开' : '关' }}</span>
+      </div>
       <div class="br-ctx-item" @click="ctxFitWidth()"><span>列宽自适应</span></div>
       <div class="br-ctx-item" @click="ctxHideColumn()"><span>隐藏此列</span></div>
       <div class="br-ctx-item danger" @click="ctxDeleteColumn()"><span>删除此列</span></div>
@@ -340,8 +373,8 @@
             <a-option value="empty">为空</a-option>
             <a-option value="notEmpty">不为空</a-option>
           </a-select>
-          <a-input v-if="draftCond.op !== 'empty' && draftCond.op !== 'notEmpty'" v-model="draftCond.value"
-            size="small" placeholder="输入内容" allow-clear />
+          <a-input v-if="draftCond.op !== 'empty' && draftCond.op !== 'notEmpty'" v-model="draftCond.value" size="small"
+            placeholder="输入内容" allow-clear />
         </div>
       </template>
 
@@ -365,8 +398,8 @@
     </a-drawer>
 
     <!-- 标注列：新增 / 重命名 -->
-    <a-modal v-model:visible="colDialogOpen" :title="colDialogMode === 'add' ? '新增标注列' : '重命名标注列'"
-      :width="360" :on-before-ok="submitColumn" ok-text="确定" cancel-text="取消">
+    <a-modal v-model:visible="colDialogOpen" :title="colDialogMode === 'add' ? '新增标注列' : '重命名标注列'" :width="360"
+      :on-before-ok="submitColumn" ok-text="确定" cancel-text="取消">
       <a-input v-model="colDialogName" placeholder="例如：状态 / 备注 / 标注结果" :max-length="30" allow-clear
         @press-enter="submitColumn" />
       <div class="br-dialog-tip">标注列的内容由你自己填写，不做固定选项；填好后会自动保存到任务上。</div>
@@ -397,6 +430,14 @@ import { useRoute } from 'vue-router'
 import { getToken } from '@/api/client'
 import { toast } from '@/utils/feedback'
 import { exportRowsToXlsx } from '@/utils/xlsxExport'
+import iconToMiddle from '@/imgs/icon/icon_to_middle.svg'
+import iconToTop from '@/imgs/icon/icon_to_top.svg'
+import iconToBottom from '@/imgs/icon/icon_to_bottom.svg'
+import iconToLeft from '@/imgs/icon/icon_to_left.svg'
+import iconToRight from '@/imgs/icon/icon_to_right.svg'
+import iconToCenter from '@/imgs/icon/icon_to_center.svg'
+
+
 
 type AnyRow = string[]
 
@@ -404,6 +445,46 @@ interface AnnCol { id: string; name: string }
 interface ColMeta { width: number; wrap: boolean }
 interface CondFilter { op: 'contains' | 'notContains' | 'equals' | 'empty' | 'notEmpty'; value: string }
 
+const font_list = [
+  "微软雅黑",
+  "楷体",
+  "宋体",
+  "新宋体",
+  "黑体",
+  "Microsoft YaHei UI",
+  "Microsoft JhengHei",
+  "JetBrains Mono",
+  "Arial",
+  "Arial Black",
+  "Arial Narrow",
+  "Arial Unicode MS",
+  "Courier New",
+  "Comic Sans MS",
+  "Georgia",
+  "Impact",
+  "Microsoft Sans Serif",
+  "Segoe UI",
+  "Segoe UI Symbol",
+  "Tahoma",
+  "Times New Roman",
+  "Trebuchet MS",
+  "Verdana",
+  "Calibri",
+  "Cambria",
+  "Consolas",
+  "等线",
+  "华文宋体",
+  "华文仿宋",
+  "仿宋",
+  "华文楷体",
+  "Yu Gothic",
+  "MS Gothic",
+  "MS PGothic",
+  "MS UI Gothic",
+  "Wingdings",
+  "Wingdings 2",
+  "Wingdings 3",
+]
 const ROW_H = 34
 const ROW_H_WRAP = 96
 const PAGE_SIZE = 300
@@ -451,6 +532,10 @@ interface CellFmt {
   bg?: string
   font?: string
   size?: number
+  /** 斜体 / 下划线 / 删除线 */
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
   /** 水平对齐 */
   halign?: HAlign
   /** 垂直对齐 */
@@ -799,6 +884,9 @@ function cellCss(rowNo: number, colKey: string): Record<string, string> {
   const f = formats.value[cellFmtKey(rowNo, colKey)]
   const out: Record<string, string> = {}
   if (f?.bold) out.fontWeight = '600'
+  if (f?.italic) out.fontStyle = 'italic'
+  const deco = [f?.underline ? 'underline' : '', f?.strike ? 'line-through' : ''].filter(Boolean).join(' ')
+  if (deco) out.textDecoration = deco
   if (f?.color) out.color = f.color
   if (f?.bg) out.background = f.bg
   const fam = f?.font || defaultFont.value
@@ -1106,7 +1194,7 @@ function openCtx(ev: MouseEvent, type: 'col' | 'row' | 'cell' | 'all' | 'sel', c
 
   // 右键落点已经在多选区域内 → 给「多选」菜单，保留原选区
   if (type === 'cell' && col && item && isInSel(item.rowNo, col.key)
-      && (selCols.value.length || selRows.value.length || selCells.value.length > 1)) {
+    && (selCols.value.length || selRows.value.length || selCells.value.length > 1)) {
     type = 'sel'
   }
   if (type === 'col' && col && selCols.value.includes(col.key) && selCols.value.length > 1) {
@@ -1406,13 +1494,24 @@ function applyFormat(patch: CellFmt, onlyIf?: (cur: CellFmt) => boolean) {
   formats.value = map
 }
 
-function toggleBold() {
-  if (!targetCells.value.length) return
-  const allBold = targetCells.value.every(
-    (p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold,
-  )
-  applyFormat({ bold: allBold ? undefined : true })
+type TextStyleField = 'bold' | 'italic' | 'underline' | 'strike'
+
+/** 选区是否全部应用了该字形（用于按钮高亮） */
+function allHaveStyle(field: TextStyleField): boolean {
+  return targetCells.value.length > 0
+    && targetCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.[field])
 }
+
+/** 加粗 / 斜体 / 下划线 / 删除线：已全部应用时再点一次取消 */
+function toggleStyle(field: TextStyleField) {
+  if (!targetCells.value.length) return
+  applyFormat({ [field]: allHaveStyle(field) ? undefined : true } as CellFmt)
+}
+
+const selHasBold = computed(() => allHaveStyle('bold'))
+const selHasItalic = computed(() => allHaveStyle('italic'))
+const selHasUnderline = computed(() => allHaveStyle('underline'))
+const selHasStrike = computed(() => allHaveStyle('strike'))
 
 function onPickFontColor(color: string) {
   applyFormat({ color: color || undefined })
@@ -1460,10 +1559,7 @@ function setAlign(kind: 'halign' | 'valign', value: HAlign | VAlign) {
     : { valign: (same ? undefined : value) as VAlign | undefined })
 }
 
-const selHasBold = computed(() =>
-  targetCells.value.length > 0
-  && targetCells.value.every((p) => !!formats.value[cellFmtKey(p.rowNo, p.colKey)]?.bold),
-)
+
 
 function clearFormat(cells?: CellPos[]) {
   const list = cells || targetCells.value
@@ -1965,6 +2061,9 @@ async function exportView() {
         if (!f) return null
         return {
           bold: f.bold,
+          italic: f.italic,
+          underline: f.underline,
+          strike: f.strike,
           color: f.color,
           bg: f.bg,
           font: f.font,
@@ -2243,9 +2342,17 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   color: var(--color-text-2);
 }
 
-.br-meta .ok { color: rgb(var(--green-6)); }
-.br-meta .err { color: rgb(var(--red-6)); }
-.muted { color: var(--color-text-3); }
+.br-meta .ok {
+  color: rgb(var(--green-6));
+}
+
+.br-meta .err {
+  color: rgb(var(--red-6));
+}
+
+.muted {
+  color: var(--color-text-3);
+}
 
 .br-actions {
   display: flex;
@@ -2263,9 +2370,25 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   font-size: 12px;
 }
 
-.br-count { color: var(--color-text-3); margin-left: auto; }
-.br-saving { color: rgb(var(--orange-6)); display: inline-flex; align-items: center; gap: 4px; }
-.br-warn { color: rgb(var(--red-6)); display: inline-flex; align-items: center; gap: 4px; cursor: default; }
+.br-count {
+  color: var(--color-text-3);
+  margin-left: auto;
+}
+
+.br-saving {
+  color: rgb(var(--orange-6));
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.br-warn {
+  color: rgb(var(--red-6));
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: default;
+}
 
 .br-grid-wrap {
   flex: 1;
@@ -2289,7 +2412,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 @keyframes br-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .br-sheet {
@@ -2338,8 +2463,14 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
     border-right: 7px solid transparent;
   }
 
-  &:hover { background: var(--color-fill-3); }
-  &.is-on { background: rgba(var(--primary-2), 0.9); color: rgb(var(--primary-6)); }
+  &:hover {
+    background: var(--color-fill-3);
+  }
+
+  &.is-on {
+    background: rgba(var(--primary-2), 0.9);
+    color: rgb(var(--primary-6));
+  }
 }
 
 .br-head-main {
@@ -2365,8 +2496,14 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   cursor: pointer;
   user-select: none;
 
-  &:hover { background: var(--color-fill-3); }
-  &.is-on { background: rgba(var(--primary-2), 0.9); color: rgb(var(--primary-6)); }
+  &:hover {
+    background: var(--color-fill-3);
+  }
+
+  &.is-on {
+    background: rgba(var(--primary-2), 0.9);
+    color: rgb(var(--primary-6));
+  }
 }
 
 .br-head-row {
@@ -2390,9 +2527,17 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   cursor: pointer;
   user-select: none;
 
-  &:hover { background: var(--color-fill-3); }
-  &.is-sorted { background: rgba(var(--primary-1), 0.6); }
-  &.is-on { background: rgba(var(--primary-2), 0.9); }
+  &:hover {
+    background: var(--color-fill-3);
+  }
+
+  &.is-sorted {
+    background: rgba(var(--primary-1), 0.6);
+  }
+
+  &.is-on {
+    background: rgba(var(--primary-2), 0.9);
+  }
 }
 
 .br-th-name {
@@ -2408,7 +2553,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   font-size: 12px;
   color: var(--color-text-3);
 
-  &.is-active { color: rgb(var(--primary-6)); }
+  &.is-active {
+    color: rgb(var(--primary-6));
+  }
 }
 
 /* 列宽拖拽手柄 */
@@ -2430,7 +2577,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
     background: transparent;
   }
 
-  &:hover::after { background: rgb(var(--primary-6)); }
+  &:hover::after {
+    background: rgb(var(--primary-6));
+  }
 }
 
 .br-body {
@@ -2444,10 +2593,17 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   display: flex;
   background: var(--color-bg-2);
 
-  &.fail { background: rgba(var(--red-1), 0.5); }
-  &.has-ann { box-shadow: inset 2px 0 0 rgb(var(--green-5)); }
+  &.fail {
+    background: rgba(var(--red-1), 0.5);
+  }
 
-  &:hover { background: var(--color-fill-1); }
+  &.has-ann {
+    box-shadow: inset 2px 0 0 rgb(var(--green-5));
+  }
+
+  &:hover {
+    background: var(--color-fill-1);
+  }
 }
 
 .br-td {
@@ -2504,7 +2660,10 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   user-select: none;
   cursor: pointer;
 
-  &:hover { background: var(--color-fill-3); }
+  &:hover {
+    background: var(--color-fill-3);
+  }
+
   &.is-on {
     background: rgba(var(--primary-2), 0.9);
     color: rgb(var(--primary-6));
@@ -2512,7 +2671,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   }
 }
 
-.br-row.is-on { background: rgba(var(--primary-1), 0.35); }
+.br-row.is-on {
+  background: rgba(var(--primary-1), 0.35);
+}
 
 /* 右键菜单 */
 .br-ctx {
@@ -2538,8 +2699,13 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   cursor: pointer;
   user-select: none;
 
-  &:hover { background: var(--color-fill-2); }
-  &.danger { color: rgb(var(--danger-6)); }
+  &:hover {
+    background: var(--color-fill-2);
+  }
+
+  &.danger {
+    color: rgb(var(--danger-6));
+  }
 }
 
 .br-ctx-icon {
@@ -2575,40 +2741,76 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   background: var(--color-bg-1);
 }
 
-/* 上排：字体 / 字号；下排：加粗 / 字体颜色 / 单元格颜色；右侧对齐按钮跨两行 */
-.br-fmt-grid {
-  display: grid;
-  grid-template-columns: 118px 64px 28px 28px 28px 84px 28px;
-  grid-template-rows: 26px 26px;
-  gap: 2px 4px;
+/* 左侧清除格式：文字在上、图标在下 */
+.br-fmt-tall {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 62px;
+  height: 54px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-text-2);
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  .br-tall-text {
+    font-size: 11px;
+    line-height: 1;
+    color: var(--color-text-3);
+  }
+
+  &:hover {
+    background: var(--color-fill-2);
+  }
 }
 
-.br-fg-font { grid-row: 1; grid-column: 1; }
-.br-fg-size { grid-row: 1; grid-column: 2; }
-.br-fg-bold { grid-row: 2; grid-column: 1; }
-.br-fg-fcolor { grid-row: 2; grid-column: 2; justify-self: start; }
-.br-fg-bcolor { grid-row: 2; grid-column: 3; justify-self: start; }
-.br-fg-clear { grid-row: 2; grid-column: 7; }
-.br-align-grid { grid-row: 1 / 3; grid-column: 6; }
+/* 中间两行：上排字体/字号，下排字形与颜色 */
+.br-fmt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.br-fmt-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+}
+
+.br-fg-font {
+  width: 122px;
+}
+
+.br-fg-size {
+  width: 62px;
+}
 
 .br-fmt-ic {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: none;
   border-radius: 4px;
   background: transparent;
   color: var(--color-text-1);
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   transition: background 0.15s;
 
-  &:hover { background: var(--color-fill-2); }
+  &:hover {
+    background: var(--color-fill-2);
+  }
 
   &.is-on {
     background: rgba(var(--primary-6), 0.12);
@@ -2624,15 +2826,17 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 
   .br-color-bar {
     position: absolute;
-    left: 5px;
-    right: 5px;
-    bottom: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 3px;
     height: 3px;
     border-radius: 1px;
   }
 }
 
-.br-fmt-dd { position: relative; }
+.br-fmt-dd {
+  position: relative;
+}
 
 /* 对齐按钮：3 列 × 2 行（上排垂直对齐，下排水平对齐） */
 .br-align-grid {
@@ -2641,12 +2845,6 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   grid-template-rows: 26px 26px;
   gap: 2px 2px;
   align-items: center;
-
-  .br-fmt-ic {
-    width: 26px;
-    height: 26px;
-    font-size: 15px;
-  }
 }
 
 /* 垂直对齐小图标：三条横线靠上/居中/靠下 */
@@ -2664,9 +2862,17 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
     background: currentColor;
   }
 
-  &.is-top { justify-content: flex-start; }
-  &.is-middle { justify-content: center; }
-  &.is-bottom { justify-content: flex-end; }
+  &.is-top {
+    justify-content: flex-start;
+  }
+
+  &.is-middle {
+    justify-content: center;
+  }
+
+  &.is-bottom {
+    justify-content: flex-end;
+  }
 }
 
 .br-fmt-sep {
@@ -2715,8 +2921,15 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   color: var(--color-text-3);
 }
 
-.br-pal-recent { grid-auto-rows: 20px; }
-.br-pal-empty { grid-column: 1 / -1; font-size: 12px; color: var(--color-text-4); }
+.br-pal-recent {
+  grid-auto-rows: 20px;
+}
+
+.br-pal-empty {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--color-text-4);
+}
 
 .br-pal-more {
   position: relative;
@@ -2751,7 +2964,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   font-size: 12px;
   color: var(--color-text-2);
 
-  &.muted { color: var(--color-text-3); }
+  &.muted {
+    color: var(--color-text-3);
+  }
 }
 
 .br-cell-text {
@@ -2777,7 +2992,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   flex-shrink: 0;
   color: var(--color-text-3);
 
-  &:hover { color: rgb(var(--primary-6)); }
+  &:hover {
+    color: rgb(var(--primary-6));
+  }
 }
 
 .br-ann-input {
@@ -2793,8 +3010,15 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   border-radius: 3px;
   outline: none;
 
-  &:hover { border-color: var(--color-border-2); background: var(--color-bg-2); }
-  &:focus { border-color: rgb(var(--primary-5)); background: var(--color-bg-2); }
+  &:hover {
+    border-color: var(--color-border-2);
+    background: var(--color-bg-2);
+  }
+
+  &:focus {
+    border-color: rgb(var(--primary-5));
+    background: var(--color-bg-2);
+  }
 }
 
 .br-empty {
@@ -2853,8 +3077,16 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   border-radius: 4px;
   cursor: pointer;
 
-  &:hover { border-color: rgb(var(--primary-5)); color: rgb(var(--primary-6)); }
-  &.on { border-color: rgb(var(--primary-6)); color: rgb(var(--primary-6)); background: rgba(var(--primary-1), 0.5); }
+  &:hover {
+    border-color: rgb(var(--primary-5));
+    color: rgb(var(--primary-6));
+  }
+
+  &.on {
+    border-color: rgb(var(--primary-6));
+    color: rgb(var(--primary-6));
+    background: rgba(var(--primary-1), 0.5);
+  }
 }
 
 .br-panel-actions {
@@ -2881,7 +3113,10 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   cursor: pointer;
   border-bottom: 2px solid transparent;
 
-  &.on { color: rgb(var(--primary-6)); border-bottom-color: rgb(var(--primary-6)); }
+  &.on {
+    color: rgb(var(--primary-6));
+    border-bottom-color: rgb(var(--primary-6));
+  }
 }
 
 .br-panel-search {
@@ -2939,7 +3174,9 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   background: var(--color-fill-1);
 }
 
-.br-panel-spacer { flex: 1; }
+.br-panel-spacer {
+  flex: 1;
+}
 
 .br-detail {
   display: flex;

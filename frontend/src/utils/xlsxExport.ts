@@ -14,6 +14,10 @@ export interface XlsxColumn {
 /** 与页面一致的单元格样式（颜色用 #rrggbb 或 rgb()/rgba() 字符串） */
 export interface XlsxCellStyle {
   bold?: boolean
+  /** 斜体 / 下划线 / 删除线 */
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
   color?: string
   bg?: string
   /** 字体名，如「微软雅黑」 */
@@ -118,6 +122,9 @@ export async function exportRowsToXlsx(opts: XlsxExportOptions): Promise<void> {
       const name = st?.font || defaultFont
       if (name) font.name = name
       if (st?.bold) font.bold = true
+      if (st?.italic) font.italic = true
+      if (st?.underline) font.underline = true
+      if (st?.strike) font.strike = true
       const color = toArgb(st?.color)
       if (color) font.color = { argb: color }
       cell.font = font
