@@ -202,6 +202,8 @@
             </div>
             <div class="br-head-main">
               <div class="br-head-row">
+                <div v-if="headSelRect" class="br-head-selbox"
+                  :style="{ left: headSelRect.left + 'px', width: headSelRect.width + 'px' }"></div>
                 <div v-for="c in displayColumns" :key="c.key" class="br-th"
                   :style="{ width: c.width + 'px', ...cellCss(HEADER_ROW, c.key) }"
                   :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key), 'in-sel': isInSel(HEADER_ROW, c.key) }"
@@ -1027,6 +1029,10 @@ const nameBoxText = computed(() => {
       .filter((i) => i >= 0)
       .sort((x, y) => x - y)
     if (!ris.length) return ''
+    // 整行表头选中：显示成 A1:G1
+    if (ris[0] === 0 && ris.length === 1 && cols.length) {
+      return `A1:${colLetter(cols.length - 1)}1`
+    }
     const a = ris[0] + 1
     const b = ris[ris.length - 1] + 1
     return ris.length === 1 ? `${a}行` : `${a}:${b} 行`
@@ -1078,7 +1084,7 @@ const targetCells = computed<CellPos[]>(() => {
     const rowSet = selRows.value.length ? new Set(selRows.value) : null
     // 只选整列时，表头一起算进去；选了整行则按行处理
     const rowNos: number[] = rowSet
-      ? visibleRows.value.filter((r) => rowSet.has(r.rowNo)).map((r) => r.rowNo)
+      ? selRowNos.value.filter((no) => rowSet.has(no))
       : [HEADER_ROW, ...visibleRows.value.map((r) => r.rowNo)]
     const out: CellPos[] = []
     for (const no of rowNos) {
@@ -1308,17 +1314,40 @@ function onHeaderRowClick() {
 function onHeaderCellClick(c: { key: string }, ev?: MouseEvent) {
   window.getSelection()?.removeAllRanges()
   const pos: CellPos = { rowNo: HEADER_ROW, colKey: c.key }
-  if (ev?.shiftKey && selAnchor.value) {
+  selAll.value = false
+  selCols.value = []
+  selRows.value = []
+  // Shift + 点：从锚点扩选到当前表头格（多选表头）
+  if (ev?.shiftKey && selAnchor.value && selAnchor.value.rowNo === HEADER_ROW) {
     selFocus.value = pos
   } else {
     selAnchor.value = pos
     selFocus.value = pos
   }
-  selCols.value = []
-  selRows.value = []
-  selAll.value = false
   activeCell.value = pos
 }
+
+/** 表头选中区域（用于在表头行里画外框） */
+const headSelRect = computed<{ left: number; width: number } | null>(() => {
+  const keys = new Set(
+    targetCells.value.filter((x) => x.rowNo === HEADER_ROW).map((x) => x.colKey),
+  )
+  if (!keys.size) return null
+  const cols = displayColumns.value
+  let first = -1
+  let last = -1
+  cols.forEach((c, i) => {
+    if (!keys.has(c.key)) return
+    if (first < 0) first = i
+    last = i
+  })
+  if (first < 0) return null
+  let left = 0
+  for (let i = 0; i < first; i++) left += cols[i].width
+  let width = 0
+  for (let i = first; i <= last; i++) width += cols[i].width
+  return { left, width }
+})
 
 function onColClick(c: { key: string }, ev?: MouseEvent) {
   window.getSelection()?.removeAllRanges()
@@ -2901,9 +2930,22 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 .br-head-row {
+  position: relative;
   display: flex;
   background: var(--color-fill-2);
   height: 34px;
+}
+
+/* 表头选区：和普通单元格一样，连续底色 + 一圈外框 */
+.br-head-selbox {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  border: 2px solid rgb(var(--primary-6));
+  background: rgba(var(--primary-6), 0.14);
+  pointer-events: none;
 }
 
 .br-th {
@@ -2978,9 +3020,10 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
 }
 
 /* 表头单元格被选中：淡蓝底 + 主题色内描边 */
+/* 表头格选中：只隐藏内部格线，底色与外框由 .br-head-selbox 统一画 */
 .br-th.in-sel {
-  background: rgba(var(--primary-1), 0.9);
-  box-shadow: inset 0 0 0 1px rgb(var(--primary-5));
+  border-right-width: 0;
+  border-bottom-width: 0;
 }
 
 .br-th-flag {
