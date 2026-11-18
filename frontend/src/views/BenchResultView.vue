@@ -26,36 +26,6 @@
       </div>
     </header>
 
-    <!-- 工具条 -->
-    <div class="br-toolbar">
-      <a-input v-model="keyword" size="small" placeholder="搜索输入 / 输出内容" allow-clear style="width: 220px" />
-      <a-checkbox v-model="onlyFail">只看失败</a-checkbox>
-      <a-checkbox v-model="onlyAnnotated">只看已标注</a-checkbox>
-      <a-button size="small" @click="columnPanelOpen = true">
-        <template #icon><icon-settings /></template>列设置
-      </a-button>
-      <a-button size="small" @click="openAddCol">
-        <template #icon><icon-plus /></template>新增标注列
-      </a-button>
-      <a-button v-if="activeFilterCount" size="small" status="warning" @click="clearAllFilters">
-        清除筛选（{{ activeFilterCount }}）
-      </a-button>
-      <span class="br-count">
-        共 {{ rows.length }} 行<template v-if="visibleRows.length !== rows.length">，筛选后 {{ visibleRows.length }}
-          行</template>
-      </span>
-      <span v-if="loading" class="br-saving"><icon-loading />加载中…</span>
-      <span v-else-if="truncated" class="br-warn" title="可通过「下载结果」查看完整结果">
-        <icon-exclamation-circle />结果超过 {{ MAX_ROWS }} 行，仅加载前 {{ MAX_ROWS }} 行
-      </span>
-      <span v-if="annError" class="br-warn" :title="'标注读取失败：' + annError">
-        <icon-exclamation-circle />标注读取失败（请确认后端已重启）
-        <a-button size="mini" type="text" @click="loadAnnotations">重试</a-button>
-      </span>
-      <span v-if="saving" class="br-saving"><icon-loading />保存中…</span>
-      <span v-else-if="dirty" class="br-saving">有未保存的标注，稍后自动保存</span>
-    </div>
-
     <!-- 格式工具条：左侧清除格式（文字在上图标在下），中间上排字体/字号 + 下排字形与颜色，右侧两组对齐 -->
     <div class="br-fmtbar">
       <button type="button" class="br-fmt-tall" title="清除所选单元格的格式" @click="clearFormat()">
@@ -218,8 +188,8 @@
               <div v-for="c in displayColumns" :key="c.key" class="br-th" :style="{ width: c.width + 'px' }"
                 :class="{ 'is-sorted': sortKey === c.key, 'is-on': selAll || selCols.includes(c.key) }"
                 @click="openColumnPanel(c, $event)" @contextmenu.prevent.stop="openCtx($event, 'col', c)">
-                <input v-if="c.blank" class="br-th-edit" :value="blankColLabel(c.key)"
-                  @mousedown.stop @click.stop @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
+                <input v-if="c.blank" class="br-th-edit" :value="blankColLabel(c.key)" @mousedown.stop @click.stop
+                  @contextmenu.stop @input="onBlankColLabel(c.key, $event)" />
                 <span v-else class="br-th-name" :title="c.label">{{ c.label }}</span>
                 <icon-caret-up v-if="sortKey === c.key && sortDir === 'asc'" class="br-th-flag" />
                 <icon-caret-down v-else-if="sortKey === c.key" class="br-th-flag" />
@@ -247,9 +217,8 @@
               @click="onCellClick(item, c.key, $event)" @dblclick.stop="startEdit(item, c)"
               @contextmenu="onCellCtx($event, c, item)">
               <template v-if="isEditing(item.rowNo, c.key)">
-                <input v-model="editValue" class="br-cell-edit" @click.stop
-                  @blur="commitEdit" @keydown.enter.prevent="commitEdit"
-                  @keydown.esc.stop.prevent="cancelEdit" />
+                <input v-model="editValue" class="br-cell-edit" @click.stop @blur="commitEdit"
+                  @keydown.enter.prevent="commitEdit" @keydown.esc.stop.prevent="cancelEdit" />
               </template>
               <template v-else-if="item.blank || c.blank">
                 <span class="br-cell-text">{{ cellText(item, c) }}</span>
@@ -282,12 +251,30 @@
     </div>
 
     <!-- 底部状态栏：选区的计数值 / 求和 / 平均值（非数字单元格按 0 计入） -->
-    <div class="br-statusbar">
-      <span v-if="!stat.count" class="br-st-hint">框选单元格后在此显示统计（非数字按 0 计入）</span>
-      <span class="br-st-item">计数值: <b>{{ stat.count }}</b></span>
-      <span class="br-st-item">求和: <b>{{ stat.sumText }}</b></span>
-      <span class="br-st-item">平均值: <b>{{ stat.avgText }}</b></span>
+    <div style="display:flex;justify-content:space-between;">
+      <div class="br-statusbar">
+        <span class="br-st-item">
+          共 {{ rows.length }} 行<template v-if="visibleRows.length !== rows.length">，筛选后 {{ visibleRows.length }}
+            行</template>
+        </span>
+        <span v-if="loading" class="br-saving"><icon-loading />加载中…</span>
+        <span v-else-if="truncated" class="br-warn" title="可通过「下载结果」查看完整结果">
+          <icon-exclamation-circle />结果超过 {{ MAX_ROWS }} 行，仅加载前 {{ MAX_ROWS }} 行
+        </span>
+        <span v-if="annError" class="br-warn" :title="'标注读取失败：' + annError">
+          <icon-exclamation-circle />标注读取失败（请确认后端已重启）
+          <a-button size="mini" type="text" @click="loadAnnotations">重试</a-button>
+        </span>
+        <span v-if="saving" class="br-saving"><icon-loading />保存中…</span>
+        <span v-else-if="dirty" class="br-saving">有未保存的标注，稍后自动保存</span>
+      </div>
+      <div class="br-statusbar">
+        <span class="br-st-item">计数值: <b>{{ stat.count }}</b></span>
+        <span class="br-st-item">求和: <b>{{ stat.sumText }}</b></span>
+        <span class="br-st-item">平均值: <b>{{ stat.avgText }}</b></span>
+      </div>
     </div>
+
 
     <!-- 右键菜单：列头 / 行号 / 单元格 / 选区 / 全选 统一同一套功能 -->
     <div v-if="ctx.open" class="br-ctx" :style="{ left: ctx.x + 'px', top: ctx.y + 'px' }">
