@@ -165,6 +165,14 @@
       <span v-else class="br-fmt-hint muted">先点选单元格；不选时字体/字号作用于整表</span>
     </div>
 
+    <!-- 编辑栏：左侧名称框（当前单元格/选区），右侧内容输入框（改这里单元格实时同步） -->
+    <div class="br-editbar">
+      <input class="br-name-box" :value="nameBoxText" readonly :placeholder="'名称框'" title="当前单元格 / 选区" />
+      <span class="br-editbar-sep"></span>
+      <input class="br-edit-input" :value="barValue" :disabled="!activeCell"
+        :placeholder="activeCell ? '' : '点击单元格后可在这里直接编辑内容'" @input="onBarInput" @keydown.enter.prevent />
+    </div>
+
     <!-- 表格 -->
     <div ref="wrapRef" class="br-grid-wrap" @scroll="onScroll">
       <div v-if="!ready" class="br-loading">
@@ -1008,8 +1016,24 @@ const nameBoxText = computed(() => {
   }
   const a = selAnchor.value
   if (!a) return ''
-  const idx = displayColumns.value.findIndex((c) => c.key === a.colKey)
-  return idx >= 0 ? `${colLetter(idx)}${a.rowNo}` : ''
+  const colIdxOf = (k: string) => cols.findIndex((c) => c.key === k)
+  const rowIdxOf = (no: number) => vr.findIndex((r) => r.rowNo === no)
+  const ai = colIdxOf(a.colKey)
+  if (ai < 0) return ''
+  const ar = rowIdxOf(a.rowNo)
+  const b = selFocus.value
+  if (b && (b.rowNo !== a.rowNo || b.colKey !== a.colKey)) {
+    const bi = colIdxOf(b.colKey)
+    const br = rowIdxOf(b.rowNo)
+    if (bi >= 0 && br >= 0) {
+      const c1 = Math.min(ai, bi)
+      const c2 = Math.max(ai, bi)
+      const r1 = Math.min(ar, br) + 1
+      const r2 = Math.max(ar, br) + 1
+      return `${colLetter(c1)}${r1}:${colLetter(c2)}${r2}`
+    }
+  }
+  return `${colLetter(ai)}${ar >= 0 ? ar + 1 : a.rowNo}`
 })
 
 /** 工具栏/右键菜单作用的目标单元格：整列 > 整行 > 矩形选区 */
@@ -1047,6 +1071,29 @@ const targetCells = computed<CellPos[]>(() => {
 const selSet = computed<Set<string>>(
   () => new Set(targetCells.value.map((p) => cellFmtKey(p.rowNo, p.colKey))),
 )
+
+/** 编辑栏（名称框 + 内容输入框）跟随的当前单元格 */
+const activeCell = ref<CellPos | null>(null)
+
+/** 编辑栏里的内容：当前单元格的显示值（含手工改写） */
+const barValue = computed(() => {
+  const cur = activeCell.value
+  if (!cur) return ''
+  const row = rowByNo.value.get(cur.rowNo)
+  const col = colByKey.value.get(cur.colKey)
+  return col ? cellText(row, col) : ''
+})
+
+/** 编辑栏输入：直接写进 cells 的改写表，单元格同步显示 */
+function onBarInput(ev: Event) {
+  const cur = activeCell.value
+  if (!cur) return
+  const v = (ev.target as HTMLInputElement).value
+  const key = editKey(cur.rowNo, cur.colKey)
+  if (v === originalText(cur.rowNo, cur.colKey)) delete edits.value[key]
+  else edits.value[key] = v
+  scheduleSaveView()
+}
 
 /** 行号 / 列 key 到渲染对象的索引，供状态栏取显示值（含标注、空白列）。 */
 const rowByNo = computed(() => new Map(visibleRows.value.map((r) => [r.rowNo, r])))
@@ -1256,6 +1303,7 @@ function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
   } else {
     selAnchor.value = pos
     selFocus.value = pos
+    activeCell.value = pos
   }
   selCols.value = []
   selRows.value = []
@@ -1263,6 +1311,7 @@ function onCellClick(item: RenderRow, colKey: string, ev: MouseEvent) {
 }
 
 function clearSelection() {
+  activeCell.value = null
   selAnchor.value = null
   selFocus.value = null
   selCols.value = []
@@ -2450,6 +2499,68 @@ watch([colMeta, hiddenColumns, valueFilters, condFilters, sortKey, sortDir, form
   display: flex;
   flex-direction: column;
   background: var(--color-fill-1);
+}
+
+/* 编辑栏：名称框 + 内容输入框（仿 Excel / WPS） */
+.br-editbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 32px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+.br-name-box {
+  width: 96px;
+  height: 24px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 3px;
+  background: var(--color-bg-2);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--color-text-1);
+  text-align: left;
+  outline: none;
+}
+
+.br-editbar-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 8px;
+  background: var(--color-border-2);
+}
+
+.br-edit-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: var(--color-bg-2);
+  font-size: 12px;
+  font-family: '微软雅黑';
+  color: var(--color-text-1);
+  outline: none;
+
+  &:focus {
+    border-color: rgb(var(--primary-6));
+  }
+
+  &:disabled {
+    background: var(--color-fill-1);
+    color: var(--color-text-3);
+    cursor: default;
+  }
+
+  &::placeholder {
+    color: var(--color-text-3);
+  }
 }
 
 /* 底部状态栏：右侧显示选区统计，仿 WPS */
