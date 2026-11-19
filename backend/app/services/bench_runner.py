@@ -22,6 +22,7 @@ import httpx
 
 from backend.app.schemas.bench import BenchRequestTemplate
 from backend.app.services import bench_store
+from backend.app.services.net_util import rewrite_loopback
 
 _VAR_RE = re.compile(r"\{\{\s*([A-Za-z0-9_.$-]+)\s*\}\}")
 _TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
@@ -207,6 +208,7 @@ async def _run_one(
     row: dict[str, str],
     streaming: bool,
     columns: list[tuple[str, str]] | None = None,
+    loopback_target: str = "",
 ) -> dict:
     """跑单行数据，返回一条结果字典。瞬时连接错误自动重试 1 次。
 
@@ -214,7 +216,8 @@ async def _run_one(
     某列一旦取到非空值即定稿，后续帧不再覆盖。
     """
     columns = columns or []
-    url = render(tpl.url, row)
+    # 逐行渲染后才知道 URL 的真实 host，这里有最后一次机会把回环地址换成可达地址
+    url = rewrite_loopback(render(tpl.url, row), loopback_target)
     headers = _headers_dict(tpl.headers, row)
     params = _params_dict(tpl.params, row)
     body = render(tpl.body, row) if tpl.body else None
@@ -377,6 +380,7 @@ async def run_job(
     env_vars: dict | None = None,
     columns: list | None = None,
     input_columns: list[str] | None = None,
+    loopback_target: str = "",
 ) -> None:
     """后台协程：跑完整个任务并回写状态/统计/CSV。job 为 DB 行字典。
 
@@ -431,7 +435,7 @@ async def run_job(
             if bench_store.is_cancelled(job_id):
                 return
             merged = {**env_vars, **row}
-            r = await _run_one(client, tpl, merged, streaming, sorted_columns)
+            r = await _run_one(client, tpl, merged, streaming, sorted_columns, loopback_target)
         writer.writerow(
             [row.get(f, "") for f in picked_inputs]
             + [

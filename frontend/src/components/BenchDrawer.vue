@@ -7,6 +7,11 @@
     :footer="false"
   >
     <div class="bench-drawer">
+      <div v-if="loopbackTip" class="loopback-tip">
+        <icon-info-circle />
+        <span>请求地址含回环地址，发送时会解析为 <b>{{ loopbackTip }}</b>（设置 → 网络 可调整）</span>
+      </div>
+
       <!-- 配置区 -->
       <section class="cfg">
         <div class="row">
@@ -266,6 +271,7 @@ import { api, getToken } from '@/api/client'
 import { toast, promptInput } from '@/utils/feedback'
 import { useEnvironmentsStore } from '@/stores/environments'
 import { PLACEHOLDER_SOURCE, renderVars } from '@/utils/env'
+import { getLoopbackTarget, hasLoopback, loadNetHost } from '@/utils/loopback'
 import type { HttpRequestData } from '@/api/types'
 
 const props = defineProps<{ visible: boolean; request: HttpRequestData; scopeKey?: string }>()
@@ -301,6 +307,8 @@ const customCols = ref<Array<{ title: string; path: string }>>([])
 const inputCols = ref<string[]>([])
 /** 任务记录是否显示所有接口（默认只看当前接口）。 */
 const showAll = ref(false)
+/** 当前请求 URL 含回环地址时，提示会被解析成什么。 */
+const loopbackTip = computed(() => (hasLoopback(props.request.url || '') ? getLoopbackTarget() : ''))
 const starting = ref(false)
 const refreshing = ref(false)
 const jobs = ref<any[]>([])
@@ -592,6 +600,10 @@ async function start() {
   persistConfig()
   starting.value = true
   try {
+    // 模板 URL 的 host 可能藏在 {{var}} 里，只有后端渲染后才知道；
+    // 这里按设置算出回环目标交给后端逐行改写，避免整批都连服务端自己的 127.0.0.1
+    await loadNetHost()
+    const loopbackTarget = getLoopbackTarget()
     await api.post('/api/bench/run', {
       name: name.value,
       dataset_id: datasetId.value,
@@ -609,6 +621,7 @@ async function start() {
       columns,
       input_columns: [...inputCols.value],
       scope_key: props.scopeKey || '',
+      loopback_target: loopbackTarget,
     })
     toast.success('批量测试已在后台开始')
     await loadJobs()
@@ -919,6 +932,22 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+}
+
+.loopback-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  margin-bottom: 10px;
+  border: 1px solid var(--color-warning-light-3, #ffcf8b);
+  border-radius: 6px;
+  background: var(--color-warning-light-1, #fff7e8);
+  color: var(--color-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+
+  b { color: var(--color-text-1); }
 }
 
 .jobs { display: flex; flex-direction: column; gap: 10px; }

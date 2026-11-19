@@ -71,6 +71,14 @@ interface Settings {
   zoom: number
   /** 工作台最多同时打开的标签页数，超出时自动关闭最早的标签。 */
   maxTabs: number
+  /**
+   * 回环地址（127.0.0.1 / localhost）解析策略：
+   * auto = 浏览器访问本工具的地址；origin = 后端看到的调用方 IP；
+   * custom = 用手填地址；off = 不改写。
+   */
+  loopbackMode: 'auto' | 'origin' | 'custom' | 'off'
+  /** loopbackMode 为 custom 时的目标地址，可带端口（如 10.18.217.60:48088）。 */
+  loopbackHost: string
 }
 
 const DEFAULTS: Settings = {
@@ -84,6 +92,8 @@ const DEFAULTS: Settings = {
   customAccent: '#4E5BA6',
   zoom: 1,
   maxTabs: 10,
+  loopbackMode: 'auto',
+  loopbackHost: '',
 }
 
 function load(): Settings {
@@ -96,6 +106,7 @@ function load(): Settings {
       parsed.dark = themeMode(parsed.theme) === 'dark'
       // 兼容历史数据：maxTabs 校正到合法范围
       parsed.maxTabs = Math.min(MAX_TABS_MAX, Math.max(MAX_TABS_MIN, Number(parsed.maxTabs) || DEFAULTS.maxTabs))
+      if (!parsed.loopbackMode) parsed.loopbackMode = DEFAULTS.loopbackMode
       return parsed
     }
   } catch { /* ignore */ }

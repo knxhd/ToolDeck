@@ -82,6 +82,26 @@
           brown fox 敏捷的棕色狐狸 123</div>
       </div>
       <div class="form-row form-row-top">
+        <span class="form-label">回环地址</span>
+        <div class="loopback-box">
+          <a-radio-group v-model="settings.loopbackMode" type="button" size="small">
+            <a-radio value="auto">浏览器访问地址</a-radio>
+            <a-radio value="origin">调用方 IP</a-radio>
+            <a-radio value="custom">自定义</a-radio>
+            <a-radio value="off">不改写</a-radio>
+          </a-radio-group>
+          <a-input v-if="settings.loopbackMode === 'custom'" v-model="settings.loopbackHost" size="small"
+            class="loopback-host" placeholder="如 10.18.217.60:48088（可带端口）" />
+          <div class="form-tip">
+            请求地址写到 127.0.0.1 / localhost 时，发送前会换成本策略解析出的地址：<b>{{ resolvePreview }}</b>
+          </div>
+          <div class="form-tip">
+            说明：请求由服务端发出，回环地址会落到服务器自身。若被测服务只监听调用方本机，服务器无法访问，需让它监听 0.0.0.0 / 内网 IP，或改用内网地址。
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row form-row-top">
         <span class="form-label">快捷方式</span>
         <div class="shortcut-list">
           <div class="shortcut-row"><span class="keys"><kbd>Ctrl</kbd>+<kbd>Enter</kbd></span><span
@@ -101,9 +121,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
 import { ACCENT_PRESETS, DARK_THEMES, LIGHT_THEMES } from '@/utils/theme'
+import { getLoopbackTarget, loadNetHost } from '@/utils/loopback'
 
 defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
@@ -112,6 +133,10 @@ const store = useSettingsStore()
 const settings = store.settings
 
 const customColorRef = ref<HTMLInputElement>()
+
+// 打开设置时顺手拉一次调用方地址；预览随设置变化实时更新
+void loadNetHost()
+const resolvePreview = computed(() => getLoopbackTarget() || '保持原样（不改写）')
 
 function onAccentClick(id: string) {
   if (id === 'custom') {
@@ -163,6 +188,18 @@ function onReset() {
       font-size: 0.86em;
       line-height: 1.5;
     }
+  }
+
+  .loopback-box {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .loopback-host {
+    width: 260px;
   }
 
   .form-row-top {

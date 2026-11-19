@@ -301,7 +301,9 @@ async def run(body: BenchRunBody, user: dict = Depends(current_user)) -> dict:
     # 只把测试集里真实存在的列名透传下去（脏名字直接忽略）
     input_columns = [str(c).strip() for c in body.input_columns if str(c).strip()][:50]
     task = asyncio.create_task(
-        bench_store_run(job_row, tpl, body.env_vars, columns, input_columns)
+        bench_store_run(
+            job_row, tpl, body.env_vars, columns, input_columns, body.loopback_target.strip()
+        )
     )
     _bg_tasks.add(task)
     task.add_done_callback(_bg_tasks.discard)
@@ -320,11 +322,12 @@ async def bench_store_run(
     env_vars: dict | None = None,
     columns: list | None = None,
     input_columns: list[str] | None = None,
+    loopback_target: str = "",
 ) -> None:
     """延迟导入执行器，避免循环依赖。"""
     from backend.app.services.bench_runner import run_job
 
-    await run_job(job_row, tpl, env_vars, columns, input_columns)
+    await run_job(job_row, tpl, env_vars, columns, input_columns, loopback_target)
 
 
 @router.get("/jobs")

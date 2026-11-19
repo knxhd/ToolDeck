@@ -6,6 +6,7 @@ import { streamPost } from '@/api/client'
 import { useCollectionsStore } from './collections'
 import { useEnvironmentsStore } from './environments'
 import { missingVars, resolveRequest } from '@/utils/env'
+import { loadNetHost, rewriteLoopbackUrl, shouldNotifyRewrite } from '@/utils/loopback'
 import { parseUrlQuery } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
 import type { CollectionNode, HttpRequestData, OpenTab } from '@/api/types'
@@ -281,7 +282,16 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       if (missing.length) toast.warning(`未定义的变量：${missing.join(', ')}`)
 
       // URL 输入框保留完整 URL（含 query），发送时剥离 query，由后端用 params 重新拼接，避免重复参数
-      const { baseUrl } = parseUrlQuery(resolved.url)
+      // 回环地址解析：请求由后端发出，127.0.0.1 会落到服务端自身，
+      // 按设置换成可达地址（浏览器访问地址 / 调用方 IP / 手填），否则必然连不上
+      await loadNetHost()
+      const loop = rewriteLoopbackUrl(resolved.url)
+      if (loop.changed && shouldNotifyRewrite(loop.target)) {
+        toast.info(`已把回环地址解析为 ${loop.target}（可在 设置 → 网络 中调整）`)
+      }
+      const sendUrl = loop.changed ? loop.url : resolved.url
+
+      const { baseUrl } = parseUrlQuery(sendUrl)
       const payload: HttpRequestData = { ...resolved, url: baseUrl }
       await streamPost('/api/http/stream', payload, (ev) => {
         const type = ev.type

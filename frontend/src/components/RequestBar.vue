@@ -17,6 +17,13 @@
       <UrlInput v-model="tab.request.url" :request="tab.request" @blur="syncQueryToParams" @enter="onSend"
         @curl="applyCurl" />
     </div>
+    <a-tooltip v-if="loopbackHint" position="bottom"
+      :content="`请求由服务端发出，URL 里的回环地址会解析为 ${loopbackHint}；在 设置 → 网络 中可调整策略`">
+      <span class="loopback-chip">
+        <icon-info-circle />
+        回环 → {{ loopbackHint }}
+      </span>
+    </a-tooltip>
     <a-tooltip content="保存到集合（Ctrl+S）" position="top">
       <button type="button" class="save-btn" :class="{ 'is-dirty': tab.dirty }" aria-label="保存请求"
         @click="emit('saveClick')">
@@ -43,18 +50,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import UrlInput from '@/components/UrlInput.vue'
 import RequestSettingsDialog from '@/components/RequestSettingsDialog.vue'
 import { parseUrlQuery } from '@/utils/parseCurl'
 import type { ParsedCurl } from '@/utils/parseCurl'
 import { toast } from '@/utils/feedback'
+import { getLoopbackTarget, hasLoopback, loadNetHost } from '@/utils/loopback'
 import type { HttpMethod, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
 const emit = defineEmits<{ send: []; cancel: []; save: []; saveClick: [] }>()
 
 const showSettings = ref(false)
+
+void loadNetHost()
+/** URL 含回环地址时，提示发送前会解析成什么。 */
+const loopbackHint = computed(() => (hasLoopback(props.tab.request.url || '') ? getLoopbackTarget() : ''))
 
 const methods: HttpMethod[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
@@ -99,6 +111,21 @@ function applyCurl(parsed: ParsedCurl) {
 </script>
 
 <style lang="less" scoped>
+.loopback-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 8px;
+  height: 28px;
+  border: 1px solid var(--color-warning-light-3, #ffcf8b);
+  border-radius: 4px;
+  background: var(--color-warning-light-1, #fff7e8);
+  color: var(--color-text-2);
+  font-size: 12px;
+  cursor: help;
+}
+
 .request-bar {
   display: flex;
   align-items: center;

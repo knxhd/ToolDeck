@@ -52,6 +52,9 @@ class BenchRunBody(BaseModel):
     input_columns: list[str] = Field(default_factory=list, max_length=50)
     # 所属接口标识（node:<节点id> 或 req:<METHOD>:<url>），用于任务记录按接口隔离
     scope_key: str = Field(default="", max_length=200)
+    # 回环地址（127.0.0.1/localhost）要换成的目标 host，空表示不改写。
+    # 模板 URL 里的 host 可能藏在 {{var}} 里，只有后端逐行渲染后才可见，故由前端随请求传下来。
+    loopback_target: str = Field(default="", max_length=200)
 
     @model_validator(mode="after")
     def _unique_titles(self) -> "BenchRunBody":
