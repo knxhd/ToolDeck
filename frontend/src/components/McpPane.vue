@@ -62,7 +62,11 @@
               <div v-for="(t, i) in filteredTools" :key="t.name" class="tool-row">
                 <div class="tool-item" :class="{ selected: selectedTool?.name === t.name }"
                   @click="selectTool(t, $event)">
-                  <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
+                  <div class="tool-title">
+                    <span class="idx">{{ i + 1 }}.</span>
+                    <span class="tool-name">{{ t.name }}</span>
+                    <icon-down class="tool-caret" :class="{ open: selectedTool?.name === t.name }" />
+                  </div>
                   <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
                 </div>
 
@@ -286,6 +290,13 @@ async function onConnect() {
 }
 
 function selectTool(t: McpTool, ev?: MouseEvent) {
+  // 再次点击同一个工具：收起参数区并取消选中
+  if (selectedTool.value?.name === t.name) {
+    selectedTool.value = null
+    props.tab.mcp_tool = ''
+    flushSave()
+    return
+  }
   selectedTool.value = t
   props.tab.mcp_tool = t.name
   try {
@@ -742,10 +753,34 @@ watch(formValues, () => {
   }
 
   .tool-title {
+    display: flex;
+    align-items: center;
+    gap: 0;
     color: var(--color-text-1);
     font-family: var(--ui-font-mono);
     font-size: 0.86em;
     font-weight: 600;
+  }
+
+  .tool-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 折叠指示：展开时翻转朝上 */
+  .tool-caret {
+    flex-shrink: 0;
+    margin-left: auto;
+    color: var(--color-text-4);
+    font-size: 12px;
+    transition: transform 0.15s ease, color 0.15s ease;
+
+    &.open {
+      color: rgb(var(--primary-6));
+      transform: rotate(180deg);
+    }
   }
 
   .tool-desc {
