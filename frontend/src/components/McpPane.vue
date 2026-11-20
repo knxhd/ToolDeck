@@ -11,6 +11,16 @@
       <a-button class="bar-btn" html-type="button" :loading="connecting" @click="onConnect">
         {{ connected ? '重新连接' : '连接' }}
       </a-button>
+      <a-tooltip content="保存到集合（无节点时选择位置）" position="top">
+        <button type="button" class="save-btn" aria-label="保存" @click="emit('saveClick')">
+          <svg class="ico-save" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8.7 1.9H4.6c-.7 0-1.2.5-1.2 1.2v9.8c0 .7.5 1.2 1.2 1.2h6.8c.7 0 1.2-.5 1.2-1.2V5.9L8.7 1.9Z" />
+            <path d="M8.5 2v3.6h3.7" />
+            <path d="M8 8v3.3" />
+            <path d="M6.7 10.1 8 11.4l1.3-1.3" />
+          </svg>
+        </button>
+      </a-tooltip>
       <a-button type="primary" class="run-btn" :loading="tab.mcp_loading" :disabled="!selectedTool"
         @click="onRun">
         <template #icon><icon-play-arrow /></template>
@@ -77,10 +87,10 @@
                       @change="(v?: number) => (formValues[f.key] = v ?? 0)" style="width: 100%" />
                     <a-textarea v-else-if="f.type === 'array' || f.type === 'object' || f.longText" size="small"
                       :model-value="strVal(formValues[f.key])"
-                      @change="(v: string) => (formValues[f.key] = v)"
+                      @input="(v: string) => (formValues[f.key] = v)"
                       :auto-size="{ minRows: 2, maxRows: 6 }" />
                     <a-input v-else size="small" :model-value="strVal(formValues[f.key])"
-                      @change="(v: string) => (formValues[f.key] = v)" />
+                      @input="(v: string) => (formValues[f.key] = v)" />
                   </div>
                 </div>
               </div>
@@ -129,7 +139,7 @@ import { toast } from '@/utils/feedback'
 import type { KeyValue, OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
-const emit = defineEmits<{ save: [] }>()
+const emit = defineEmits<{ save: []; saveClick: [] }>()
 
 const mcp = useMcpStore()
 const connecting = ref(false)
@@ -440,6 +450,44 @@ watch(formValues, () => {
   color: var(--color-text-1);
 }
 
+/* 保存按钮：与 URL 输入组同高 */
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--color-text-3);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: var(--ui-bg-hover);
+    border-color: var(--ui-border-strong);
+    color: var(--color-text-1);
+  }
+
+  &:active {
+    transform: translateY(0.5px);
+  }
+
+  .ico-save {
+    display: block;
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
 .run-btn.arco-btn {
   flex-shrink: 0;
   min-width: 84px;
@@ -678,7 +726,7 @@ watch(formValues, () => {
 
 .tool-item {
   margin-bottom: 2px;
-  padding: 6px 8px;
+  padding: 6px 16px;
   border-radius: var(--ui-radius-sm);
   cursor: pointer;
   background: transparent;

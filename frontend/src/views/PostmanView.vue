@@ -191,8 +191,9 @@
           </div>
         </template>
         <CollectionDocPane v-else-if="wb.activeTab.kind === 'doc'" :tab="wb.activeTab" />
-        <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp" />
-        <WebSocketPane v-else :tab="wb.activeTab" @save="onSaveWs" />
+        <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp"
+          @save-click="manualSave" />
+        <WebSocketPane v-else :tab="wb.activeTab" @save="onSaveWs" @save-click="manualSave" />
       </div>
       <div class="empty" v-else-if="dataReady">
         <div class="ui-empty">
@@ -532,7 +533,7 @@ const shortcutsOpen = ref(false)
 /** URL 栏右侧保存按钮：手动保存当前请求（无修改时也会写回一次）。 */
 function manualSave() {
   const tab = wb.activeTab
-  if (!tab || tab.kind !== 'http') return
+  if (!tab || tab.kind === 'doc') return
   if (saveDialogOpen.value) return
   void saveTabFlow(tab)
 }

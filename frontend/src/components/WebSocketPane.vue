@@ -8,6 +8,16 @@
         <a-input :border="false" v-model="tab.ws_url" class="url-input" allow-clear
           placeholder="wss://echo.websocket.events" @press-enter="connect" />
       </div>
+      <a-tooltip content="保存到集合（无节点时选择位置）" position="top">
+        <button type="button" class="save-btn" aria-label="保存" @click="emit('saveClick')">
+          <svg class="ico-save" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M8.7 1.9H4.6c-.7 0-1.2.5-1.2 1.2v9.8c0 .7.5 1.2 1.2 1.2h6.8c.7 0 1.2-.5 1.2-1.2V5.9L8.7 1.9Z" />
+            <path d="M8.5 2v3.6h3.7" />
+            <path d="M8 8v3.3" />
+            <path d="M6.7 10.1 8 11.4l1.3-1.3" />
+          </svg>
+        </button>
+      </a-tooltip>
       <a-button v-if="!ws" type="primary" class="send-btn" @click="connect">连接</a-button>
       <a-button v-else status="danger" type="secondary" class="send-btn" @click="disconnect">断开</a-button>
     </div>
@@ -41,7 +51,7 @@ import { toast } from '@/utils/feedback'
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
-const emit = defineEmits<{ save: [] }>()
+const emit = defineEmits<{ save: []; saveClick: [] }>()
 
 const ws = ref<WebSocket | null>(null)
 const draft = ref('')
@@ -191,6 +201,44 @@ onBeforeUnmount(() => {
   :deep(.arco-input) {
     font-family: var(--ui-font-mono);
     font-size: 12px;
+  }
+}
+
+/* 保存按钮：与 URL 输入组同高 */
+.save-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--color-text-3);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: var(--ui-bg-hover);
+    border-color: var(--ui-border-strong);
+    color: var(--color-text-1);
+  }
+
+  &:active {
+    transform: translateY(0.5px);
+  }
+
+  .ico-save {
+    display: block;
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 }
 
