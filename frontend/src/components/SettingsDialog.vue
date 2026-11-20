@@ -113,10 +113,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { useSettingsStore, FONT_OPTIONS, FONT_SIZE_OPTIONS } from '@/stores/settings'
 import { ACCENT_PRESETS, DARK_THEMES, LIGHT_THEMES } from '@/utils/theme'
-import { getLoopbackTarget, loadNetHost } from '@/utils/loopback'
+import { loadNetHost } from '@/utils/loopback'
 
 defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
