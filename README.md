@@ -6,9 +6,9 @@
 
 不登录、不强制联网、数据不出本机。下载单文件即可用，也能 Docker 一条命令跑在服务器上给团队共用。
 
-<!-- 把下面这行换成你的主界面截图/GIF，README 的点击率全靠它 -->
+<img src="docs/video/tooldeck-demo.gif" alt="ToolDeck demo" width="920">
 
-<!-- ![screenshot](docs/images/main.png) -->
+<sub>60 秒功能演示 · <a href="docs/video/tooldeck-demo.mp4">完整视频（带字幕）</a></sub>
 
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)

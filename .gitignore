@@ -46,4 +46,6 @@ build/
 /**/dist
 /**/__pycache__
 .venv-linux
+.venv-demo
+.demo-data
 /**/tsconfig.tsbuildinfo
