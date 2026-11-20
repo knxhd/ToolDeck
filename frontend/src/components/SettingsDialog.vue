@@ -128,7 +128,6 @@ const customColorRef = ref<HTMLInputElement>()
 
 // 打开设置时顺手拉一次调用方地址；预览随设置变化实时更新
 void loadNetHost()
-const resolvePreview = computed(() => getLoopbackTarget() || '保持原样（不改写）')
 
 function onAccentClick(id: string) {
   if (id === 'custom') {
