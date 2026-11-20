@@ -80,6 +80,8 @@ function blankTab(kind: 'http' | 'websocket' | 'mcp' | 'doc' = 'http'): OpenTab 
     mcp_args: '{}',
     mcp_loading: false,
     mcp_result: '',
+    mcp_tools_w: 336,
+    mcp_req_w: 360,
     streaming: false,
     error: '',
     status_code: 0,
@@ -108,6 +110,8 @@ interface PersistedTab {
   mcp_headers?: Record<string, string>
   mcp_tool?: string
   mcp_args?: string
+  mcp_tools_w?: number
+  mcp_req_w?: number
 }
 
 function serializeTabs(tabs: OpenTab[], activeId: string | null): { activeId: string | null; tabs: PersistedTab[] } {
@@ -134,6 +138,8 @@ function serializeTabs(tabs: OpenTab[], activeId: string | null): { activeId: st
         out.mcp_headers = { ...t.mcp_headers }
         out.mcp_tool = t.mcp_tool
         out.mcp_args = t.mcp_args
+        out.mcp_tools_w = t.mcp_tools_w
+        out.mcp_req_w = t.mcp_req_w
       }
       return out
     }),
@@ -224,6 +230,8 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       tab.mcp_url = src.mcp_url
       tab.mcp_headers = JSON.parse(JSON.stringify(src.mcp_headers))
       tab.mcp_tool = src.mcp_tool
+      tab.mcp_tools_w = src.mcp_tools_w
+      tab.mcp_req_w = src.mcp_req_w
       tab.mcp_args = src.mcp_args
     }
     const idx = tabs.value.findIndex((t) => t.id === id)
@@ -399,6 +407,8 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       if (p.mcp_headers) tab.mcp_headers = { ...p.mcp_headers }
       if (p.mcp_tool) tab.mcp_tool = p.mcp_tool
       if (p.mcp_args) tab.mcp_args = p.mcp_args
+      if (p.mcp_tools_w) tab.mcp_tools_w = p.mcp_tools_w
+      if (p.mcp_req_w) tab.mcp_req_w = p.mcp_req_w
       restored.push(tab)
     }
     tabs.value = restored

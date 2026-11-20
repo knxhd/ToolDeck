@@ -168,6 +168,9 @@ export interface OpenTab {
   mcp_args: string
   mcp_loading: boolean
   mcp_result: string
+  /** MCP 面板三栏宽度（px），拖拽分隔条后记忆 */
+  mcp_tools_w?: number
+  mcp_req_w?: number
   // HTTP 响应态
   streaming: boolean
   error: string

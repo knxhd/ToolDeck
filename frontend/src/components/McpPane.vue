@@ -25,7 +25,7 @@
         <span class="pane-tab" :class="{ active: subTab === 'headers' }" @click="subTab = 'headers'">Headers</span>
       </div>
 
-      <div class="mcp-body">
+      <div ref="bodyRef" class="mcp-body">
         <!-- Headers 面板 -->
         <div v-if="subTab === 'headers'" class="headers-pane">
           <div class="hint">自定义连接 MCP Server 时携带的请求头（如 Authorization）</div>
@@ -34,7 +34,7 @@
 
         <!-- Message 面板：三栏 -->
         <template v-else>
-          <div class="col col-tools">
+          <div class="col col-tools" :style="{ width: toolsW + 'px' }">
             <div class="col-head">
               <span class="sub-tabs">
                 <span class="pane-tab active">Tools</span>
@@ -89,12 +89,19 @@
             </div>
           </div>
 
-          <div class="col col-req">
+          <!-- 拖拽分隔条：调整工具列 / Message 列宽度 -->
+          <div class="col-splitter" role="separator" aria-orientation="vertical"
+            @mousedown="startResize('tools', $event)" />
+
+          <div class="col col-req" :style="{ width: reqW + 'px' }">
             <div class="col-head">Message</div>
             <div class="col-body">
               <MonacoEditor :model-value="requestPreview" language="json" read-only height="100%" />
             </div>
           </div>
+
+          <div class="col-splitter" role="separator" aria-orientation="vertical"
+            @mousedown="startResize('req', $event)" />
 
           <div class="col col-resp">
             <div class="col-head">
@@ -136,20 +143,85 @@ const formValues = ref<Record<string, unknown>>({})
 const headerRows = ref<KeyValue[]>(
   Object.entries(props.tab.mcp_headers || {}).map(([key, value]) => ({ key, value, enabled: true })),
 )
+
+// 三栏宽度：可拖拽，记忆到标签上
+const toolsW = ref(props.tab.mcp_tools_w || 336)
+const reqW = ref(props.tab.mcp_req_w || 360)
+const bodyRef = ref<HTMLElement>()
+let drag: { kind: 'tools' | 'req'; x: number; w: number } | null = null
+
+const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
+
+function startResize(kind: 'tools' | 'req', e: MouseEvent) {
+  drag = { kind, x: e.clientX, w: kind === 'tools' ? toolsW.value : reqW.value }
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('mousemove', onResizeMove)
+  window.addEventListener('mouseup', stopResize)
+  e.preventDefault()
+}
+
+function onResizeMove(e: MouseEvent) {
+  if (!drag) return
+  const total = bodyRef.value?.clientWidth ?? 1200
+  const other = drag.kind === 'tools' ? reqW.value : toolsW.value
+  // 至少给右侧响应栏留 240px
+  const maxSelf = Math.max(240, total - other - 240)
+  const delta = e.clientX - drag.x
+  if (drag.kind === 'tools') {
+    toolsW.value = clamp(drag.w + delta, 220, Math.min(600, maxSelf))
+  } else {
+    reqW.value = clamp(drag.w + delta, 240, Math.min(800, maxSelf))
+  }
+}
+
+function stopResize() {
+  if (!drag) return
+  drag = null
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', stopResize)
+  props.tab.mcp_tools_w = toolsW.value
+  props.tab.mcp_req_w = reqW.value
+}
+
+// 保存调度：编辑时防抖写入集合节点，切换标签 / 点选工具 / 运行时立即落盘
+let saveTimer: number | undefined
+let savePending = false
+
+function scheduleSave() {
+  savePending = true
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(() => {
+    savePending = false
+    emit('save')
+  }, 400)
+}
+
+function flushSave() {
+  window.clearTimeout(saveTimer)
+  savePending = false
+  emit('save')
+}
+
+watch(() => props.tab.mcp_url, scheduleSave)
+
+// 请求头变动同样走防抖落盘
 watch(headerRows, (rows) => {
   const out: Record<string, string> = {}
   for (const r of rows) if (r.enabled && r.key) out[r.key] = r.value
   props.tab.mcp_headers = out
-  emit('save')
+  scheduleSave()
 }, { deep: true })
 
-// 地址改动后自动保存（防抖，避免边输边写集合树）
-let saveTimer: number | undefined
-watch(() => props.tab.mcp_url, () => {
+onBeforeUnmount(() => {
+  // 防抖窗口内切换标签也要落盘，否则刚改的内容会丢
+  if (savePending) flushSave()
   window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(() => emit('save'), 400)
+  window.removeEventListener('mousemove', onResizeMove)
+  window.removeEventListener('mouseup', stopResize)
 })
-onBeforeUnmount(() => window.clearTimeout(saveTimer))
 
 onMounted(() => {
   if (props.tab.mcp_url) onConnect()
@@ -195,7 +267,7 @@ async function onConnect() {
   try {
     mcp.tools = await mcp.adHocTools(props.tab.mcp_url, props.tab.mcp_headers || {})
     connected.value = true
-    emit('save')
+    flushSave()
   } catch (e) {
     toast.error((e as Error).message)
   } finally {
@@ -216,7 +288,8 @@ function selectTool(t: McpTool, ev?: MouseEvent) {
       formValues.value[f.key] = f.type === 'boolean' ? false : f.type === 'number' || f.type === 'integer' ? 0 : ''
     }
   }
-  emit('save')
+  props.tab.mcp_args = JSON.stringify(buildArgs())
+  flushSave()
   // 展开后把参数区带入可视范围（工具多时也不会被挤出列表）
   nextTick(() => {
     const row = (ev?.currentTarget as HTMLElement | null)?.parentElement
@@ -250,7 +323,7 @@ async function onRun() {
     const res = await mcp.adHocCall(props.tab.mcp_url, props.tab.mcp_headers || {}, selectedTool.value.name, buildArgs())
     mcp.lastResult = res
     props.tab.mcp_result = JSON.stringify(res, null, 2)
-    emit('save')
+    flushSave()
   } catch (e) {
     toast.error((e as Error).message)
   } finally {
@@ -258,7 +331,11 @@ async function onRun() {
   }
 }
 
-watch(formValues, () => emit('save'), { deep: true })
+// 参数填写：先把值回写到标签（刷新后能恢复），再并入防抖保存
+watch(formValues, () => {
+  props.tab.mcp_args = JSON.stringify(buildArgs())
+  scheduleSave()
+}, { deep: true })
 </script>
 
 <style lang="less" scoped>
@@ -440,6 +517,46 @@ watch(formValues, () => emit('save'), { deep: true })
   min-width: 0;
 }
 
+/* 拖拽分隔条：常态细线，hover / 拖拽时显主色竖条 */
+.col-splitter {
+  position: relative;
+  flex-shrink: 0;
+  width: 6px;
+  cursor: col-resize;
+  outline: none;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--ui-border-soft);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 28px;
+    transform: translate(-50%, -50%);
+    border-radius: 1px;
+    background: var(--ui-border-strong);
+    opacity: 0;
+    transition: opacity 0.15s ease, height 0.15s ease, background-color 0.15s ease;
+  }
+
+  &:hover::after {
+    opacity: 1;
+    height: 44px;
+    background: rgb(var(--primary-6));
+  }
+}
+
 .headers-pane {
   flex: 1;
   overflow: auto;
@@ -457,15 +574,11 @@ watch(formValues, () => emit('save'), { deep: true })
 }
 
 .col-tools {
-  width: 336px;
   flex-shrink: 0;
-  border-right: 1px solid var(--ui-border-soft);
 }
 
 .col-req {
-  width: 360px;
   flex-shrink: 0;
-  border-right: 1px solid var(--ui-border-soft);
 }
 
 .col-resp {

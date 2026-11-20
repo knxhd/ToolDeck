@@ -50,9 +50,14 @@ const logEl = ref<HTMLElement>()
 
 // 地址改动后自动保存（防抖，避免边输边写集合树）
 let saveTimer: number | undefined
+let savePending = false
 watch(() => props.tab.ws_url, () => {
+  savePending = true
   window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(() => emit('save'), 400)
+  saveTimer = window.setTimeout(() => {
+    savePending = false
+    emit('save')
+  }, 400)
 })
 
 interface Msg { dir: 'in' | 'out' | 'sys'; data: string; time: string }
@@ -94,6 +99,8 @@ function send() {
 }
 
 onBeforeUnmount(() => {
+  // 防抖窗口内切换标签也要落盘
+  if (savePending) emit('save')
   window.clearTimeout(saveTimer)
   ws.value?.close()
 })

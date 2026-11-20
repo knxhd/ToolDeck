@@ -803,7 +803,7 @@ function onSaveMcp() {
   node.mcp_headers = tab.mcp_headers
   node.mcp_tool = tab.mcp_tool
   node.mcp_args = tab.mcp_args
-  collections.persist()
+  collections.persist().catch((e) => toast.error(`保存失败：${(e as Error).message}`))
 }
 
 /** WebSocket 标签：地址改动后写回集合节点（自动保存，刷新后仍是新地址）。 */
