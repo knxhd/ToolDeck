@@ -1,89 +1,102 @@
 <template>
   <div class="mcp-pane">
-    <!-- 顶部：URL 输入 + 连接 + Run -->
-    <div class="mcp-top">
-      <a-input v-model="tab.mcp_url" placeholder="输入 MCP 地址，如 http://127.0.0.1:8001/mcp" allow-clear style="flex: 1" @press-enter="onConnect" />
-      <a-button :loading="connecting" type="primary" @click="onConnect">
+    <!-- 顶部请求条：与 HTTP 请求条同一套尺寸与配色 -->
+    <div class="mcp-bar">
+      <div class="url-group">
+        <span class="kind-badge">MCP</span>
+        <span class="url-divider"></span>
+        <a-input :border="false" v-model="tab.mcp_url" class="url-input" allow-clear
+          placeholder="输入 MCP 地址，如 http://127.0.0.1:8001/mcp" @press-enter="onConnect" />
+      </div>
+      <a-button class="bar-btn" html-type="button" :loading="connecting" @click="onConnect">
         {{ connected ? '重新连接' : '连接' }}
       </a-button>
-      <div class="spacer"></div>
-      <a-button status="success" :loading="tab.mcp_loading" :disabled="!selectedTool" @click="onRun">
+      <a-button type="primary" class="run-btn" :loading="tab.mcp_loading" :disabled="!selectedTool"
+        @click="onRun">
         <template #icon><icon-play-arrow /></template>
         Run
       </a-button>
     </div>
 
-    <!-- Message / Headers -->
-    <div class="mct-tabs">
-      <span class="mct-tab" :class="{ active: subTab === 'message' }" @click="subTab = 'message'">Message</span>
-      <span class="mct-tab" :class="{ active: subTab === 'headers' }" @click="subTab = 'headers'">Headers</span>
-    </div>
-
-    <div class="mcp-body">
-      <!-- Headers 面板 -->
-      <div v-if="subTab === 'headers'" class="headers-pane">
-        <div class="hint">自定义连接 MCP Server 时携带的请求头（如 Authorization）</div>
-        <KeyValueEditor v-model="headerRows" />
+    <!-- 正文卡片：标签栏 + 三栏，与 HTTP 的请求/响应卡片同构 -->
+    <div class="mcp-card">
+      <div class="pane-tabs">
+        <span class="pane-tab" :class="{ active: subTab === 'message' }" @click="subTab = 'message'">Message</span>
+        <span class="pane-tab" :class="{ active: subTab === 'headers' }" @click="subTab = 'headers'">Headers</span>
       </div>
 
-      <!-- Message 面板：三栏 -->
-      <template v-else>
-        <div class="col col-tools">
-          <div class="sub-tabs">
-            <span class="sub-tab active">Tools</span>
-            <span class="sub-tab disabled">Prompts</span>
-            <span class="sub-tab disabled">Resources</span>
-            <a-input v-model="keyword" size="small" placeholder="搜索" style="margin-left: auto; width: 120px">
-              <template #prefix><icon-search /></template>
-            </a-input>
-            <a-button size="small" shape="circle" @click="onConnect">
-              <template #icon><icon-refresh /></template>
-            </a-button>
-          </div>
-          <div class="tool-list">
-            <div
-              v-for="(t, i) in filteredTools"
-              :key="t.name"
-              class="tool-item"
-              :class="{ selected: selectedTool?.name === t.name }"
-              @click="selectTool(t)"
-            >
-              <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
-              <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
+      <div class="mcp-body">
+        <!-- Headers 面板 -->
+        <div v-if="subTab === 'headers'" class="headers-pane">
+          <div class="hint">自定义连接 MCP Server 时携带的请求头（如 Authorization）</div>
+          <KeyValueEditor v-model="headerRows" />
+        </div>
+
+        <!-- Message 面板：三栏 -->
+        <template v-else>
+          <div class="col col-tools">
+            <div class="col-head">
+              <span class="sub-tabs">
+                <span class="pane-tab active">Tools</span>
+                <span class="pane-tab disabled">Prompts</span>
+                <span class="pane-tab disabled">Resources</span>
+              </span>
+              <span class="col-head-extra">
+                <a-input v-model="keyword" class="search-input" size="small" placeholder="搜索" />
+                <a-button class="icon-btn" html-type="button" aria-label="刷新工具列表" @click="onConnect">
+                  <template #icon><icon-refresh /></template>
+                </a-button>
+              </span>
             </div>
-            <a-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接'" style="padding: 16px 0" />
-          </div>
-          <div v-if="selectedTool" class="param-form">
-            <div v-for="f in fields" :key="f.key" class="field">
-              <div class="field-label">
-                {{ f.key }}<span class="req" v-if="f.required">*</span>
-                <span class="field-type">{{ f.type }}</span>
+            <div class="tool-list">
+              <div v-for="(t, i) in filteredTools" :key="t.name" class="tool-item"
+                :class="{ selected: selectedTool?.name === t.name }" @click="selectTool(t)">
+                <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
+                <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
               </div>
-              <div class="field-desc" v-if="f.description">{{ f.description }}</div>
-              <a-switch :model-value="boolVal(formValues[f.key])" @change="(v) => (formValues[f.key] = !!v)" />
-              <a-input-number :model-value="numVal(formValues[f.key])" @change="(v?: number) => (formValues[f.key] = v ?? 0)" style="width: 100%" />
-              <a-textarea :model-value="strVal(formValues[f.key])" @change="(v: string) => (formValues[f.key] = v)" :auto-size="{ minRows: 3 }" />
-              <a-input :model-value="strVal(formValues[f.key])" @change="(v: string) => (formValues[f.key] = v)" />
+              <a-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接'"
+                style="padding: 16px 0" />
+            </div>
+            <div v-if="selectedTool" class="param-form">
+              <div v-for="f in fields" :key="f.key" class="field">
+                <div class="field-label">
+                  {{ f.key }}<span class="req" v-if="f.required">*</span>
+                  <span class="field-type">{{ f.type }}</span>
+                </div>
+                <div class="field-desc" v-if="f.description">{{ f.description }}</div>
+                <a-switch v-if="f.type === 'boolean'" :model-value="boolVal(formValues[f.key])"
+                  @change="(v) => (formValues[f.key] = !!v)" />
+                <a-input-number v-else-if="f.type === 'number' || f.type === 'integer'"
+                  :model-value="numVal(formValues[f.key])"
+                  @change="(v?: number) => (formValues[f.key] = v ?? 0)" style="width: 100%" />
+                <a-textarea v-else-if="f.type === 'array' || f.type === 'object' || f.longText"
+                  :model-value="strVal(formValues[f.key])"
+                  @change="(v: string) => (formValues[f.key] = v)" :auto-size="{ minRows: 2, maxRows: 6 }" />
+                <a-input v-else :model-value="strVal(formValues[f.key])"
+                  @change="(v: string) => (formValues[f.key] = v)" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="col col-req">
-          <div class="col-head">Message</div>
-          <MonacoEditor :model-value="requestPreview" language="json" read-only height="100%" />
-        </div>
+          <div class="col col-req">
+            <div class="col-head">Message</div>
+            <div class="col-body">
+              <MonacoEditor :model-value="requestPreview" language="json" read-only height="100%" />
+            </div>
+          </div>
 
-        <div class="col col-resp">
-          <div class="col-head resp-head">
-            <span>Response</span>
-            <a-tag v-if="connected" color="green" size="small">Connected</a-tag>
+          <div class="col col-resp">
+            <div class="col-head">
+              <span>Response</span>
+              <span v-if="connected" class="state-pill">Connected</span>
+            </div>
+            <div v-if="tab.mcp_result" class="col-body">
+              <MonacoEditor :model-value="tab.mcp_result" language="json" read-only height="100%" auto-scroll-to-end />
+            </div>
+            <div v-else class="resp-empty">运行后在此查看结果</div>
           </div>
-          <div v-if="tab.mcp_result" class="resp-body">
-            <MonacoEditor :model-value="tab.mcp_result" language="json" read-only height="100%" auto-scroll-to-end />
-          </div>
-          <div v-else class="resp-empty">运行后在此查看结果</div>
-        </div>
-      </template>
+        </template>
+      </div>
     </div>
   </div>
 </template>
@@ -228,39 +241,145 @@ watch(formValues, () => emit('save'), { deep: true })
 .mcp-pane {
   display: flex;
   flex-direction: column;
+  gap: 6px;
   height: 100%;
   min-height: 0;
 }
 
-.mcp-top {
+/* 顶部请求条：尺寸与 RequestBar 一致 */
+.mcp-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
-  height: 44px;
+  height: 48px;
   padding: 0 10px;
-  border-bottom: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+}
 
-  .spacer {
-    flex: 1;
+/* 输入组：徽标 + 地址共用一层边框，聚焦时整组高亮 */
+.url-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding-right: 2px;
+  background: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+  &:focus-within {
+    background: var(--ui-bg-panel);
+    border-color: rgb(var(--primary-6));
+    box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
   }
 }
 
-.mct-tabs {
+.kind-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 10px;
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-method-mcp);
+  font-family: var(--ui-font-mono);
+  font-size: 0.86em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.url-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin-right: 2px;
+  background: var(--ui-border);
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+
+  :deep(.arco-input-wrapper) {
+    height: 100%;
+    padding: 0 8px 0 4px;
+    background: transparent;
+  }
+
+  :deep(.arco-input) {
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+  }
+}
+
+/* 次要操作：描边按钮，不与主操作争主色 */
+.bar-btn.arco-btn,
+.bar-btn.arco-btn:not(.arco-btn-disabled):hover {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: var(--color-text-2);
+  font-size: 0.93em;
+  font-weight: 500;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.bar-btn.arco-btn:not(.arco-btn-disabled):hover {
+  background: var(--ui-bg-hover);
+  border-color: var(--ui-border-strong);
+  color: var(--color-text-1);
+}
+
+.run-btn.arco-btn {
+  flex-shrink: 0;
+  min-width: 84px;
+  height: 32px;
+  border-radius: var(--ui-radius-md);
+  font-weight: 600;
+}
+
+.mcp-card {
+  flex: 1;
   display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  overflow: hidden;
+}
+
+/* 标签栏：与 HTTP 的 tabs 同一套数值（38px 栏、26px 胶囊） */
+.pane-tabs {
+  display: flex;
+  align-items: center;
   gap: 2px;
   flex-shrink: 0;
-  padding: 5px 10px;
+  height: 38px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--ui-border-soft);
 }
 
-.mct-tab {
-  padding: 3px 10px;
+.pane-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  flex-shrink: 0;
   border-radius: var(--ui-radius-sm);
   color: var(--color-text-3);
-  font-size: 12.5px;
+  font-size: 0.89em;
   cursor: pointer;
-  transition: background-color 0.12s ease, color 0.12s ease;
+  transition: color 0.15s ease, background-color 0.15s ease;
 
   &:hover {
     color: var(--color-text-1);
@@ -271,6 +390,16 @@ watch(formValues, () => emit('save'), { deep: true })
     background: var(--ui-bg-active);
     color: rgb(var(--primary-6));
     font-weight: 600;
+  }
+
+  &.disabled {
+    color: var(--color-text-4);
+    cursor: not-allowed;
+
+    &:hover {
+      background: transparent;
+      color: var(--color-text-4);
+    }
   }
 }
 
@@ -290,7 +419,7 @@ watch(formValues, () => emit('save'), { deep: true })
 .headers-pane {
   flex: 1;
   overflow: auto;
-  padding: 14px;
+  padding: 12px;
 }
 
 .hint {
@@ -299,58 +428,120 @@ watch(formValues, () => emit('save'), { deep: true })
   border-radius: var(--ui-radius-md);
   background: var(--ui-bg-subtle);
   color: var(--color-text-3);
-  font-size: 11.5px;
+  font-size: 0.86em;
   line-height: 1.7;
 }
 
 .col-tools {
-  width: 320px;
+  width: 336px;
   flex-shrink: 0;
   border-right: 1px solid var(--ui-border-soft);
+}
+
+.col-req {
+  width: 360px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--ui-border-soft);
+}
+
+.col-resp {
+  flex: 1;
+}
+
+/* 列头：白底 + 细分隔线，与 HTTP 卡片头部一致 */
+.col-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--ui-border-soft);
+  background: var(--ui-bg-panel);
+  color: var(--color-text-2);
+  font-size: 0.89em;
+  font-weight: 600;
 }
 
 .sub-tabs {
   display: flex;
   align-items: center;
   gap: 2px;
-  flex-shrink: 0;
-  height: 34px;
-  padding: 0 8px;
-  border-bottom: 1px solid var(--ui-border-soft);
+  overflow: hidden;
 
-  .sub-tab {
-    padding: 2px 8px;
-    border-radius: var(--ui-radius-sm);
-    color: var(--color-text-3);
-    font-size: 0.86em;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--ui-bg-hover);
-    }
-
-    &.active {
-      background: var(--ui-bg-active);
-      color: rgb(var(--primary-6));
-      font-weight: 600;
-    }
-
-    &.disabled {
-      color: var(--color-text-4);
-      cursor: not-allowed;
-    }
+  .pane-tab {
+    padding: 0 8px;
   }
+}
+
+.col-head-extra {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.search-input {
+  width: 64px;
+
+  :deep(.arco-input-wrapper) {
+    height: 26px;
+    border-radius: var(--ui-radius-sm);
+  }
+
+  :deep(.arco-input) {
+    font-size: 0.86em;
+  }
+}
+
+.icon-btn.arco-btn,
+.icon-btn.arco-btn:not(.arco-btn-disabled):hover {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: transparent;
+  color: var(--color-text-3);
+}
+
+.icon-btn.arco-btn:not(.arco-btn-disabled):hover {
+  background: var(--ui-bg-hover);
+  border-color: var(--ui-border-strong);
+  color: var(--color-text-1);
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: var(--ui-status-2xx-bg);
+  color: var(--ui-status-2xx);
+  font-family: var(--ui-font-mono);
+  font-size: 0.71em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.col-body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
 }
 
 .tool-list {
   flex: 1;
   overflow-y: auto;
-  padding: 4px;
+  padding: 6px 8px;
 }
 
 .tool-item {
   margin-bottom: 2px;
-  padding: 7px 9px;
+  padding: 6px 8px;
   border-radius: var(--ui-radius-sm);
   cursor: pointer;
   transition: background-color 0.12s ease, box-shadow 0.12s ease;
@@ -374,7 +565,7 @@ watch(formValues, () => emit('save'), { deep: true })
   .tool-desc {
     margin-top: 2px;
     color: var(--color-text-4);
-    font-size: 11.5px;
+    font-size: 0.86em;
     white-space: pre-wrap;
   }
 }
@@ -382,16 +573,20 @@ watch(formValues, () => emit('save'), { deep: true })
 .param-form {
   max-height: 45%;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 12px;
   border-top: 1px solid var(--ui-border-soft);
 
   .field {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 
   .field-label {
     color: var(--color-text-2);
-    font-size: 11.5px;
+    font-size: 0.86em;
     font-weight: 600;
 
     .req {
@@ -414,42 +609,12 @@ watch(formValues, () => emit('save'), { deep: true })
   }
 }
 
-.col-req {
-  width: 360px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--ui-border-soft);
-}
-
-.col-resp {
-  flex: 1;
-}
-
-.col-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  height: 36px;
-  padding: 0 10px;
-  border-bottom: 1px solid var(--ui-border-soft);
-  background: var(--ui-bg-subtle);
-  color: var(--color-text-2);
-  font-size: 0.86em;
-  font-weight: 600;
-}
-
-.resp-body {
-  flex: 1;
-  min-height: 0;
-  padding: 8px;
-}
-
 .resp-empty {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--color-text-4);
-  font-size: 12.5px;
+  font-size: 0.89em;
 }
 </style>

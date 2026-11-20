@@ -1,21 +1,36 @@
 ﻿<template>
   <div class="ws-pane">
+    <!-- 顶部请求条：与 HTTP 请求条同一套尺寸与配色 -->
     <div class="ws-bar">
-      <a-input v-model="tab.ws_url" placeholder="wss://echo.websocket.events" allow-clear style="flex: 1" />
-      <a-button v-if="!ws" type="primary" @click="connect">连接</a-button>
-      <a-button v-else status="danger" type="secondary" @click="disconnect">断开</a-button>
-    </div>
-    <div class="ws-log" ref="logEl">
-      <div v-for="(m, i) in messages" :key="i" class="ws-msg" :class="m.dir">
-        <span class="ws-time">{{ m.time }}</span>
-        <span class="ws-text">{{ m.data }}</span>
+      <div class="url-group">
+        <span class="kind-badge">WS</span>
+        <span class="url-divider"></span>
+        <a-input :border="false" v-model="tab.ws_url" class="url-input" allow-clear
+          placeholder="wss://echo.websocket.events" @press-enter="connect" />
       </div>
-      <a-empty v-if="!messages.length" description="连接后在此收发消息" style="padding: 16px 0" />
+      <a-button v-if="!ws" type="primary" class="send-btn" @click="connect">连接</a-button>
+      <a-button v-else status="danger" type="secondary" class="send-btn" @click="disconnect">断开</a-button>
     </div>
-    <div class="ws-input">
-      <a-textarea v-model="draft" :auto-size="{ minRows: 3 }" placeholder="输入要发送的消息，Ctrl+Enter 发送"
-        @keydown.ctrl.enter="send" style="flex: 1" />
-      <a-button type="primary" :disabled="!ws" @click="send">发送</a-button>
+
+    <div class="ws-card">
+      <div class="col-head">
+        <span>消息记录</span>
+        <span v-if="ws" class="state-pill">已连接</span>
+      </div>
+      <div class="ws-log" ref="logEl">
+        <div v-for="(m, i) in messages" :key="i" class="ws-msg" :class="m.dir">
+          <span class="ws-time">{{ m.time }}</span>
+          <span class="ws-text">{{ m.data }}</span>
+        </div>
+        <a-empty v-if="!messages.length" description="连接后在此收发消息" style="padding: 16px 0" />
+      </div>
+    </div>
+
+    <div class="ws-input" :class="{ 'is-focused': draftFocused }">
+      <a-textarea :border="false" v-model="draft" class="draft-input" :auto-size="{ minRows: 3, maxRows: 8 }"
+        placeholder="输入要发送的消息，Ctrl+Enter 发送" @focus="draftFocused = true" @blur="draftFocused = false"
+        @keydown.ctrl.enter="send" />
+      <a-button type="primary" class="send-btn" :disabled="!ws || !draft" @click="send">发送</a-button>
     </div>
   </div>
 </template>
@@ -29,6 +44,7 @@ const props = defineProps<{ tab: OpenTab }>()
 
 const ws = ref<WebSocket | null>(null)
 const draft = ref('')
+const draftFocused = ref(false)
 const logEl = ref<HTMLElement>()
 
 interface Msg { dir: 'in' | 'out' | 'sys'; data: string; time: string }
@@ -76,28 +92,134 @@ onBeforeUnmount(() => ws.value?.close())
 .ws-pane {
   display: flex;
   flex-direction: column;
+  gap: 6px;
   height: 100%;
   min-height: 0;
-  gap: 8px;
-  padding: 10px;
 }
 
+/* 顶部请求条：尺寸与 RequestBar 一致 */
 .ws-bar {
   display: flex;
+  align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  height: 48px;
+  padding: 0 10px;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+}
+
+.url-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding-right: 2px;
+  background: var(--ui-bg-subtle);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+  &:focus-within {
+    background: var(--ui-bg-panel);
+    border-color: rgb(var(--primary-6));
+    box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+  }
+}
+
+.kind-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 100%;
+  padding: 0 10px;
+  border-radius: var(--ui-radius-sm);
+  color: var(--ui-method-ws);
+  font-family: var(--ui-font-mono);
+  font-size: 0.86em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.url-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin-right: 2px;
+  background: var(--ui-border);
+}
+
+.url-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+
+  :deep(.arco-input-wrapper) {
+    height: 100%;
+    padding: 0 8px 0 4px;
+    background: transparent;
+  }
+
+  :deep(.arco-input) {
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+  }
+}
+
+.send-btn.arco-btn {
+  flex-shrink: 0;
+  min-width: 84px;
+  height: 32px;
+  border-radius: var(--ui-radius-md);
+  font-weight: 600;
+}
+
+.ws-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--ui-bg-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  overflow: hidden;
+}
+
+.col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--ui-border-soft);
+  color: var(--color-text-2);
+  font-size: 0.89em;
+  font-weight: 600;
+}
+
+.state-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: var(--ui-status-2xx-bg);
+  color: var(--ui-status-2xx);
+  font-family: var(--ui-font-mono);
+  font-size: 0.71em;
+  font-weight: 700;
 }
 
 .ws-log {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 8px 10px;
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-bg-subtle);
+  padding: 10px 12px;
   font-family: var(--ui-font-mono);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 1.7;
 }
 
@@ -113,8 +235,13 @@ onBeforeUnmount(() => ws.value?.close())
   font-variant-numeric: tabular-nums;
 }
 
+.ws-text {
+  min-width: 0;
+  word-break: break-word;
+}
+
 .ws-msg.in .ws-text {
-  color: var(--ui-accent-ok);
+  color: var(--ui-status-2xx);
 }
 
 .ws-msg.out .ws-text {
@@ -125,10 +252,37 @@ onBeforeUnmount(() => ws.value?.close())
   color: var(--color-text-3);
 }
 
+/* 发送区：与 HTTP 输入组同款边框 + 聚焦高亮 */
 .ws-input {
   display: flex;
   gap: 8px;
   align-items: flex-end;
   flex-shrink: 0;
+  padding: 6px 8px 6px 10px;
+  background: var(--ui-bg-subtle);
+  border: none;
+  border-radius: var(--ui-radius-md);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+
+  &.is-focused {
+    background: var(--ui-bg-panel);
+    border-color: rgb(var(--primary-6));
+    box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+  }
+}
+
+.draft-input {
+  flex: 1;
+  min-width: 0;
+
+  :deep(.arco-input-wrapper) {
+    background: transparent;
+  }
+
+  :deep(.arco-textarea) {
+    font-family: var(--ui-font-mono);
+    font-size: 12px;
+    line-height: 1.7;
+  }
 }
 </style>
