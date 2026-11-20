@@ -24,7 +24,6 @@
         <span class="form-label">缩放比例</span>
         <a-input-number v-model="settings.zoom" :min="0.8" :max="1.5" :step="0.1" :precision="1" mode="button"
           style="width: 132px" />
-        <span class="form-tip">整体放大界面，含布局和文字</span>
       </div>
       <div class="form-row">
         <span class="form-label">系统主题</span>
@@ -73,7 +72,6 @@
         <span class="form-label">标签数量</span>
         <a-input-number v-model="settings.maxTabs" :min="store.maxTabsMin" :max="store.maxTabsMax" :precision="0"
           mode="button" style="width: 132px" />
-        <span class="form-tip">最多同时打开 {{ store.maxTabsMin }}~{{ store.maxTabsMax }} 个</span>
       </div>
       <div class="form-row">
         <span class="form-label">字体预览</span>
@@ -92,12 +90,6 @@
           </a-radio-group>
           <a-input v-if="settings.loopbackMode === 'custom'" v-model="settings.loopbackHost" size="small"
             class="loopback-host" placeholder="如 10.18.217.60:48088（可带端口）" />
-          <div class="form-tip">
-            请求地址写到 127.0.0.1 / localhost 时，发送前会换成本策略解析出的地址：<b>{{ resolvePreview }}</b>
-          </div>
-          <div class="form-tip">
-            说明：请求由服务端发出，回环地址会落到服务器自身。若被测服务只监听调用方本机，服务器无法访问，需让它监听 0.0.0.0 / 内网 IP，或改用内网地址。
-          </div>
         </div>
       </div>
 
