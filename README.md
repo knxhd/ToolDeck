@@ -132,13 +132,24 @@ cd ../backend && pyinstaller launcher.spec
 # 产物 backend/dist/api-tool.exe
 ```
 
-Windows 托盘版（默认构建是无托盘的 headless 服务，加 `-Tray` 才带托盘）：
+Windows 桌面窗口版（内嵌 WebView2 窗口，自带托盘）：
+
+```powershell
+.\build-windows.ps1 -Window          # 启动画面 → 窗口里打开 ToolDeck；关闭窗口收进托盘
+.\build-windows.ps1 -Window -SkipFrontend
+```
+
+窗口版依赖 WebView2 Runtime（Win11 自带；Win10 缺失时启动会弹窗提示）。运行时可用 `--no-window --tray` 只留托盘、`--no-window --no-tray` 退回纯无界面。
+
+托盘版（默认构建是无托盘的 headless 服务，加 `-Tray` 才带托盘）：
 
 ```powershell
 .\build-windows.ps1                # 无托盘，行为与以往一致
 .\build-windows.ps1 -Tray          # 右下角托盘图标：打开界面 / 复制地址 / 查看日志 / 退出
 .\build-windows.ps1 -Tray -SkipFrontend   # 复用已有前端产物，只重打后端
 ```
+
+**Linux / Docker 部署始终是无托盘、纯无界面**：`build-linux.sh` 与 `launcher-linux.spec` 不打包 pystray / Pillow / pywebview / pythonnet，`main.py` 里的窗口与托盘判定在非 `win32` 平台直接返回不可用，行为与之前完全一致。
 
 托盘版启动后自动打开浏览器，服务日志写到数据目录下的 `server.log`。运行时可用 `--no-tray` 临时退回 headless、`--no-open` 不自动开浏览器。
 

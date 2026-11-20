@@ -11,6 +11,7 @@
 #    .\build-windows.ps1 -SkipFrontend           # 跳过前端构建（使用已有 frontend/dist）
 #    .\build-windows.ps1 -Console                # 生成带控制台窗口的版本（可看日志，适合服务器）
 #    .\build-windows.ps1 -Tray                   # 生成带系统托盘的版本（无控制台，右下角托盘图标）
+#    .\build-windows.ps1 -Window                 # 生成桌面窗口版（内嵌 WebView2 窗口 + 托盘，Windows 专用）
 #    .\build-windows.ps1 -SkipNpmCi              # 跳过 npm ci（node_modules 被占用时用，直接复用现有依赖）
 #    .\build-windows.ps1 -PythonPath "D:\Program\miniconda3\python.exe"   # 指定 Python 解释器
 #    .\build-windows.ps1 -PipIndex https://pypi.tuna.tsinghua.edu.cn/simple   # pip 镜像
@@ -32,6 +33,7 @@ param(
     [switch]$SkipNpmCi,
     [switch]$Console,
     [switch]$Tray,
+    [switch]$Window,
     [string]$PipIndex = "",
     [string]$PythonPath = "",
     [switch]$NoClean
@@ -42,8 +44,14 @@ $ErrorActionPreference = "Stop"
 # 防止把未知参数（如 --help、拼错的开关）当成"无参数"直接开始打包
 if ($args.Count -gt 0) {
     Write-Host ("[错误] 无法识别的参数：" + ($args -join " ")) -ForegroundColor Red
-    Write-Host "       可用参数：-SkipFrontend -SkipNpmCi -Console -Tray -NoClean -PipIndex <url> -PythonPath <path>" -ForegroundColor Yellow
+    Write-Host "       可用参数：-SkipFrontend -SkipNpmCi -Console -Tray -Window -NoClean -PipIndex <url> -PythonPath <path>" -ForegroundColor Yellow
     exit 1
+}
+
+# 窗口版自带托盘（关闭窗口收进托盘）
+if ($Window) {
+    $Tray = $true
+    $env:APP_WINDOW = "1"
 }
 
 # ---------- 1. 环境检查 ----------
@@ -155,9 +163,13 @@ if ($Tray) {
     $pipArgs += @("pystray>=0.19.5", "pillow>=10.0.0", "resvg-py>=0.4.0")
     $env:APP_TRAY = "1"
     if ($Console) {
-        Write-Host "       -Tray 与 -Console 互斥：托盘版必须无控制台窗口，已忽略 -Console。" -ForegroundColor Yellow
+        Write-Host "       -Tray/-Window 与 -Console 互斥：托盘/窗口版必须无控制台窗口，已忽略 -Console。" -ForegroundColor Yellow
         $Console = $false
     }
+}
+if ($Window) {
+    # 窗口版额外需要 pywebview（Windows 上会自动带上 pythonnet / clr_loader）
+    $pipArgs += @("pywebview>=6.0.0")
 }
 & $pip @pipArgs
 if ($LASTEXITCODE -ne 0) {
@@ -210,7 +222,19 @@ $size = [math]::Round((Get-Item $exe).Length / 1MB, 1)
 
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
-if ($Tray) {
+if ($Window) {
+    Write-Host "  打包完成（桌面窗口版）"
+    Write-Host "  产物：$exe （${size} MB，单文件可执行程序）" -ForegroundColor Green
+    Write-Host "============================================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "  运行方式："
+    Write-Host "    双击启动 → 先显示启动画面，随后在窗口里打开 ToolDeck（自带托盘）"
+    Write-Host "    关闭窗口 → 收进托盘；托盘菜单：打开 / 隐藏 / 复制地址 / 查看日志 / 退出"
+    Write-Host "    只开托盘不开窗口  api-tool.exe --no-window --tray"
+    Write-Host "    纯无界面模式      api-tool.exe --no-window --no-tray"
+    Write-Host "    服务日志          %USERPROFILE%\.api-tool\server.log（1 MB × 3 轮转）"
+    Write-Host "    依赖              WebView2 Runtime（Win11 自带；Win10 缺失时会弹窗提示）"
+} elseif ($Tray) {
     Write-Host "  打包完成（托盘版）"
     Write-Host "  产物：$exe （${size} MB，单文件可执行程序）" -ForegroundColor Green
     Write-Host "============================================================" -ForegroundColor Green

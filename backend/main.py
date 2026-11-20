@@ -106,10 +106,24 @@ def parse_args() -> argparse.Namespace:
         action="store_false",
         help="禁用系统托盘，按 headless 方式运行",
     )
+    window_group = parser.add_mutually_exclusive_group()
+    window_group.add_argument(
+        "--window",
+        dest="window",
+        action="store_true",
+        default=None,
+        help="打开桌面窗口（仅 Windows 的窗口版构建有效）",
+    )
+    window_group.add_argument(
+        "--no-window",
+        dest="window",
+        action="store_false",
+        help="不打开桌面窗口，回退到托盘/无界面模式",
+    )
     parser.add_argument(
         "--no-open",
         action="store_true",
-        help="托盘模式启动时不自动打开浏览器",
+        help="不自动打开浏览器",
     )
     return parser.parse_args()
 
@@ -221,6 +235,32 @@ def main() -> None:
         except Exception as exc:
             tray_reason = f"托盘模块不可用：{exc!r}"
 
+    # ---- 桌面窗口（Windows 窗口版构建，优先于托盘）----
+    use_window = False
+    window_reason = "未启用"
+    if args.window is True:
+        try:
+            from backend.app.desktop import desktop_runtime_status
+
+            use_window, window_reason = desktop_runtime_status()
+        except Exception as exc:
+            window_reason = f"桌面模块不可用：{exc!r}"
+        if not use_window:
+            print(f"[提示] 桌面窗口不可用（{window_reason}），已回退。")
+    elif args.window is None:
+        try:
+            from backend.app.desktop import desktop_build_enabled, desktop_runtime_status
+
+            ok, window_reason = desktop_runtime_status()
+            use_window = ok and desktop_build_enabled()
+            if ok and not getattr(sys, "frozen", False):
+                window_reason = "源码运行（非打包 exe），默认不开窗口"
+        except Exception as exc:
+            window_reason = f"桌面模块不可用：{exc!r}"
+    if use_window:
+        # 窗口模式下托盘由 desktop.py 自己创建；保留 use_tray 作为窗口失败时的降级路径
+        tray_reason = "窗口模式自带托盘（此项保留用于降级）"
+
     stream = sys.stderr if sys.stderr is not None else sys.stdout
     url = _local_url(args.host, args.port)
 
@@ -231,7 +271,12 @@ def main() -> None:
         log_file = data_dir / "server.log"
     _setup_logging(stream, log_file)
     logging.getLogger(__name__).info(
-        "启动：tray=%s（%s） url=%s", use_tray, tray_reason, url
+        "启动：window=%s（%s） tray=%s（%s） url=%s",
+        use_window,
+        window_reason,
+        use_tray,
+        tray_reason,
+        url,
     )
 
     if _is_windowed_frozen():
@@ -249,6 +294,36 @@ def main() -> None:
                 "2. 或换个端口启动，例如：api-tool.exe --port 9000"
             )
             return
+
+    if use_window:
+        from backend.app.desktop import run_desktop
+
+        storage = None
+        if log_file is not None:
+            storage = log_file.parent / "webview"
+        logging.getLogger(__name__).info("桌面窗口模式启动：%s", url)
+        try:
+            run_desktop(
+                app,
+                host=args.host,
+                port=args.port,
+                url=url,
+                log_path=log_file,
+                open_browser=False,
+                storage_path=storage,
+            )
+            return
+        except Exception as exc:  # 窗口起不来时退化为托盘/无界面，别让用户点半天没反应
+            logging.getLogger(__name__).exception("桌面窗口启动失败，降级运行")
+            _message_box(
+                f"桌面窗口启动失败：{exc}\n\n"
+                f"已改用托盘/无界面模式继续运行，访问 {url}\n"
+                f"日志：{log_file}"
+            )
+            if not args.no_open:
+                from backend.app.launcher import open_browser_after_delay
+
+                open_browser_after_delay(url, 2.0)
 
     if use_tray:
         from backend.app.tray import serve_with_tray
