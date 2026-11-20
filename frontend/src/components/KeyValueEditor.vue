@@ -193,7 +193,6 @@ function remove(i: number) {
   emit('update:modelValue', clone(next))
 }
 
-// ---- 长值查看 / 编辑 ----
 const expandOpen = ref(false)
 const expandIndex = ref(-1)
 const expandText = ref('')
