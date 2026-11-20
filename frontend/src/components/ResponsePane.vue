@@ -23,7 +23,7 @@
         <a-button size="mini" type="text" :disabled="!hasContent" :title="downloadTip" @click="downloadResponse">
           <template #icon><icon-download /></template>
         </a-button>
-        <a-button size="mini" type="text" :disabled="!tab.body && !tab.status_code && !tab.stream_events.length"
+        <a-button size="mini" type="text" status="danger" :disabled="!tab.body && !tab.status_code && !tab.stream_events.length"
           @click="clearResponse">
           <template #icon><icon-delete /></template>
         </a-button>

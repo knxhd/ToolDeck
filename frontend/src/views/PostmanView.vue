@@ -110,18 +110,28 @@
             </a-button>
           </a-tooltip>
           <!-- 环境切换 -->
-          <a-dropdown @select="onEnvSelect" :disabled="!env.collection">
+          <a-dropdown v-model:popup-visible="envDdOpen" :disabled="!env.collection">
             <a-button size="small" class="env-btn">
               <template #icon><icon-cloud /></template>
               {{ env.activeEnv ? env.activeEnv.name : 'No Environment' }}
             </a-button>
             <template #content>
-              <a-doption value="__none">No Environment</a-doption>
-              <a-doption v-for="e in env.envs" :key="e.id" :value="e.id">
-                <span v-if="e.id === env.activeEnvId">✓ </span>{{ e.name }}
-              </a-doption>
-              <a-doption v-if="env.envs.length" disabled>────────</a-doption>
-              <a-doption value="__manage">管理环境…</a-doption>
+              <div class="env-menu">
+                <div class="env-menu-item" :class="{ active: !env.activeEnvId }" @click="pickEnv('__none')">
+                  <span class="env-menu-check"><icon-check v-if="!env.activeEnvId" /></span>
+                  <span class="env-menu-name">No Environment</span>
+                </div>
+                <div v-for="e in env.envs" :key="e.id" class="env-menu-item"
+                  :class="{ active: e.id === env.activeEnvId }" @click="pickEnv(e.id)">
+                  <span class="env-menu-check"><icon-check v-if="e.id === env.activeEnvId" /></span>
+                  <span class="env-menu-name" :title="e.name">{{ e.name }}</span>
+                </div>
+                <div v-if="env.envs.length" class="env-menu-sep"></div>
+                <div class="env-menu-item" @click="pickEnv('__manage')">
+                  <span class="env-menu-check"><icon-settings /></span>
+                  <span class="env-menu-name">管理环境…</span>
+                </div>
+              </div>
             </template>
           </a-dropdown>
           <span class="tb-sep"></span>
@@ -349,6 +359,14 @@ watch(
   { deep: true },
 )
 
+
+const envDdOpen = ref(false)
+
+/** 环境菜单：选中后手动关闭下拉（内容为自定义结构，不走 dropdown 的 select 事件）。 */
+function pickEnv(value: string) {
+  envDdOpen.value = false
+  onEnvSelect(value)
+}
 
 function onEnvSelect(value: string | number | Record<string, unknown> | undefined) {
   const v = String(value)
@@ -902,6 +920,64 @@ function statusClass(code: number) {
   return 'err'
 }
 </script>
+
+<style lang="less">
+/* 环境下拉菜单：内容渲染在 body 上，必须用全局样式 */
+.env-menu {
+  min-width: 180px;
+  padding: 4px;
+}
+
+.env-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--color-text-2);
+  font-size: 13px;
+  line-height: 32px;
+  transition: background-color 0.12s ease, color 0.12s ease;
+
+  &:hover {
+    background: var(--color-fill-2);
+  }
+
+  &.active {
+    color: rgb(var(--primary-6));
+    font-weight: 600;
+    background: rgba(var(--primary-6), 0.08);
+  }
+}
+
+/* 勾选位固定宽度：未选中时也占位，保证各行文字左对齐 */
+.env-menu-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  font-size: 12px;
+  color: rgb(var(--primary-6));
+}
+
+.env-menu-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.env-menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--ui-border);
+}
+</style>
 
 <style lang="less" scoped>
 .postman-view {

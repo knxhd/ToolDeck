@@ -1,7 +1,7 @@
 <template>
   <a-modal
     :visible="visible"
-    width="960px"
+    width="1180px"
     :footer="false"
     :mask-closable="false"
     @cancel="onClose"
@@ -41,9 +41,10 @@
         <template v-if="currentEnv">
           <div class="detail-header">
             <span class="detail-title">{{ currentEnv.name }}</span>
-            <a-button size="mini"  @click="onAddVar">添加变量</a-button>
+            <span class="detail-tip">在最后一行输入即可新增变量</span>
           </div>
-          <table class="var-table">
+          <div class="var-scroll">
+            <table class="var-table">
             <thead>
               <tr>
                 <th class="col-on"></th>
@@ -59,22 +60,26 @@
                   <a-checkbox v-model="v.enabled" />
                 </td>
                 <td class="col-name">
-                  <a-input v-model="v.key" placeholder="例如 knowledge_agent" size="small" />
+                  <a-input v-model="v.key" placeholder="占位符" size="small" />
                 </td>
                 <td class="col-value">
-                  <a-input v-model="v.value" placeholder="例如 127.0.0.1:8080" size="small" />
+                  <a-tooltip :content="v.value" position="top" :disabled="!v.value || v.value.length < 24">
+                    <a-input v-model="v.value" placeholder="占位值" size="small" />
+                  </a-tooltip>
                 </td>
                 <td class="col-desc">
                   <a-input v-model="v.description" placeholder="备注" size="small" />
                 </td>
                 <td class="col-op">
-                  <a-button size="mini" type="text" status="danger" @click="currentEnv.variables.splice(i, 1)">
+                  <a-button v-if="!(isBlankRow(v) && i === currentEnv.variables.length - 1)" size="mini" type="text"
+                    status="danger" @click="removeRow(i)">
                     <template #icon><icon-delete /></template>
                   </a-button>
                 </td>
               </tr>
             </tbody>
-          </table>
+            </table>
+          </div>
           <div class="hint">请求 URL / Header / Params / Body 中用 <code v-pre>{{变量名}}</code> 引用，发送时自动替换。</div>
         </template>
         <a-empty v-else description="选择左侧环境，或点击 + 新建环境" style="padding: 48px 0" />
@@ -122,6 +127,8 @@ function loadFromStore() {
   // 优先选中当前生效的环境；没有（或未设置）时默认选中第一个
   activeId.value =
     localEnvs.value.find((e) => e.id === c?.activeEnvId)?.id ?? localEnvs.value[0]?.id ?? null
+  // 每个环境末尾都留一个空行
+  localEnvs.value.forEach((e) => ensureTail(e))
 }
 
 async function onAddEnv() {
@@ -146,12 +153,41 @@ async function onRemoveEnv(e: Environment) {
   if (activeId.value === e.id) activeId.value = localEnvs.value[0]?.id ?? null
 }
 
-function onAddVar() {
-  currentEnv.value?.variables.push({ key: '', value: '', enabled: true, description: '' })
+/** 完全空白的一行（Name / Value / Description 都没填）。 */
+function isBlankRow(v: Environment['variables'][number]): boolean {
+  return !(v.key || '').trim() && !(v.value || '').trim() && !(v.description || '').trim()
 }
 
+/** 保证变量列表末尾始终有一个空行：填完最后一行后自动补一个新空行。 */
+function ensureTail(env: Environment | null) {
+  if (!env) return
+  const last = env.variables[env.variables.length - 1]
+  if (!last || !isBlankRow(last)) {
+    env.variables.push({ key: '', value: '', enabled: true, description: '' })
+  }
+}
+
+/** 删除一行；删到只剩空行时补回一个空行，表格不会变成空表。 */
+function removeRow(i: number) {
+  const env = currentEnv.value
+  if (!env) return
+  env.variables.splice(i, 1)
+  ensureTail(env)
+}
+
+// 末尾空行一旦被填上内容，立刻补一个新空行（任何字段输入都算）
+watch(
+  () => currentEnv.value?.variables.map((v) => `${v.key}|${v.value}|${v.description}`).join('\n') ?? '',
+  () => ensureTail(currentEnv.value),
+)
+
 async function onSave() {
-  await envStore.replaceEnvs(localEnvs.value)
+  // 末尾（以及被清空的）空白行不落库
+  const cleaned = localEnvs.value.map((e) => ({
+    ...e,
+    variables: e.variables.filter((v) => !isBlankRow(v)),
+  }))
+  await envStore.replaceEnvs(cleaned)
   toast.success('环境变量已保存')
   emit('update:visible', false)
 }
@@ -298,16 +334,25 @@ function onClose() {
   color: var(--color-text-1);
 }
 
+.detail-tip {
+  font-size: 11.5px;
+  color: var(--color-text-3);
+}
+
 .var-table {
   width: 100%;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
   border-collapse: separate;
   border-spacing: 0;
+  table-layout: fixed;
   overflow: hidden;
   font-size: 0.86em;
 
   th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
     height: 28px;
     padding: 0 8px;
     border-bottom: 1px solid var(--ui-border);
@@ -335,6 +380,8 @@ function onClose() {
     background: var(--ui-bg-hover);
   }
 
+
+
   /* 行内输入默认熔入表格 */
   :deep(.arco-input-wrapper) {
     background: transparent;
@@ -350,19 +397,19 @@ function onClose() {
   }
 
   .col-on {
-    width: 38px;
+    width: 44px;
   }
   .col-name {
-    width: 24%;
+    width: 240px;
   }
   .col-value {
-    width: 34%;
+    width: auto;
   }
   .col-desc {
-    width: 24%;
+    width: 220px;
   }
   .col-op {
-    width: 36px;
+    width: 44px;
     text-align: center;
 
     :deep(.arco-btn) {
@@ -377,6 +424,12 @@ function onClose() {
       }
     }
   }
+}
+
+.var-scroll {
+  max-height: 58vh;
+  overflow-y: auto;
+  border-radius: var(--ui-radius-md);
 }
 
 .hint {
