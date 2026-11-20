@@ -8,7 +8,7 @@
         <a-input :border="false" v-model="tab.ws_url" class="url-input" allow-clear
           placeholder="wss://echo.websocket.events" @press-enter="connect" />
       </div>
-      <a-tooltip content="保存到集合（无节点时选择位置）" position="top">
+      <a-tooltip content="保存" position="top">
         <button type="button" class="save-btn" aria-label="保存" @click="emit('saveClick')">
           <svg class="ico-save" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M8.7 1.9H4.6c-.7 0-1.2.5-1.2 1.2v9.8c0 .7.5 1.2 1.2 1.2h6.8c.7 0 1.2-.5 1.2-1.2V5.9L8.7 1.9Z" />

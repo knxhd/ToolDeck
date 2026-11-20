@@ -28,12 +28,10 @@
           </span>
           <!-- 操作列恒定占位：查看按钮槽位始终保留，保证各行「删除」图标垂直对齐 -->
           <span class="kv-col-op">
-            <span class="op-slot">
-              <a-tooltip v-if="isLong(item.value)" content="查看完整内容（可编辑、可格式化）" position="top">
-                <a-button size="small" type="text" @click="openExpand(i)">
-                  <template #icon><icon-eye /></template>
-                </a-button>
-              </a-tooltip>
+            <span class="op-slot" v-if="item.value">
+              <a-button size="small" type="text" @click="openExpand(i)">
+                <template #icon><icon-eye /></template>
+              </a-button>
             </span>
             <a-button v-if="item.key || item.value" size="small" status="danger" type="text" @click="remove(i)">
               <template #icon><icon-delete /></template>
