@@ -49,32 +49,43 @@
               </span>
             </div>
             <div class="tool-list">
-              <div v-for="(t, i) in filteredTools" :key="t.name" class="tool-item"
-                :class="{ selected: selectedTool?.name === t.name }" @click="selectTool(t)">
-                <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
-                <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
+              <div v-for="(t, i) in filteredTools" :key="t.name" class="tool-row">
+                <div class="tool-item" :class="{ selected: selectedTool?.name === t.name }"
+                  @click="selectTool(t, $event)">
+                  <div class="tool-title"><span class="idx">{{ i + 1 }}.</span>{{ t.name }}</div>
+                  <div class="tool-desc" v-if="t.description">{{ t.description }}</div>
+                </div>
+
+                <!-- 参数内联在所选工具下方，不脱离列表上下文 -->
+                <div v-if="selectedTool?.name === t.name" class="tool-args">
+                  <div class="args-title">
+                    <span>参数</span>
+                    <span class="args-count">{{ fields.length ? `${fields.length} 项` : '无参数' }}</span>
+                  </div>
+                  <div v-for="f in fields" :key="f.key" class="field">
+                    <div class="field-label">
+                      <span class="field-name">{{ f.key }}</span>
+                      <span class="req" v-if="f.required" title="必填">*</span>
+                      <span class="field-type">{{ f.type }}</span>
+                    </div>
+                    <div class="field-desc" v-if="f.description">{{ f.description }}</div>
+                    <a-switch v-if="f.type === 'boolean'" size="small"
+                      :model-value="boolVal(formValues[f.key])"
+                      @change="(v) => (formValues[f.key] = !!v)" />
+                    <a-input-number v-else-if="f.type === 'number' || f.type === 'integer'" size="small"
+                      :model-value="numVal(formValues[f.key])"
+                      @change="(v?: number) => (formValues[f.key] = v ?? 0)" style="width: 100%" />
+                    <a-textarea v-else-if="f.type === 'array' || f.type === 'object' || f.longText" size="small"
+                      :model-value="strVal(formValues[f.key])"
+                      @change="(v: string) => (formValues[f.key] = v)"
+                      :auto-size="{ minRows: 2, maxRows: 6 }" />
+                    <a-input v-else size="small" :model-value="strVal(formValues[f.key])"
+                      @change="(v: string) => (formValues[f.key] = v)" />
+                  </div>
+                </div>
               </div>
               <a-empty v-if="!filteredTools.length" :description="connected ? '无工具' : '请先连接'"
                 style="padding: 16px 0" />
-            </div>
-            <div v-if="selectedTool" class="param-form">
-              <div v-for="f in fields" :key="f.key" class="field">
-                <div class="field-label">
-                  {{ f.key }}<span class="req" v-if="f.required">*</span>
-                  <span class="field-type">{{ f.type }}</span>
-                </div>
-                <div class="field-desc" v-if="f.description">{{ f.description }}</div>
-                <a-switch v-if="f.type === 'boolean'" :model-value="boolVal(formValues[f.key])"
-                  @change="(v) => (formValues[f.key] = !!v)" />
-                <a-input-number v-else-if="f.type === 'number' || f.type === 'integer'"
-                  :model-value="numVal(formValues[f.key])"
-                  @change="(v?: number) => (formValues[f.key] = v ?? 0)" style="width: 100%" />
-                <a-textarea v-else-if="f.type === 'array' || f.type === 'object' || f.longText"
-                  :model-value="strVal(formValues[f.key])"
-                  @change="(v: string) => (formValues[f.key] = v)" :auto-size="{ minRows: 2, maxRows: 6 }" />
-                <a-input v-else :model-value="strVal(formValues[f.key])"
-                  @change="(v: string) => (formValues[f.key] = v)" />
-              </div>
             </div>
           </div>
 
@@ -102,7 +113,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
@@ -192,7 +203,7 @@ async function onConnect() {
   }
 }
 
-function selectTool(t: McpTool) {
+function selectTool(t: McpTool, ev?: MouseEvent) {
   selectedTool.value = t
   props.tab.mcp_tool = t.name
   try {
@@ -206,6 +217,11 @@ function selectTool(t: McpTool) {
     }
   }
   emit('save')
+  // 展开后把参数区带入可视范围（工具多时也不会被挤出列表）
+  nextTick(() => {
+    const row = (ev?.currentTarget as HTMLElement | null)?.parentElement
+    row?.querySelector('.tool-args')?.scrollIntoView({ block: 'nearest' })
+  })
 }
 
 function buildArgs(): Record<string, unknown> {
@@ -552,6 +568,7 @@ watch(formValues, () => emit('save'), { deep: true })
   padding: 6px 8px;
   border-radius: var(--ui-radius-sm);
   cursor: pointer;
+  background: transparent;
   transition: background-color 0.12s ease, box-shadow 0.12s ease;
 
   &:hover {
@@ -578,14 +595,36 @@ watch(formValues, () => emit('save'), { deep: true })
   }
 }
 
-.param-form {
-  max-height: 45%;
-  overflow-y: auto;
-  padding: 12px;
-  border-top: 1px solid var(--ui-border-soft);
+/* 参数区：紧贴所选工具展开的白色详情卡 */
+.tool-args {
+  margin: 4px 4px 6px;
+  padding: 10px 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-bg-panel);
+  animation: args-in 0.16s ease;
+
+  .args-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 9px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid var(--ui-border-soft);
+    color: var(--color-text-2);
+    font-size: 0.86em;
+    font-weight: 600;
+  }
+
+  .args-count {
+    color: var(--color-text-4);
+    font-family: var(--ui-font-mono);
+    font-size: 0.86em;
+    font-weight: 400;
+  }
 
   .field {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 
     &:last-child {
       margin-bottom: 0;
@@ -593,27 +632,72 @@ watch(formValues, () => emit('save'), { deep: true })
   }
 
   .field-label {
-    color: var(--color-text-2);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-1);
     font-size: 0.86em;
     font-weight: 600;
 
-    .req {
-      margin-left: 2px;
-      color: var(--ui-accent-danger);
+    .field-name {
+      font-family: var(--ui-font-mono);
     }
 
-    .field-type {
-      margin-left: 6px;
-      color: var(--color-text-4);
-      font-family: var(--ui-font-mono);
-      font-weight: 400;
+    .req {
+      margin-left: -1px;
+      color: var(--ui-accent-danger);
+      font-weight: 700;
     }
   }
 
+  /* 类型做成小徽标，避免与参数名糊在一起 */
+  .field-type {
+    margin-left: 2px;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 8px;
+    background: var(--ui-bg-subtle);
+    color: var(--color-text-4);
+    font-family: var(--ui-font-mono);
+    font-size: 0.71em;
+    font-weight: 500;
+    line-height: 16px;
+  }
+
   .field-desc {
-    margin: 2px 0 4px;
+    margin: 3px 0 5px;
     color: var(--color-text-4);
     font-size: 0.79em;
+    line-height: 1.5;
+  }
+
+  /* 控件统一 28px 高，与左栏密度一致 */
+  :deep(.arco-input-wrapper),
+  :deep(.arco-input-number),
+  :deep(.arco-select-view) {
+    height: 28px;
+    font-size: 12px;
+  }
+
+  :deep(.arco-input-number) {
+    width: 100%;
+  }
+
+  :deep(.arco-textarea) {
+    font-size: 12px;
+    line-height: 1.6;
+  }
+}
+
+@keyframes args-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
