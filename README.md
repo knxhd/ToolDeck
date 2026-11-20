@@ -132,6 +132,18 @@ cd ../backend && pyinstaller launcher.spec
 # 产物 backend/dist/api-tool.exe
 ```
 
+Windows 托盘版（默认构建是无托盘的 headless 服务，加 `-Tray` 才带托盘）：
+
+```powershell
+.\build-windows.ps1                # 无托盘，行为与以往一致
+.\build-windows.ps1 -Tray          # 右下角托盘图标：打开界面 / 复制地址 / 查看日志 / 退出
+.\build-windows.ps1 -Tray -SkipFrontend   # 复用已有前端产物，只重打后端
+```
+
+托盘版启动后自动打开浏览器，服务日志写到数据目录下的 `server.log`。运行时可用 `--no-tray` 临时退回 headless、`--no-open` 不自动开浏览器。
+
+托盘/exe 图标默认取 `frontend/public/favicon.svg`（与浏览器标签页图标同源，改前端图标即同步生效；构建时用 `resvg-py` 栅格化成多尺寸 ico）。若要单独指定图标，放 `image/logo.png` 或 `image/logo.ico` 即可覆盖。
+
 ## ⚙️ 配置
 
 数据目录默认 `~/.api-tool/`（Windows 为 `%USERPROFILE%\.api-tool\`），可用 `--data-dir` 或环境变量 `APP_CONFIG_DIR` 覆盖：
