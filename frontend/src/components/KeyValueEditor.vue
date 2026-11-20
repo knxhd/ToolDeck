@@ -194,12 +194,6 @@ function remove(i: number) {
 }
 
 // ---- 长值查看 / 编辑 ----
-/** 单行输入框里读不全的值（JSON、长 ID 列表等），超过该长度才显示「查看」按钮。 */
-const LONG_THRESHOLD = 40
-function isLong(v: string | undefined): boolean {
-  return (v || '').length > LONG_THRESHOLD
-}
-
 const expandOpen = ref(false)
 const expandIndex = ref(-1)
 const expandText = ref('')

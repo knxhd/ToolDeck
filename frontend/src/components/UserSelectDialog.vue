@@ -1,5 +1,5 @@
 <template>
-  <div class="auth-overlay">
+  <div class="auth-overlay" data-allow-autofill>
     <div class="auth-card">
       <div class="auth-logo">
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
@@ -10,15 +10,18 @@
       <p class="auth-sub">{{ mode === 'login' ? '登录你的账号' : '创建新账号' }}</p>
 
       <div class="field">
-        <a-input v-if="mode === 'register'" v-model="displayName" size="large" placeholder="昵称（可选）" :max-length="20" />
+        <a-input v-if="mode === 'register'" v-model="displayName" size="large" placeholder="昵称（可选）"
+          autocomplete="off" :max-length="20" />
       </div>
       <div class="field">
-        <a-input v-model="username" size="large" placeholder="用户名" :max-length="32" allow-clear />
+        <a-input v-model="username" size="large" placeholder="用户名" autocomplete="username"
+          :max-length="32" allow-clear />
       </div>
       <div class="field">
         <a-input-password
           v-model="password"
           size="large"
+          :autocomplete="mode === 'register' ? 'new-password' : 'current-password'"
           :placeholder="mode === 'register' ? '密码（至少10位，含字母数字特殊字符）' : '密码'"
           :max-length="64"
           @press-enter="onSubmit"

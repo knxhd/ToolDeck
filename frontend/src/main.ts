@@ -31,6 +31,7 @@ VMdPreview.use(githubTheme, {
 import App from './App.vue'
 import router from './router'
 import { useSettingsStore } from './stores/settings'
+import { installAutofillGuard } from './utils/autofill'
 import './styles/main.less'
 
 const app = createApp(App)
@@ -43,5 +44,8 @@ app.use(ArcoVue)
 app.use(ArcoVueIcon)
 
 useSettingsStore(pinia).init()
+
+// 除登录页外，禁止浏览器自动填充输入框
+installAutofillGuard()
 
 app.mount('#app')
