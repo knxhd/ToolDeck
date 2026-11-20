@@ -125,13 +125,15 @@ function serializeTabs(tabs: OpenTab[], activeId: string | null): { activeId: st
       } else {
         // 临时 tab：完整保存
         out.request = JSON.parse(JSON.stringify(t.request))
-        if (t.kind === 'websocket') out.ws_url = t.ws_url
-        if (t.kind === 'mcp') {
-          out.mcp_url = t.mcp_url
-          out.mcp_headers = { ...t.mcp_headers }
-          out.mcp_tool = t.mcp_tool
-          out.mcp_args = t.mcp_args
-        }
+      }
+      // 连接地址：无论是否属于集合节点都存一份，刷新后能恢复编辑中的值
+      if (t.kind === 'websocket') {
+        out.ws_url = t.ws_url
+      } else if (t.kind === 'mcp') {
+        out.mcp_url = t.mcp_url
+        out.mcp_headers = { ...t.mcp_headers }
+        out.mcp_tool = t.mcp_tool
+        out.mcp_args = t.mcp_args
       }
       return out
     }),
@@ -390,12 +392,13 @@ export const useWorkbenchStore = defineStore('workbench', () => {
       } else {
         // 临时 tab：用保存的请求数据
         if (p.request) tab.request = JSON.parse(JSON.stringify(p.request))
-        if (p.ws_url) tab.ws_url = p.ws_url
-        if (p.mcp_url) tab.mcp_url = p.mcp_url
-        if (p.mcp_headers) tab.mcp_headers = { ...p.mcp_headers }
-        if (p.mcp_tool) tab.mcp_tool = p.mcp_tool
-        if (p.mcp_args) tab.mcp_args = p.mcp_args
       }
+      // 连接地址以本地快照为准，覆盖集合节点上的旧值（编辑中刷新不丢）
+      if (p.ws_url) tab.ws_url = p.ws_url
+      if (p.mcp_url) tab.mcp_url = p.mcp_url
+      if (p.mcp_headers) tab.mcp_headers = { ...p.mcp_headers }
+      if (p.mcp_tool) tab.mcp_tool = p.mcp_tool
+      if (p.mcp_args) tab.mcp_args = p.mcp_args
       restored.push(tab)
     }
     tabs.value = restored

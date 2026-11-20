@@ -36,16 +36,24 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref } from 'vue'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { toast } from '@/utils/feedback'
 import type { OpenTab } from '@/api/types'
 
 const props = defineProps<{ tab: OpenTab }>()
+const emit = defineEmits<{ save: [] }>()
 
 const ws = ref<WebSocket | null>(null)
 const draft = ref('')
 const draftFocused = ref(false)
 const logEl = ref<HTMLElement>()
+
+// 地址改动后自动保存（防抖，避免边输边写集合树）
+let saveTimer: number | undefined
+watch(() => props.tab.ws_url, () => {
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(() => emit('save'), 400)
+})
 
 interface Msg { dir: 'in' | 'out' | 'sys'; data: string; time: string }
 const messages = ref<Msg[]>([])
@@ -85,7 +93,10 @@ function send() {
   draft.value = ''
 }
 
-onBeforeUnmount(() => ws.value?.close())
+onBeforeUnmount(() => {
+  window.clearTimeout(saveTimer)
+  ws.value?.close()
+})
 </script>
 
 <style lang="less" scoped>
@@ -127,6 +138,13 @@ onBeforeUnmount(() => ws.value?.close())
     border-color: rgb(var(--primary-6));
     box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
   }
+
+  :deep(.arco-input-wrapper) {
+    height: 100%;
+    padding: 0 8px 0 4px;
+    background: transparent;
+    border: none;
+  }
 }
 
 .kind-badge {
@@ -160,6 +178,7 @@ onBeforeUnmount(() => ws.value?.close())
     height: 100%;
     padding: 0 8px 0 4px;
     background: transparent;
+    border: none;
   }
 
   :deep(.arco-input) {
@@ -259,15 +278,19 @@ onBeforeUnmount(() => ws.value?.close())
   align-items: flex-end;
   flex-shrink: 0;
   padding: 6px 8px 6px 10px;
-  background: var(--ui-bg-subtle);
-  border: none;
+  background: var(--ui-bg-panel);
+  border-color: var(--ui-border);
   border-radius: var(--ui-radius-md);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 
   &.is-focused {
     background: var(--ui-bg-panel);
     border-color: rgb(var(--primary-6));
-    box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+    box-shadow: 0 0 0 1px rgba(var(--primary-6), 1);
+  }
+
+  :deep(.arco-textarea-wrapper) {
+    background: transparent;
+    border: none;
   }
 }
 

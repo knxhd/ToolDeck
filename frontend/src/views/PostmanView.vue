@@ -192,7 +192,7 @@
         </template>
         <CollectionDocPane v-else-if="wb.activeTab.kind === 'doc'" :tab="wb.activeTab" />
         <McpPane v-else-if="wb.activeTab.kind === 'mcp'" :tab="wb.activeTab" @save="onSaveMcp" />
-        <WebSocketPane v-else :tab="wb.activeTab" />
+        <WebSocketPane v-else :tab="wb.activeTab" @save="onSaveWs" />
       </div>
       <div class="empty" v-else-if="dataReady">
         <div class="ui-empty">
@@ -804,6 +804,16 @@ function onSaveMcp() {
   node.mcp_tool = tab.mcp_tool
   node.mcp_args = tab.mcp_args
   collections.persist()
+}
+
+/** WebSocket 标签：地址改动后写回集合节点（自动保存，刷新后仍是新地址）。 */
+function onSaveWs() {
+  const tab = wb.activeTab
+  if (!tab?.nodeId || tab.kind !== 'websocket') return
+  const node = collections.findNode(tab.nodeId)
+  if (!node || node.type !== 'request') return
+  node.ws_url = tab.ws_url
+  collections.persist().catch((e) => toast.error(`保存失败：${(e as Error).message}`))
 }
 
 /** 从 curl 导入等操作后，把当前请求持久化到集合节点。 */

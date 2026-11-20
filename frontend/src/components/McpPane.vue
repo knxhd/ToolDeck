@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import MonacoEditor from '@/components/MonacoEditor.vue'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
@@ -131,6 +131,14 @@ watch(headerRows, (rows) => {
   props.tab.mcp_headers = out
   emit('save')
 }, { deep: true })
+
+// 地址改动后自动保存（防抖，避免边输边写集合树）
+let saveTimer: number | undefined
+watch(() => props.tab.mcp_url, () => {
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(() => emit('save'), 400)
+})
+onBeforeUnmount(() => window.clearTimeout(saveTimer))
 
 onMounted(() => {
   if (props.tab.mcp_url) onConnect()
